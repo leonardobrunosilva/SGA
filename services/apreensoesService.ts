@@ -172,5 +172,27 @@ export const apreensoesService = {
         }
 
         return { count: count || 0, lastOwner, lastDate };
+    },
+
+    async delete(id: string) {
+        // Log para debug
+        console.log('Tentando deletar ID:', id);
+
+        const { error, count } = await supabase
+            .from('apreensoes')
+            .delete({ count: 'exact' }) // Solicita contagem de afetados
+            .eq('id', id);
+
+        if (error) {
+            console.error('Erro do Supabase ao excluir:', error);
+            throw error;
+        }
+
+        // Se nenhum registro for deletado (ex: ID errado ou bloqueio de RLS silencioso)
+        if (count === 0) {
+            const msg = 'Nenhum registro foi excluído. Verifique permissões (RLS) ou se o ID existe.';
+            console.warn(msg);
+            throw new Error(msg);
+        }
     }
 };

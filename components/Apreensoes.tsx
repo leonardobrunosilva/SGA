@@ -175,6 +175,19 @@ const Apreensoes: React.FC = () => {
     setDateFilter('');
   };
 
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Tem certeza que deseja excluir esta apreensão? A ação não pode ser desfeita.")) {
+      try {
+        await apreensoesService.delete(id);
+        alert("Apreensão excluída com sucesso!");
+        loadAnimals();
+      } catch (error: any) {
+        console.error(error);
+        alert(`Erro ao excluir: ${error.message || "Tente novamente."}`);
+      }
+    }
+  };
+
   if (isFormOpen) {
     return (
       <div className="flex flex-col gap-6 animate-fade-in max-w-4xl mx-auto pb-20">
@@ -674,7 +687,10 @@ const Apreensoes: React.FC = () => {
                       >
                         <span className="material-symbols-outlined text-[20px]">edit_square</span>
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                      <button
+                        onClick={() => handleDelete(animal.id)}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      >
                         <span className="material-symbols-outlined text-[20px]">delete</span>
                       </button>
                     </div>
