@@ -1,0 +1,709 @@
+
+import React, { useState, useEffect } from 'react';
+import { Animal } from '../types';
+import { calculateDays, formatDate } from '../utils';
+import { supabase } from '../supabaseClient';
+import { apreensoesService } from '../services/apreensoesService';
+import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+
+const DATA_MONTHLY = [
+  { label: 'Jan', val: 150 },
+  { label: 'Mar', val: 90 },
+  { label: 'Mai', val: 80 },
+  { label: 'Jul', val: 40 },
+  { label: 'Set', val: 45 },
+  { label: 'Nov', val: 15 },
+];
+
+const DATA_WEEKLY = [
+  { label: 'Seg', val: 12 },
+  { label: 'Ter', val: 18 },
+  { label: 'Qua', val: 15 },
+  { label: 'Qui', val: 22 },
+  { label: 'Sex', val: 30 },
+  { label: 'Sáb', val: 25 },
+  { label: 'Dom', val: 10 },
+];
+
+const DATA_YEARLY = [
+  { label: '2020', val: 450 },
+  { label: '2021', val: 580 },
+  { label: '2022', val: 720 },
+  { label: '2023', val: 890 },
+  { label: '2024', val: 324 },
+];
+
+const DATA_GENDER = [
+  { name: 'Macho', value: 121 },
+  { name: 'Fêmea', value: 165 },
+];
+
+const ADOPTION_STATUS_OPTIONS = [
+  'Disponível',
+  'Escolhido',
+  'Em tratamento',
+  'HVET',
+  'HVET EX',
+  'Adotado',
+  'Sem Exame',
+  'Experimento'
+];
+
+const Adocao: React.FC = () => {
+  // --- STATE WITH PERSISTENCE ---
+  const [animals, setAnimals] = useState<Animal[]>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = localStorage.getItem('adocoes_lista_trabalho');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+      }
+    }
+    return []; // Start empty unless saved data exists
+  });
+
+  // Save to localStorage whenever list changes
+  useEffect(() => {
+    localStorage.setItem('adocoes_lista_trabalho', JSON.stringify(animals));
+  }, [animals]);
+
+  // --- LOCAL STATE ---
+  const [searchTerm, setSearchTerm] = useState('');
+  const [foundEntry, setFoundEntry] = useState<any>(null);
+  const [newStatus, setNewStatus] = useState(ADOPTION_STATUS_OPTIONS[0]);
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+  const [adoptedCount, setAdoptedCount] = useState(0);
+
+  // Multi-entry handling
+  const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  const [timeFilter, setTimeFilter] = useState<'Semanal' | 'Mensal' | 'Anual'>('Mensal');
+
+  const getCurrentChartData = () => {
+    switch (timeFilter) {
+      case 'Semanal': return DATA_WEEKLY;
+      case 'Anual': return DATA_YEARLY;
+      default: return DATA_MONTHLY;
+    }
+  };
+
+  // Load Adopted Count
+  useEffect(() => {
+    const fetchAdopted = async () => {
+      try {
+        const { count } = await supabase
+          .from('saidas')
+          .select('*', { count: 'exact', head: true })
+          .or('destination.ilike.*ado*,destination.ilike.*leilão*');
+        setAdoptedCount(count || 0);
+      } catch (e) {
+        console.error(e);
+      }
+    };
+    fetchAdopted();
+  }, []);
+
+  // --- HELPERS ---
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const ANIMAL_IMAGES = [
+    'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1494&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?q=80&w=1469&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1598263304523-868478d38e3f?q=80&w=1374&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1692293887579-2420cd501705?q=80&w=1471&auto=format&fit=crop'
+  ];
+  const getImageUrl = (index: number) => ANIMAL_IMAGES[index % ANIMAL_IMAGES.length];
+
+  // --- ACTIONS ---
+
+  const handleSearchPreview = async () => {
+    if (!searchTerm.trim()) return;
+    try {
+      const entries = await apreensoesService.getByChip(searchTerm.trim());
+      setFoundEntry(entries[0] || null);
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
+  const addAnimalToList = (entry: any) => {
+    const chip = String(entry.chip || entry['CHIP'] || '');
+
+    // Check if already in list
+    if (animals.some(a => a.chip === chip)) {
+      showNotification("Este animal já está na lista de adoção.", "info");
+      return;
+    }
+
+    const dateInRaw = entry.dateIn || entry.date_in || entry['Data de Entrada'] || '-';
+    const formattedDate = formatDate(dateInRaw);
+
+    const newAnimal: Animal = {
+      id: String(Date.now()),
+      chip: chip,
+      specie: entry.specie || entry['Espécie'] || 'Desconhecido',
+      gender: entry.gender || entry['Sexo'] || '-',
+      color: entry.color || entry['Pelagem'] || '-',
+      breed: entry.breed || entry['Raça'] || 'SRD',
+      dateIn: formattedDate,
+      exitDate: '-',
+      origin: entry.origin || entry.organ || entry['Região Administrativa'] || 'Não informado',
+      status: newStatus,
+      organ: entry.organ || entry['Órgão'] || 'Não informado',
+      observations: entry.observations || entry['Observações'] || entry['Observações Complementares'] || '',
+      osNumber: entry.osNumber || entry.os_number || entry['Ordem de Serviço (OS)'] || '-',
+      imageUrl: entry.imageUrl || entry.image_url || getImageUrl(animals.length),
+      daysIn: entry.daysIn || entry.days_in || 0,
+    };
+
+    setAnimals([newAnimal, ...animals]);
+    setFoundEntry(null);
+    setSearchTerm('');
+    setIsModalOpen(false);
+    showNotification("Animal adicionado à lista com sucesso!", "success");
+  };
+
+  const handleAdd = async () => {
+    if (!searchTerm.trim()) {
+      showNotification("Digite o número do CHIP.", "info");
+      return;
+    }
+
+    try {
+      // 1. Busca no Banco
+      const entries = await apreensoesService.getByChip(searchTerm.trim());
+
+      // 2. Condicionais
+      if (entries.length === 0) {
+        showNotification("Animal não encontrado.", "error");
+      } else if (entries.length === 1) {
+        addAnimalToList(entries[0]);
+      } else {
+        // > 1: Abrir Modal
+        setMultipleEntries(entries);
+        setIsModalOpen(true);
+      }
+    } catch (e) {
+      showNotification("Erro ao buscar no banco de dados.", "error");
+      console.error(e);
+    }
+  };
+
+  const handleSelectEntry = (entry: any) => {
+    addAnimalToList(entry);
+  };
+
+  const handleRemove = (id: string) => {
+    if (window.confirm("Deseja remover este animal da lista?")) {
+      setAnimals(prev => prev.filter(a => a.id !== id));
+      showNotification("Animal removido.", "info");
+    }
+  };
+
+  // --- KPI CALCULATIONS ---
+  const kpiAvailable = animals.length;
+  const kpiAdopted = adoptedCount;
+  // Keep original logic for "Aptos" (Was hardcoded 12 in previous file, we will keep static or logic if it existed, looking at previous it was hardcoded)
+  const kpiAptos = 12;
+
+  // --- PAGINATION LOGIC ---
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAnimals = animals.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(animals.length / itemsPerPage);
+  const handlePageChange = (page: number) => setCurrentPage(page);
+
+  return (
+    <div className="flex flex-col gap-6 animate-fade-in pb-12">
+      {/* Toast */}
+      {notification && (
+        <div className={`fixed top-24 right-8 z-[100] p-4 rounded-xl shadow-2xl border flex items-center gap-3 animate-fade-in-up ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+          <span className="material-symbols-outlined">{notification.type === 'success' ? 'check_circle' : notification.type === 'error' ? 'error' : 'info'}</span>
+          <p className="text-sm font-bold">{notification.message}</p>
+        </div>
+      )}
+
+      <div className="flex flex-col text-left mb-2">
+        <h2 className="text-[#111814] text-3xl font-black leading-tight tracking-[-0.033em]">Gestão de Adoção</h2>
+        <p className="text-gray-500 text-sm font-normal">Painel de controle manual para processo de adoção.</p>
+      </div>
+
+      {/* KPIs */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="bg-blue-50 p-3 rounded-full text-blue-600">
+            <span className="material-symbols-outlined text-2xl">pets</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400">Disponíveis para Adoção</p>
+            <p className="text-2xl font-black text-gray-800">{kpiAvailable}</p>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="bg-green-50 p-3 rounded-full text-green-600">
+            <span className="material-symbols-outlined text-2xl">check_circle</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400">Adoções Concluídas</p>
+            <p className="text-2xl font-black text-gray-800">{kpiAdopted}</p>
+          </div>
+        </div>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="bg-orange-50 p-3 rounded-full text-orange-600">
+            <span className="material-symbols-outlined text-2xl">gavel</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400">Aptos para Adoção</p>
+            <p className="text-2xl font-black text-gray-800">{kpiAptos}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* --- RESTORED VISUAL COMPONENT (DETAILS) --- */}
+      <section className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm text-left animate-fade-in">
+        {/* 1. Header Search */}
+        <div className="mb-8">
+          <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">BUSCAR ANIMAL</label>
+          <div className="flex flex-col md:flex-row gap-4">
+            <div className="flex-1 relative">
+              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                <span className="material-symbols-outlined text-gray-400">qr_code_scanner</span>
+              </div>
+              <input
+                className="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-mono"
+                placeholder="982000001248"
+                defaultValue="982000001248"
+                readOnly
+              />
+            </div>
+            <button className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-500/20">
+              <span className="material-symbols-outlined">search</span>
+              Consultar
+            </button>
+          </div>
+        </div>
+
+        {/* 2. Main Area Grid */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+          {/* Left Col: Profile */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden group shadow-lg border border-gray-100">
+              <img
+                src="https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop"
+                className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
+                alt="Soberano"
+              />
+              <div className="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-md uppercase">
+                APTO PARA ADOÇÃO
+              </div>
+            </div>
+            <div>
+              <h2 className="text-3xl font-black text-gray-900 leading-none">Soberano</h2>
+              <p className="text-gray-500 font-medium mt-2">Equino • Macho • Alazã</p>
+            </div>
+          </div>
+
+          {/* Right Col: Details & History */}
+          <div className="lg:col-span-8 flex flex-col gap-8">
+            {/* 4 Cards Grid */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* Health */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-green-100 text-green-600"><span className="material-symbols-outlined">medical_services</span></div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-black uppercase">Exames Sanitários</p>
+                  <p className="text-gray-900 font-bold text-sm">AIE & Mormo Negativos</p>
+                </div>
+                <div className="ml-auto"><span className="material-symbols-outlined text-green-500 text-sm">check_circle</span></div>
+              </div>
+              {/* Vaccination */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-green-100 text-green-600"><span className="material-symbols-outlined">vaccines</span></div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-black uppercase">Vacinação</p>
+                  <p className="text-gray-900 font-bold text-sm">Influenza & Tétano: OK</p>
+                </div>
+                <div className="ml-auto"><span className="material-symbols-outlined text-green-500 text-sm">check_circle</span></div>
+              </div>
+              {/* Manejo */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-blue-100 text-blue-600"><span className="material-symbols-outlined">content_cut</span></div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-black uppercase">Manejo</p>
+                  <p className="text-gray-900 font-bold text-sm">Castrado / Ferrageado</p>
+                </div>
+                <div className="ml-auto"><span className="material-symbols-outlined text-blue-500 text-sm">schedule</span></div>
+              </div>
+              {/* Temperamento */}
+              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                <div className="p-2 rounded-lg bg-purple-100 text-purple-600"><span className="material-symbols-outlined">psychology</span></div>
+                <div>
+                  <p className="text-[10px] text-gray-400 font-black uppercase">Temperamento</p>
+                  <p className="text-gray-900 font-bold text-sm">Manso de Sela</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Timeline */}
+            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
+              <h4 className="text-sm font-black text-gray-900 mb-5 uppercase tracking-wide">Histórico de Apreensão</h4>
+              <ul className="space-y-4">
+                <li className="flex gap-4 text-sm items-center">
+                  <span className="text-gray-400 w-20 shrink-0 font-black text-[11px] uppercase tracking-tighter">10 OUT</span>
+                  <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0"></div>
+                  <span className="text-gray-600 font-medium">Recolhimento em via pública (DF-001).</span>
+                </li>
+                <li className="flex gap-4 text-sm items-center">
+                  <span className="text-gray-400 w-20 shrink-0 font-black text-[11px] uppercase tracking-tighter">11 OUT</span>
+                  <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0"></div>
+                  <span className="text-gray-600 font-medium">Coleta de sangue para exame de AIE e Mormo.</span>
+                </li>
+                <li className="flex gap-4 text-sm items-center">
+                  <span className="text-gray-400 w-20 shrink-0 font-black text-[11px] uppercase tracking-tighter">12 OUT</span>
+                  <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0"></div>
+                  <span className="text-gray-600 font-medium">Resenha realizada e Chip implantado (#001248).</span>
+                </li>
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        {/* 3. Footer Actions */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mt-10 pt-8 border-t border-gray-100 items-center">
+          <div className="lg:col-span-4">
+            <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl flex items-center gap-3">
+              <span className="material-symbols-outlined text-orange-500">timer</span>
+              <div>
+                <p className="text-orange-600 font-black text-[10px] uppercase tracking-wider leading-none mb-1">Prazo de Apreensão</p>
+                <p className="text-gray-600 text-sm">Restam <span className="font-black text-gray-900">5 dias</span> para Restituir.</p>
+              </div>
+            </div>
+          </div>
+          <div className="lg:col-span-8 flex gap-4 h-full">
+            <button className="flex-1 px-6 py-4 border border-red-200 text-red-500 hover:bg-red-50 text-xs rounded-xl font-black transition-all flex items-center justify-center gap-2 uppercase">
+              <span className="material-symbols-outlined text-[20px]">block</span>
+              Cancelar Processo
+            </button>
+            <button className="flex-[2] px-6 py-4 bg-green-500 hover:bg-green-600 text-white text-xs rounded-xl font-black transition-all shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 uppercase">
+              <span className="material-symbols-outlined text-[20px]">check</span>
+              Iniciar Adoção
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* Insertion Card */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-primary">add_circle</span>
+          Nova Inclusão
+        </h3>
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1 w-full relative">
+            <label className="text-xs font-bold text-gray-500 mb-1 block">Chip do Animal</label>
+            <div className="relative">
+              <input
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleAdd()}
+                className={`w-full border ${foundEntry ? 'border-green-500 bg-green-50' : 'border-gray-300'} rounded-lg pl-3 pr-10 py-2.5 outline-none focus:ring-2 focus:ring-primary transition-all`}
+                placeholder="Ex: 982..."
+              />
+              <button onClick={handleSearchPreview} className="absolute right-2 top-2 text-gray-400 hover:text-primary">
+                <span className="material-symbols-outlined">search</span>
+              </button>
+            </div>
+            {foundEntry && <span className="text-[10px] text-green-600 font-bold mt-1 block">Encontrado: {foundEntry['Espécie']} ({foundEntry['Sexo']})</span>}
+          </div>
+          <div className="w-full md:w-64">
+            <label className="text-xs font-bold text-gray-500 mb-1 block">Status Inicial</label>
+            <select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-primary"
+            >
+              {ADOPTION_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
+          <button
+            onClick={handleAdd}
+            className="w-full md:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg"
+          >
+            <span className="material-symbols-outlined">add</span>
+            Incluir
+          </button>
+        </div>
+      </div>
+
+      {/* Table */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Animal / Detalhes</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">CHIP</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Observações</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">O.S.</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Entrada</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Estadia</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Status</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {currentAnimals.map(animal => (
+                <tr key={animal.id} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4">
+                    <div>
+                      <p className="font-bold text-slate-800">{animal.specie}</p>
+                      <p className="text-[10px] text-slate-500">{animal.gender} / {animal.color}</p>
+                    </div>
+                  </td>
+                  <td className="px-6 py-4 font-mono text-slate-600">{animal.chip}</td>
+                  <td className="px-6 py-4 text-slate-500 text-xs max-w-xs truncate" title={animal.observations}>
+                    {animal.observations || '-'}
+                  </td>
+                  <td className="px-6 py-4 text-slate-600">{animal.osNumber}</td>
+                  <td className="px-6 py-4 text-slate-600">{animal.dateIn}</td>
+                  <td className="px-6 py-4">
+                    {(() => {
+                      const days = calculateDays(animal.dateIn);
+                      return <span className="font-bold text-slate-700">{days} dias</span>;
+                    })()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                      {animal.status}
+                    </span>
+                  </td>
+                  <td className="px-6 py-4 text-right">
+                    <div className="flex items-center justify-end gap-1">
+                      <button onClick={() => showNotification("Visualizar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
+                        <span className="material-symbols-outlined text-[20px]">visibility</span>
+                      </button>
+                      <button onClick={() => showNotification("Editar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
+                        <span className="material-symbols-outlined text-[20px]">edit</span>
+                      </button>
+                      <button onClick={() => handleRemove(animal.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50">
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {animals.length === 0 && (
+                <tr><td colSpan={8} className="p-8 text-center text-gray-400 italic">Nenhum registro encontrado.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Footer */}
+        {animals.length > 0 && (
+          <div className="bg-gray-50 border-t border-gray-200 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-xs text-slate-500 font-medium">
+              Mostrando <span className="font-bold text-slate-800">{indexOfFirstItem + 1}</span> a <span className="font-bold text-slate-800">{Math.min(indexOfLastItem, animals.length)}</span> de <span className="font-bold text-slate-800">{animals.length}</span> registros
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-600 hover:bg-white hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Anterior
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold flex items-center justify-center transition-all ${currentPage === page ? 'bg-primary text-slate-900 shadow-md' : 'text-gray-500 hover:bg-gray-200'}`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-600 hover:bg-white hover:text-primary disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+
+      {/* Analytics Row */}
+      <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-white rounded-xl p-8 border border-slate-200 shadow-sm text-left">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+            <div>
+              <h3 className="text-xl font-black text-slate-900 leading-none">Adoções Realizadas</h3>
+              <p className="text-sm text-slate-500 mt-2">Visualização por período</p>
+            </div>
+
+            {/* Segmented Control / Time Filter */}
+            <div className="bg-slate-100 p-1 rounded-lg flex items-center shadow-inner">
+              {(['Semanal', 'Mensal', 'Anual'] as const).map((option) => (
+                <button
+                  key={option}
+                  onClick={() => setTimeFilter(option)}
+                  className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all duration-200 ${timeFilter === option
+                    ? 'bg-white text-slate-900 shadow-sm'
+                    : 'text-slate-500 hover:text-slate-700'
+                    }`}
+                >
+                  {option}
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-baseline gap-2 hidden md:flex">
+              <span className="text-4xl font-black text-slate-900 tracking-tight">
+                {timeFilter === 'Anual' ? '324' : timeFilter === 'Semanal' ? '12' : '42'}
+              </span>
+              <span className="text-xs font-black text-primary flex items-center gap-0.5">
+                <span className="material-symbols-outlined text-[16px]">trending_up</span>
+                +5.2%
+              </span>
+            </div>
+          </div>
+
+          <div className="h-64 w-full mt-auto">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={getCurrentChartData()}>
+                <defs>
+                  <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#13ec80" stopOpacity={0.3} />
+                    <stop offset="95%" stopColor="#13ec80" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis dataKey="label" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 11, fontWeight: 700 }} />
+                <YAxis hide />
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                  labelStyle={{ fontWeight: 800, color: '#1e293b' }}
+                />
+                <Area
+                  type="monotone"
+                  dataKey="val"
+                  stroke="#13ec80"
+                  strokeWidth={4}
+                  fillOpacity={1}
+                  fill="url(#chartGradient)"
+                  animationDuration={1000}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-xl p-8 border border-slate-200 shadow-sm flex flex-col text-left">
+          <div className="mb-8">
+            <h3 className="text-xl font-black text-slate-900 leading-none">Adoções por Gênero</h3>
+            <p className="text-sm text-slate-500 mt-2">Distribuição por sexo</p>
+          </div>
+
+          <div className="flex-1 h-64 w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={DATA_GENDER} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
+                />
+                <YAxis hide />
+                <Tooltip
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                <Bar
+                  dataKey="value"
+                  radius={[8, 8, 0, 0]}
+                  barSize={60}
+                  animationDuration={1200}
+                >
+                  {DATA_GENDER.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.name === 'Macho' ? '#13ec80' : '#13ec80'} fillOpacity={entry.name === 'Macho' ? 0.8 : 1} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mt-8">
+            <div className="flex flex-col gap-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-tight">Machos</span>
+              <span className="text-2xl font-black text-slate-900">121</span>
+            </div>
+            <div className="flex flex-col gap-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
+              <span className="text-[10px] text-slate-400 font-black uppercase tracking-tight">Fêmeas</span>
+              <span className="text-2xl font-black text-primary">165</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Selection Modal */}
+      {isModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4 animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden animate-scale-up">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Múltiplos Registros Encontrados</h3>
+                <p className="text-xs text-slate-500 font-medium">O chip pesquisado possui mais de uma entrada.</p>
+              </div>
+              <button onClick={() => setIsModalOpen(false)} className="size-8 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-500 transition-colors">
+                <span className="material-symbols-outlined text-lg">close</span>
+              </button>
+            </div>
+            <div className="p-6 max-h-[60vh] overflow-y-auto">
+              <p className="text-sm text-slate-600 mb-4">Selecione qual registro de entrada você deseja utilizar para este processo de adoção:</p>
+              <div className="flex flex-col gap-3">
+                {multipleEntries.map((entry, idx) => (
+                  <button
+                    key={idx}
+                    onClick={() => handleSelectEntry(entry)}
+                    className="flex items-center gap-4 p-4 rounded-xl border border-gray-200 hover:border-primary hover:bg-primary/5 transition-all text-left group"
+                  >
+                    <div className="h-10 w-10 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-slate-900 transition-colors">
+                      <span className="material-symbols-outlined">calendar_month</span>
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-slate-800">Entrada: {formatDate(entry['Data de Entrada'] || entry.date_in || entry.dateIn)}</p>
+                      <p className="text-xs text-slate-500">Origem: {entry['Região Administrativa'] || 'Não informado'}</p>
+                    </div>
+                    <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="material-symbols-outlined text-primary">arrow_forward</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="p-4 bg-gray-50 border-t border-gray-100 flex justify-end">
+              <button onClick={() => setIsModalOpen(false)} className="px-4 py-2 text-sm font-bold text-slate-500 hover:text-slate-700 hover:bg-gray-200 rounded-lg transition-colors">
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export default Adocao;
