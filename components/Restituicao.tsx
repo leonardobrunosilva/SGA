@@ -315,10 +315,10 @@ const Restituicao: React.FC = () => {
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Identificação</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Animal (Espécie)</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Data Entrada</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Permanência</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Origem</th>
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico</th>
                 <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
