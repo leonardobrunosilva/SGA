@@ -549,6 +549,16 @@ const OutrosOrgaos: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Edit Modal */}
+      <EditModal
+        isOpen={isEditModalOpen}
+        title="Editar Animal (Outros Órgãos)"
+        data={editingItem}
+        fields={editFields}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 };
