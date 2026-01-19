@@ -421,7 +421,7 @@ const Adocao: React.FC = () => {
                 <span className="material-symbols-outlined">search</span>
               </button>
             </div>
-            {foundEntry && <span className="text-[10px] text-green-600 font-bold mt-1 block">Encontrado: {foundEntry['Espécie']} ({foundEntry['Sexo']})</span>}
+            {foundEntry && <span className="absolute top-full left-0 mt-1 text-[10px] text-green-600 font-bold whitespace-nowrap">Encontrado: {foundEntry['Espécie']} ({foundEntry['Sexo']})</span>}
           </div>
           <div className="w-full md:w-64">
             <label className="text-xs font-bold text-gray-500 mb-1 block">Status Inicial</label>

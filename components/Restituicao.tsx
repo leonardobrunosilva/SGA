@@ -91,7 +91,7 @@ const Restituicao: React.FC = () => {
       } else if (entries.length === 1) {
         setFoundEntry(entries[0]);
         setMultipleEntries([]);
-        showNotification(`Animal localizado: ${entries[0].specie || entries[0]['Espécie']} - Entrada: ${formatDate(entries[0].date_in || entries[0].dateIn || entries[0]['Data de Entrada'])}`, "success");
+        showNotification(`Animal localizado: ${entries[0].specie || entries[0]['Espécie']} - Entrada: ${formatDate(entries[0].dateIn || entries[0]['Data de Entrada'])}`, "success");
       } else {
         setMultipleEntries(entries);
         setFoundEntry(null);
@@ -250,7 +250,7 @@ const Restituicao: React.FC = () => {
             <button onClick={handleSearchEntry} className="absolute right-2 top-7 p-1.5 text-gray-400 hover:text-gdf-blue">
               <span className="material-symbols-outlined">search</span>
             </button>
-            {foundEntry && <span className="text-[10px] text-green-600 font-bold mt-1 block">Selecionado: {foundEntry['Espécie']} - {foundEntry['Data de Entrada']}</span>}
+            {foundEntry && <span className="absolute top-full left-0 mt-1 text-[10px] text-green-600 font-bold whitespace-nowrap">Selecionado: {foundEntry['Espécie']} - {foundEntry['Data de Entrada']}</span>}
           </div>
 
           <div className="w-full md:w-48">

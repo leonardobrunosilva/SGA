@@ -266,7 +266,7 @@ const OutrosOrgaos: React.FC = () => {
       <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
         <h3 className="text-slate-800 font-bold text-lg mb-4">Nova Inclusão</h3>
         <div className="flex flex-col md:flex-row gap-4 items-end">
-          <div className="flex-1">
+          <div className="flex-1 relative">
             <label className="text-xs font-bold text-slate-500 uppercase mb-1 block">Buscar por CHIP</label>
             <div className="relative">
               <input
@@ -282,7 +282,7 @@ const OutrosOrgaos: React.FC = () => {
             </div>
             {/* Preview */}
             {foundEntry && (
-              <p className="text-xs text-green-700 font-bold mt-1">
+              <p className="absolute top-full left-0 mt-1 text-xs text-green-700 font-bold whitespace-nowrap">
                 Selecionado: {foundEntry.specie || foundEntry['Espécie']} - {foundEntry.dateIn || foundEntry.date_in || foundEntry['Data de Entrada']}
               </p>
             )}
@@ -321,6 +321,7 @@ const OutrosOrgaos: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr className="bg-gray-50">
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Órgão / Origem</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Animal / Detalhes</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">CHIP</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Observações</th>
@@ -337,6 +338,7 @@ const OutrosOrgaos: React.FC = () => {
               ) : (
                 currentAnimals.map((row) => (
                   <tr key={row.id} className="group hover:bg-blue-50/50 transition-colors">
+                    <td className="px-4 py-3 text-sm font-bold text-slate-700">{row.orgao}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-col">
                         <span className="text-sm font-bold text-slate-800">{row.especie}</span>
