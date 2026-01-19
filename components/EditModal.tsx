@@ -3,7 +3,7 @@ import React, { useState, useEffect } from 'react';
 export interface FieldConfig {
     name: string;
     label: string;
-    type?: 'text' | 'select' | 'textarea' | 'date';
+    type?: 'text' | 'select' | 'textarea' | 'date' | 'toggle';
     options?: string[];
     readOnly?: boolean;
 }
@@ -66,6 +66,20 @@ const EditModal: React.FC<EditModalProps> = ({ isOpen, title, data, fields, onCl
                                             </option>
                                         ))}
                                     </select>
+                                ) : field.type === 'toggle' ? (
+                                    <div className="flex items-center gap-3 mt-2">
+                                        <button
+                                            onClick={() => handleChange(field.name, !formData[field.name])}
+                                            className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 ${formData[field.name] ? 'bg-blue-600' : 'bg-gray-200'}`}
+                                        >
+                                            <span
+                                                className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${formData[field.name] ? 'translate-x-6' : 'translate-x-1'}`}
+                                            />
+                                        </button>
+                                        <span className="text-sm font-medium text-slate-700">
+                                            {formData[field.name] ? 'Sim' : 'Não'}
+                                        </span>
+                                    </div>
                                 ) : field.type === 'textarea' ? (
                                     <textarea
                                         value={formData[field.name] || ''}

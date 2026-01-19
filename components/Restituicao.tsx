@@ -53,6 +53,7 @@ const Restituicao: React.FC = () => {
   const editFields: FieldConfig[] = [
     { name: 'chip', label: 'Chip', readOnly: true },
     { name: 'specie', label: 'Espécie' },
+    { name: 'contactInitiated', label: 'Contato Realizado pelo Proprietário?', type: 'toggle' },
     { name: 'status', label: 'Status', type: 'select', options: ENTRY_STATUS_OPTIONS },
     { name: 'observations', label: 'Observações', type: 'textarea' },
   ];
@@ -317,7 +318,8 @@ const Restituicao: React.FC = () => {
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Data Entrada</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Permanência</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Origem</th>
-                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs text-right">Ações</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -338,7 +340,17 @@ const Restituicao: React.FC = () => {
                       {animal.status}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-slate-600">{animal.dateIn}</td>
+                  <td className="px-4 py-3 whitespace-nowrap">
+                    {animal.contactInitiated ? (
+                      <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full border border-emerald-200">
+                        <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                        Contato Realizado
+                      </span>
+                    ) : (
+                      <span className="text-xs text-slate-400 font-medium">-</span>
+                    )}
+                  </td>
+                  <td className="px-4 py-3 whitespace-nowrap text-right">{animal.dateIn}</td>
                   <td className="px-6 py-4">
                     {(() => {
                       /* Logic for Today - DateIn */
