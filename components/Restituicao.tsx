@@ -4,6 +4,7 @@ import { Animal } from '../types';
 import { calculateDays, formatDate } from '../utils';
 import { apreensoesService } from '../services/apreensoesService';
 import { saidasService } from '../services/saidasService';
+import EditModal, { FieldConfig } from './EditModal';
 
 const ENTRY_STATUS_OPTIONS = [
   'Disponível',
@@ -44,6 +45,17 @@ const Restituicao: React.FC = () => {
   const [foundEntry, setFoundEntry] = useState<any>(null);
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
   const [showEntrySelectionModal, setShowEntrySelectionModal] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Animal | null>(null);
+
+  const editFields: FieldConfig[] = [
+    { name: 'chip', label: 'Chip', readOnly: true },
+    { name: 'specie', label: 'Espécie' },
+    { name: 'status', label: 'Status', type: 'select', options: ENTRY_STATUS_OPTIONS },
+    { name: 'observations', label: 'Observações', type: 'textarea' },
+  ];
 
   // Footer state
   const [batchExitDate, setBatchExitDate] = useState('');
@@ -110,6 +122,19 @@ const Restituicao: React.FC = () => {
     setMultipleEntries([]);
     const dateIn = entry.dateIn || entry.date_in || entry['Data de Entrada'];
     showNotification(`Registro de ${formatDate(dateIn)} selecionado.`, "success");
+  };
+
+  const handleEdit = (animal: Animal) => {
+    setEditingItem(animal);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (updatedItem: any) => {
+    const updatedList = animals.map(a => a.id === updatedItem.id ? updatedItem : a);
+    setAnimals(updatedList);
+    setIsEditModalOpen(false);
+    setEditingItem(null);
+    showNotification("Registro atualizado com sucesso!", "success");
   };
 
   const handleAddToStaging = () => {
@@ -338,7 +363,7 @@ const Restituicao: React.FC = () => {
                       <button onClick={() => showNotification(`Visualizar Detalhes: ${animal.specie} (${animal.chip}) - Em breve`, "info")} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Visualizar">
                         <span className="material-symbols-outlined text-[20px]">visibility</span>
                       </button>
-                      <button onClick={() => showNotification(`Editar Registro: ${animal.specie} - Em breve`, "info")} className="text-gray-400 hover:text-orange-600 p-1.5 rounded-full hover:bg-orange-50 transition-colors" title="Editar">
+                      <button onClick={() => handleEdit(animal)} className="text-gray-400 hover:text-orange-600 p-1.5 rounded-full hover:bg-orange-50 transition-colors" title="Editar">
                         <span className="material-symbols-outlined text-[20px]">edit</span>
                       </button>
                       <button onClick={() => handleRemove(animal.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Remover">
@@ -467,6 +492,15 @@ const Restituicao: React.FC = () => {
         </div>
       )}
 
+      {/* Edit Modal */}
+      <EditModal
+        isOpen={isEditModalOpen}
+        title="Editar Animal (Restituição)"
+        data={editingItem}
+        fields={editFields}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 };

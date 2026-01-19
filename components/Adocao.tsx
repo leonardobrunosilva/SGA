@@ -5,6 +5,7 @@ import { calculateDays, formatDate } from '../utils';
 import { supabase } from '../supabaseClient';
 import { apreensoesService } from '../services/apreensoesService';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import EditModal, { FieldConfig } from './EditModal';
 
 const DATA_MONTHLY = [
   { label: 'Jan', val: 150 },
@@ -76,6 +77,19 @@ const Adocao: React.FC = () => {
   // Multi-entry handling
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Animal | null>(null);
+
+  const editFields: FieldConfig[] = [
+    { name: 'chip', label: 'Chip', readOnly: true },
+    { name: 'specie', label: 'Espécie' },
+    { name: 'gender', label: 'Sexo', type: 'select', options: ['Macho', 'Fêmea'] },
+    { name: 'color', label: 'Pelagem' },
+    { name: 'status', label: 'Status', type: 'select', options: ADOPTION_STATUS_OPTIONS },
+    { name: 'observations', label: 'Observações', type: 'textarea' },
+  ];
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -199,6 +213,19 @@ const Adocao: React.FC = () => {
 
   const handleSelectEntry = (entry: any) => {
     addAnimalToList(entry);
+  };
+
+  const handleEdit = (animal: Animal) => {
+    setEditingItem(animal);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (updatedItem: any) => {
+    const updatedList = animals.map(a => a.id === updatedItem.id ? updatedItem : a);
+    setAnimals(updatedList);
+    setIsEditModalOpen(false);
+    setEditingItem(null);
+    showNotification("Registro atualizado com sucesso!", "success");
   };
 
   const handleRemove = (id: string) => {
@@ -490,7 +517,7 @@ const Adocao: React.FC = () => {
                       <button onClick={() => showNotification("Visualizar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
                         <span className="material-symbols-outlined text-[20px]">visibility</span>
                       </button>
-                      <button onClick={() => showNotification("Editar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
+                      <button onClick={() => handleEdit(animal)} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
                         <span className="material-symbols-outlined text-[20px]">edit</span>
                       </button>
                       <button onClick={() => handleRemove(animal.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50">
@@ -702,6 +729,16 @@ const Adocao: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Modal */}
+      <EditModal
+        isOpen={isEditModalOpen}
+        title="Editar Animal (Adoção)"
+        data={editingItem}
+        fields={editFields}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 };

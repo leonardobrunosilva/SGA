@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { apreensoesService } from '../services/apreensoesService';
 import { formatDate } from '../utils';
+import EditModal, { FieldConfig } from './EditModal';
 
 // Status Options
 const STATUS_OPTIONS = ['Curral de Apreensão', 'HVET', 'Experimento'];
@@ -60,6 +61,19 @@ const OutrosOrgaos: React.FC = () => {
   // Multi-entry modal
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<AnimalItem | null>(null);
+
+  const editFields: FieldConfig[] = [
+    { name: 'chip', label: 'Chip', readOnly: true },
+    { name: 'especie', label: 'Espécie' },
+    { name: 'orgao', label: 'Órgão' },
+    { name: 'dataEntrada', label: 'Data Entrada', readOnly: true },
+    { name: 'status', label: 'Status', type: 'select', options: STATUS_OPTIONS },
+    { name: 'observacoes', label: 'Observações', type: 'textarea' },
+  ];
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -162,6 +176,19 @@ const OutrosOrgaos: React.FC = () => {
     setFoundEntry(entry);
     setIsModalOpen(false);
     showNotification(`Selecionado: ${entry['Espécie']} - ${entry['Data de Entrada']}`, "success");
+  };
+
+  const handleEdit = (animal: AnimalItem) => {
+    setEditingItem(animal);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = (updatedItem: any) => {
+    const updatedList = animals.map(a => a.id === updatedItem.id ? updatedItem : a);
+    setAnimals(updatedList);
+    setIsEditModalOpen(false);
+    setEditingItem(null);
+    showNotification("Registro atualizado com sucesso!", "success");
   };
 
   const handleRemove = (id: string) => {
@@ -361,7 +388,7 @@ const OutrosOrgaos: React.FC = () => {
                         <button className="text-gray-400 hover:text-gdf-blue transition-colors p-1.5 rounded-lg hover:bg-blue-50" title="Visualizar">
                           <span className="material-symbols-outlined text-[20px]">visibility</span>
                         </button>
-                        <button className="text-gray-400 hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-green-50" title="Editar">
+                        <button onClick={() => handleEdit(row)} className="text-gray-400 hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-green-50" title="Editar">
                           <span className="material-symbols-outlined text-[20px]">edit</span>
                         </button>
                         <button onClick={() => handleRemove(row.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-red-50" title="Excluir">
