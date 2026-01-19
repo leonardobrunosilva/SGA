@@ -165,9 +165,9 @@ const Adocao: React.FC = () => {
       setFoundEntry(null);
       setSearchTerm('');
       setIsModalOpen(false);
-    } catch (error) {
+    } catch (error: any) {
       console.error(error);
-      showNotification("Erro ao adicionar animal.", "error");
+      showNotification(`Erro: ${error.message || 'Falha desconhecida'}`, "error");
     }
   };
 
