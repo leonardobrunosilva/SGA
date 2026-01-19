@@ -370,7 +370,7 @@ const OutrosOrgaos: React.FC = () => {
           <table className="min-w-full divide-y divide-gray-200">
             <thead>
               <tr className="bg-gray-50">
-                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Órgão / Origem</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Órgão</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Animal / Detalhes</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">CHIP</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Observações</th>
@@ -391,7 +391,7 @@ const OutrosOrgaos: React.FC = () => {
 
                   return (
                     <tr key={row.id} className="group hover:bg-blue-50/50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-bold text-slate-700">{row.organ_destination || animalData.origin || 'Não informado'}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-700">{row.organ_destination || 'Não informado'}</td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-slate-800">{animalData.specie}</span>
