@@ -13,7 +13,7 @@ const getWorklistItems = async (table: string) => {
     // But our table is 'apreensoes'. I will try 'animal:apreensoes(*)' first as it matches the table name known in the code.
     const { data, error } = await supabase
         .from(table)
-        .select('*, animal:apreensoes(*)');
+        .select('*, animal:apreensoes!animal_id(*)');
 
     if (error) {
         console.error(`Erro ao buscar itens de ${table}:`, error);
@@ -30,7 +30,7 @@ export const adocaoService = {
         const { data, error } = await supabase
             .from('worklist_adocao')
             .insert([{ animal_id: animalId, status, observations }])
-            .select('*, animal:apreensoes(*)')
+            .select('*, animal:apreensoes!animal_id(*)')
             .single();
 
         if (error) throw error;
@@ -41,7 +41,7 @@ export const adocaoService = {
             .from('worklist_adocao')
             .update(updates)
             .eq('id', id)
-            .select('*, animal:apreensoes(*)')
+            .select('*, animal:apreensoes!animal_id(*)')
             .single();
 
         if (error) throw error;
@@ -61,7 +61,7 @@ export const restituicaoService = {
         const { data, error } = await supabase
             .from('worklist_restituicao')
             .insert([{ animal_id: animalId, status, observations }])
-            .select('*, animal:apreensoes(*)')
+            .select('*, animal:apreensoes!animal_id(*)')
             .single();
 
         if (error) throw error;
@@ -72,7 +72,7 @@ export const restituicaoService = {
             .from('worklist_restituicao')
             .update(updates)
             .eq('id', id)
-            .select('*, animal:apreensoes(*)')
+            .select('*, animal:apreensoes!animal_id(*)')
             .single();
 
         if (error) throw error;
@@ -97,7 +97,7 @@ export const outrosOrgaosService = {
                 observations,
                 organ_destination: organDestination
             }])
-            .select('*, animal:apreensoes(*)')
+            .select('*, animal:apreensoes!animal_id(*)')
             .single();
 
         if (error) throw error;
@@ -108,7 +108,7 @@ export const outrosOrgaosService = {
             .from('worklist_outros')
             .update(updates)
             .eq('id', id)
-            .select('*, animal:apreensoes(*)')
+            .select('*, animal:apreensoes!animal_id(*)')
             .single();
 
         if (error) throw error;
