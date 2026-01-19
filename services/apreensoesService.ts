@@ -15,7 +15,8 @@ export const apreensoesService = {
         daysIn:days_in,
         imageUrl:image_url
       `)
-            .order('date_in', { ascending: false });
+            .order('date_in', { ascending: false })
+            .range(0, 4999);
 
         if (error) {
             console.error('Erro ao buscar apreensões:', error);
@@ -38,7 +39,8 @@ export const apreensoesService = {
                 imageUrl:image_url
             `)
             .eq('chip', chip)
-            .order('date_in', { ascending: false });
+            .order('date_in', { ascending: false })
+            .range(0, 4999);
 
         if (error) {
             console.error('Erro ao buscar por CHIP:', error);
