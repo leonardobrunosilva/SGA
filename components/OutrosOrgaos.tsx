@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { apreensoesService } from '../services/apreensoesService';
+import { formatDate } from '../utils';
 
 // Status Options
 const STATUS_OPTIONS = ['Curral de Apreensão', 'HVET', 'Experimento'];
@@ -283,7 +284,7 @@ const OutrosOrgaos: React.FC = () => {
             {/* Preview */}
             {foundEntry && (
               <p className="absolute top-full left-0 mt-1 text-xs text-green-700 font-bold whitespace-nowrap">
-                Selecionado: {foundEntry.specie || foundEntry['Espécie']} - {foundEntry.dateIn || foundEntry.date_in || foundEntry['Data de Entrada']}
+                Selecionado: {foundEntry.specie || foundEntry['Espécie']} - {formatDate(foundEntry.dateIn || foundEntry.date_in || foundEntry['Data de Entrada'])}
               </p>
             )}
           </div>
@@ -433,7 +434,7 @@ const OutrosOrgaos: React.FC = () => {
                       <span className="material-symbols-outlined">calendar_month</span>
                     </div>
                     <div>
-                      <p className="text-sm font-bold text-slate-800">Entrada: {entry.dateIn || entry.date_in || entry['Data de Entrada']}</p>
+                      <p className="text-sm font-bold text-slate-800">Entrada: {formatDate(entry.dateIn || entry.date_in || entry['Data de Entrada'])}</p>
                       <p className="text-xs text-slate-500">Origem: {entry.origin || entry.organ || entry['Região Administrativa'] || 'Não informado'}</p>
                     </div>
                     <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
