@@ -2,6 +2,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area, Cell } from 'recharts';
 import { apreensoesService } from '../services/apreensoesService';
+import { outrosOrgaosService } from '../services/worklistService';
 import { formatDate } from '../utils';
 import EditModal, { FieldConfig } from './EditModal';
 
@@ -43,15 +44,21 @@ const STORAGE_KEY = 'outros_orgaos_lista';
 
 const OutrosOrgaos: React.FC = () => {
   // --- STATE ---
-  const [animals, setAnimals] = useState<AnimalItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem(STORAGE_KEY);
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
+  const [animals, setAnimals] = useState<any[]>([]);
+
+  // Load from Supabase
+  useEffect(() => {
+    loadAnimals();
+  }, []);
+
+  const loadAnimals = async () => {
+    try {
+      const data = await outrosOrgaosService.getAll();
+      setAnimals(data || []);
+    } catch (error) {
+      showNotification("Erro ao carregar lista de outros órgãos.", "error");
     }
-    return [];
-  });
+  };
 
   const [searchTerm, setSearchTerm] = useState('');
   const [newStatus, setNewStatus] = useState(STATUS_OPTIONS[0]);
@@ -79,10 +86,8 @@ const OutrosOrgaos: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // --- PERSISTENCE ---
-  useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(animals));
-  }, [animals]);
+  // --- PERSISTENCE REMOVED (Handled by DB) ---
+
 
   // --- HELPERS ---
   const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
@@ -101,39 +106,31 @@ const OutrosOrgaos: React.FC = () => {
   };
 
   // --- ACTIONS ---
-  const addAnimalToList = (entry: any) => {
-    // Handle both DB_ENTRADAS format (PT) and Supabase format (EN)
-    const chip = String(entry.chip || entry['CHIP'] || '');
-    const dateIn = entry.dateIn || entry.date_in || entry['Data de Entrada'] || '-';
-
-    // Format date if it's ISO format (YYYY-MM-DD)
-    const formattedDate = dateIn.includes('-')
-      ? dateIn.split('-').reverse().join('/')
-      : dateIn;
-
-    if (animals.some(a => a.chip === chip && a.dataEntrada === formattedDate)) {
-      showNotification("Este registro já está na lista.", "info");
+  const addAnimalToList = async (entry: any) => {
+    // Check duplicate
+    if (animals.some(a => a.animal_id === entry.id)) {
+      showNotification("Este animal já está na lista.", "info");
       return;
     }
 
-    const newAnimal: AnimalItem = {
-      id: String(Date.now()),
-      chip: chip,
-      especie: entry.specie || entry['Espécie'] || 'Desconhecido',
-      sexo: entry.gender || entry['Sexo'] || '-',
-      pelagem: entry.color || entry['Pelagem'] || '-',
-      observacoes: entry.observations || entry['Observações'] || entry['Observações Complementares'] || '',
-      os: entry.osNumber || entry.os_number || entry['Ordem de Serviço (OS)'] || '-',
-      dataEntrada: formattedDate,
-      status: newStatus,
-      orgao: entry.organ || entry['Órgão'] || entry.origin || entry['Região Administrativa'] || 'Não informado',
-    };
+    try {
+      const origin = entry.origin || entry.organ || entry['Região Administrativa'] || 'Não informado';
+      await outrosOrgaosService.add(
+        entry.id,
+        newStatus,
+        entry.observations || entry['Observações'] || '',
+        origin // Saving origin/organ as destination/source context
+      );
 
-    setAnimals(prev => [newAnimal, ...prev]);
-    setSearchTerm('');
-    setFoundEntry(null);
-    setIsModalOpen(false);
-    showNotification("Animal adicionado à lista!", "success");
+      showNotification("Animal adicionado à lista!", "success");
+      setSearchTerm('');
+      setFoundEntry(null);
+      setIsModalOpen(false);
+      loadAnimals();
+    } catch (e) {
+      console.error(e);
+      showNotification("Erro ao adicionar registro.", "error");
+    }
   };
 
   // Search preview (async with Supabase)
@@ -178,22 +175,46 @@ const OutrosOrgaos: React.FC = () => {
     showNotification(`Selecionado: ${entry['Espécie']} - ${entry['Data de Entrada']}`, "success");
   };
 
-  const handleEdit = (animal: AnimalItem) => {
-    setEditingItem(animal);
+  const handleEdit = (worklistItem: any) => {
+    const modalData = {
+      id: worklistItem.id,
+      chip: worklistItem.animal?.chip,
+      especie: worklistItem.animal?.specie,
+      orgao: worklistItem.organ_destination, // or worklistItem.animal?.origin depending on needs
+      dataEntrada: formatDate(worklistItem.animal?.date_in),
+      status: worklistItem.status,
+      observacoes: worklistItem.observations
+    };
+    setEditingItem(modalData);
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEdit = (updatedItem: any) => {
-    const updatedList = animals.map(a => a.id === updatedItem.id ? updatedItem : a);
-    setAnimals(updatedList);
-    setIsEditModalOpen(false);
-    setEditingItem(null);
-    showNotification("Registro atualizado com sucesso!", "success");
+  const handleSaveEdit = async (updatedItem: any) => {
+    try {
+      await outrosOrgaosService.update(updatedItem.id, {
+        status: updatedItem.status,
+        observations: updatedItem.observacoes,
+        organ_destination: updatedItem.orgao
+      });
+      showNotification("Registro atualizado com sucesso!", "success");
+      loadAnimals();
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+    } catch (e) {
+      showNotification("Erro ao atualizar registro.", "error");
+    }
   };
 
-  const handleRemove = (id: string) => {
-    setAnimals(prev => prev.filter(a => a.id !== id));
-    showNotification("Animal removido da lista.", "info");
+  const handleRemove = async (id: string) => {
+    if (window.confirm("Deseja remover este registro?")) {
+      try {
+        await outrosOrgaosService.remove(id);
+        showNotification("Registro removido.", "info");
+        loadAnimals();
+      } catch (e) {
+        showNotification("Erro ao remover registro.", "error");
+      }
+    }
   };
 
   // --- KPI CALCULATIONS ---
@@ -206,7 +227,7 @@ const OutrosOrgaos: React.FC = () => {
   const chartDataOrgaos = useMemo(() => {
     const grouped: Record<string, number> = {};
     animals.forEach(a => {
-      const orgao = a.orgao || 'Não informado';
+      const orgao = a.organ_destination || a.animal?.origin || 'Não informado';
       grouped[orgao] = (grouped[orgao] || 0) + 1;
     });
     return Object.entries(grouped).map(([name, val]) => ({ name, val }));
@@ -362,42 +383,47 @@ const OutrosOrgaos: React.FC = () => {
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">
               {currentAnimals.length === 0 ? (
-                <tr><td colSpan={8} className="p-8 text-center text-slate-400 italic">Nenhum animal na lista.</td></tr>
+                <tr><td colSpan={9} className="p-8 text-center text-slate-400 italic">Nenhum animal na lista.</td></tr>
               ) : (
-                currentAnimals.map((row) => (
-                  <tr key={row.id} className="group hover:bg-blue-50/50 transition-colors">
-                    <td className="px-4 py-3 text-sm font-bold text-slate-700">{row.orgao}</td>
-                    <td className="px-4 py-3">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-bold text-slate-800">{row.especie}</span>
-                        <span className="text-xs text-gray-500">{row.sexo} • {row.pelagem}</span>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gdf-blue font-mono font-bold">{row.chip}</td>
-                    <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={row.observacoes}>{row.observacoes || '-'}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 font-mono">{row.os}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{row.dataEntrada}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-orange-600">{calculateDaysIn(row.dataEntrada)} dias</td>
-                    <td className="px-4 py-3">
-                      <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tight bg-blue-100 text-blue-700 border border-blue-200">
-                        {row.status}
-                      </span>
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-right">
-                      <div className="flex items-center justify-end gap-1">
-                        <button className="text-gray-400 hover:text-gdf-blue transition-colors p-1.5 rounded-lg hover:bg-blue-50" title="Visualizar">
-                          <span className="material-symbols-outlined text-[20px]">visibility</span>
-                        </button>
-                        <button onClick={() => handleEdit(row)} className="text-gray-400 hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-green-50" title="Editar">
-                          <span className="material-symbols-outlined text-[20px]">edit</span>
-                        </button>
-                        <button onClick={() => handleRemove(row.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-red-50" title="Excluir">
-                          <span className="material-symbols-outlined text-[20px]">delete</span>
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                ))
+                currentAnimals.map((row) => {
+                  const animalData = row.animal || {};
+                  const dateInFormatted = formatDate(animalData.date_in);
+
+                  return (
+                    <tr key={row.id} className="group hover:bg-blue-50/50 transition-colors">
+                      <td className="px-4 py-3 text-sm font-bold text-slate-700">{row.organ_destination || animalData.origin || 'Não informado'}</td>
+                      <td className="px-4 py-3">
+                        <div className="flex flex-col">
+                          <span className="text-sm font-bold text-slate-800">{animalData.specie}</span>
+                          <span className="text-xs text-gray-500">{animalData.gender} • {animalData.color}</span>
+                        </div>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gdf-blue font-mono font-bold">{animalData.chip}</td>
+                      <td className="px-4 py-3 text-sm text-gray-600 max-w-xs truncate" title={row.observations}>{row.observations || '-'}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500 font-mono">{animalData.os_number}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{dateInFormatted}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-orange-600">{calculateDaysIn(dateInFormatted)} dias</td>
+                      <td className="px-4 py-3">
+                        <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tight bg-blue-100 text-blue-700 border border-blue-200">
+                          {row.status}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <button className="text-gray-400 hover:text-gdf-blue transition-colors p-1.5 rounded-lg hover:bg-blue-50" title="Visualizar">
+                            <span className="material-symbols-outlined text-[20px]">visibility</span>
+                          </button>
+                          <button onClick={() => handleEdit(row)} className="text-gray-400 hover:text-primary transition-colors p-1.5 rounded-lg hover:bg-green-50" title="Editar">
+                            <span className="material-symbols-outlined text-[20px]">edit</span>
+                          </button>
+                          <button onClick={() => handleRemove(row.id)} className="text-gray-400 hover:text-red-600 transition-colors p-1.5 rounded-lg hover:bg-red-50" title="Excluir">
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })
               )}
             </tbody>
           </table>

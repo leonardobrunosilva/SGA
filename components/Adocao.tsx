@@ -4,6 +4,7 @@ import { Animal } from '../types';
 import { calculateDays, formatDate } from '../utils';
 import { supabase } from '../supabaseClient';
 import { apreensoesService } from '../services/apreensoesService';
+import { adocaoService } from '../services/worklistService';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import EditModal, { FieldConfig } from './EditModal';
 
@@ -52,20 +53,21 @@ const ADOPTION_STATUS_OPTIONS = [
 
 const Adocao: React.FC = () => {
   // --- STATE WITH PERSISTENCE ---
-  const [animals, setAnimals] = useState<Animal[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('adocoes_lista_trabalho');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return []; // Start empty unless saved data exists
-  });
+  const [animals, setAnimals] = useState<any[]>([]);
 
-  // Save to localStorage whenever list changes
+  // Load from Supabase
   useEffect(() => {
-    localStorage.setItem('adocoes_lista_trabalho', JSON.stringify(animals));
-  }, [animals]);
+    loadAnimals();
+  }, []);
+
+  const loadAnimals = async () => {
+    try {
+      const data = await adocaoService.getAll();
+      setAnimals(data || []);
+    } catch (error) {
+      showNotification("Erro ao carregar lista de adoção.", "error");
+    }
+  };
 
   // --- LOCAL STATE ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -148,41 +150,25 @@ const Adocao: React.FC = () => {
     }
   };
 
-  const addAnimalToList = (entry: any) => {
-    const chip = String(entry.chip || entry['CHIP'] || '');
-
-    // Check if already in list
-    if (animals.some(a => a.chip === chip)) {
-      showNotification("Este animal já está na lista de adoção.", "info");
+  const addAnimalToList = async (entry: any) => {
+    // Check if duplicate logic (optional, but good UX. Supabase might error on duplicate PK if defined, but id is uuid usually)
+    // Here we check if animal_id already exists in list
+    if (animals.some(a => a.animal_id === entry.id)) {
+      showNotification("Este animal já está na lista.", "info");
       return;
     }
 
-    const dateInRaw = entry.dateIn || entry.date_in || entry['Data de Entrada'] || '-';
-    const formattedDate = formatDate(dateInRaw);
-
-    const newAnimal: Animal = {
-      id: String(Date.now()),
-      chip: chip,
-      specie: entry.specie || entry['Espécie'] || 'Desconhecido',
-      gender: entry.gender || entry['Sexo'] || '-',
-      color: entry.color || entry['Pelagem'] || '-',
-      breed: entry.breed || entry['Raça'] || 'SRD',
-      dateIn: formattedDate,
-      exitDate: '-',
-      origin: entry.origin || entry.organ || entry['Região Administrativa'] || 'Não informado',
-      status: newStatus,
-      organ: entry.organ || entry['Órgão'] || 'Não informado',
-      observations: entry.observations || entry['Observações'] || entry['Observações Complementares'] || '',
-      osNumber: entry.osNumber || entry.os_number || entry['Ordem de Serviço (OS)'] || '-',
-      imageUrl: entry.imageUrl || entry.image_url || getImageUrl(animals.length),
-      daysIn: entry.daysIn || entry.days_in || 0,
-    };
-
-    setAnimals([newAnimal, ...animals]);
-    setFoundEntry(null);
-    setSearchTerm('');
-    setIsModalOpen(false);
-    showNotification("Animal adicionado à lista com sucesso!", "success");
+    try {
+      await adocaoService.add(entry.id, newStatus, entry.observations || entry['Observações'] || '');
+      showNotification("Animal adicionado à lista com sucesso!", "success");
+      loadAnimals(); // Refresh list
+      setFoundEntry(null);
+      setSearchTerm('');
+      setIsModalOpen(false);
+    } catch (error) {
+      console.error(error);
+      showNotification("Erro ao adicionar animal.", "error");
+    }
   };
 
   const handleAdd = async () => {
@@ -215,23 +201,52 @@ const Adocao: React.FC = () => {
     addAnimalToList(entry);
   };
 
-  const handleEdit = (animal: Animal) => {
-    setEditingItem(animal);
+  const handleEdit = (worklistItem: any) => {
+    // Transform worklist item to flat structure for EditModal if needed, 
+    // or just pass the fields that are editable (status, observations)
+    // The EditModal expects 'data' to match 'fields'.
+    // We need to pass the joined data for read-only fields (chip, specie)
+    // and the worklist data for editable fields.
+
+    // Combining for the modal:
+    const modalData = {
+      id: worklistItem.id,
+      chip: worklistItem.animal?.chip,
+      specie: worklistItem.animal?.specie,
+      gender: worklistItem.animal?.gender,
+      color: worklistItem.animal?.color,
+      status: worklistItem.status,
+      observations: worklistItem.observations
+    };
+
+    setEditingItem(modalData);
     setIsEditModalOpen(true);
   };
 
-  const handleSaveEdit = (updatedItem: any) => {
-    const updatedList = animals.map(a => a.id === updatedItem.id ? updatedItem : a);
-    setAnimals(updatedList);
-    setIsEditModalOpen(false);
-    setEditingItem(null);
-    showNotification("Registro atualizado com sucesso!", "success");
+  const handleSaveEdit = async (updatedItem: any) => {
+    try {
+      await adocaoService.update(updatedItem.id, {
+        status: updatedItem.status,
+        observations: updatedItem.observations
+      });
+      showNotification("Registro atualizado com sucesso!", "success");
+      loadAnimals();
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+    } catch (error) {
+      showNotification("Erro ao atualizar registro.", "error");
+    }
   };
 
-  const handleRemove = (id: string) => {
+  const handleRemove = async (id: string) => {
     if (window.confirm("Deseja remover este animal da lista?")) {
-      setAnimals(prev => prev.filter(a => a.id !== id));
-      showNotification("Animal removido.", "info");
+      try {
+        await adocaoService.remove(id);
+        showNotification("Animal removido.", "info");
+        loadAnimals();
+      } catch (error) {
+        showNotification("Erro ao remover animal.", "error");
+      }
     }
   };
 
@@ -487,46 +502,51 @@ const Adocao: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {currentAnimals.map(animal => (
-                <tr key={animal.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-bold text-slate-800">{animal.specie}</p>
-                      <p className="text-[10px] text-slate-500">{animal.gender} / {animal.color}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-slate-600">{animal.chip}</td>
-                  <td className="px-6 py-4 text-slate-500 text-xs max-w-xs truncate" title={animal.observations}>
-                    {animal.observations || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{animal.osNumber}</td>
-                  <td className="px-6 py-4 text-slate-600">{animal.dateIn}</td>
-                  <td className="px-6 py-4">
-                    {(() => {
-                      const days = calculateDays(animal.dateIn);
-                      return <span className="font-bold text-slate-700">{days} dias</span>;
-                    })()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                      {animal.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => showNotification("Visualizar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
-                        <span className="material-symbols-outlined text-[20px]">visibility</span>
-                      </button>
-                      <button onClick={() => handleEdit(animal)} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
-                        <span className="material-symbols-outlined text-[20px]">edit</span>
-                      </button>
-                      <button onClick={() => handleRemove(animal.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50">
-                        <span className="material-symbols-outlined text-[20px]">delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {currentAnimals.map(row => {
+                // Destructure nested animal or fallback
+                const animalData = row.animal || {};
+
+                return (
+                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-bold text-slate-800">{animalData.specie || 'Desconhecido'}</p>
+                        <p className="text-[10px] text-slate-500">{animalData.gender} / {animalData.color}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-slate-600">{animalData.chip}</td>
+                    <td className="px-6 py-4 text-slate-500 text-xs max-w-xs truncate" title={row.observations}>
+                      {row.observations || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{animalData.os_number}</td>
+                    <td className="px-6 py-4 text-slate-600">{formatDate(animalData.date_in)}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const days = calculateDays(animalData.date_in);
+                        return <span className="font-bold text-slate-700">{days} dias</span>;
+                      })()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => showNotification("Visualizar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
+                          <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        </button>
+                        <button onClick={() => handleEdit(row)} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
+                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button onClick={() => handleRemove(row.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50">
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {animals.length === 0 && (
                 <tr><td colSpan={8} className="p-8 text-center text-gray-400 italic">Nenhum registro encontrado.</td></tr>
               )}

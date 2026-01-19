@@ -41,3 +41,24 @@ export interface Metric {
   icon: string;
   color: string;
 }
+
+export interface WorklistItem {
+  id: string; // The ID of the worklist entry itself
+  animal_id: string;
+  created_at: string;
+  status: string;
+  observations: string;
+  animal?: Animal; // Nested animal data from JOIN
+}
+
+export interface WorklistRestituicao extends WorklistItem {
+  contact_made?: boolean;
+}
+
+export interface WorklistOutros extends WorklistItem {
+  organ_destination?: string;
+}
+
+export interface WorklistAdocao extends WorklistItem {
+  // Add specific fields if any
+}
