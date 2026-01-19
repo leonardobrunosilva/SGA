@@ -55,8 +55,8 @@ const OutrosOrgaos: React.FC = () => {
     try {
       const data = await outrosOrgaosService.getAll();
       setAnimals(data || []);
-    } catch (error) {
-      showNotification("Erro ao carregar lista de outros órgãos.", "error");
+    } catch (error: any) {
+      showNotification(`Erro ao carregar lista: ${error.message || 'Desconhecido'}`, "error");
     }
   };
 
@@ -127,9 +127,9 @@ const OutrosOrgaos: React.FC = () => {
       setFoundEntry(null);
       setIsModalOpen(false);
       loadAnimals();
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
-      showNotification("Erro ao adicionar registro.", "error");
+      showNotification(`Erro: ${e.message || 'Erro desconhecido'}`, "error");
     }
   };
 
@@ -200,8 +200,8 @@ const OutrosOrgaos: React.FC = () => {
       loadAnimals();
       setIsEditModalOpen(false);
       setEditingItem(null);
-    } catch (e) {
-      showNotification("Erro ao atualizar registro.", "error");
+    } catch (e: any) {
+      showNotification(`Erro ao atualizar: ${e.message}`, "error");
     }
   };
 

@@ -64,8 +64,8 @@ const Adocao: React.FC = () => {
     try {
       const data = await adocaoService.getAll();
       setAnimals(data || []);
-    } catch (error) {
-      showNotification("Erro ao carregar lista de adoção.", "error");
+    } catch (error: any) {
+      showNotification(`Erro ao carregar lista: ${error.message || 'Desconhecido'}`, "error");
     }
   };
 

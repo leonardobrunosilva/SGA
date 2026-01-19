@@ -41,8 +41,8 @@ const Restituicao: React.FC = () => {
     try {
       const data = await restituicaoService.getAll();
       setAnimals(data || []);
-    } catch (error) {
-      showNotification("Erro ao carregar lista de restituição.", "error");
+    } catch (error: any) {
+      showNotification(`Erro ao carregar lista: ${error.message || 'Desconhecido'}`, "error");
     }
   };
 
@@ -157,8 +157,8 @@ const Restituicao: React.FC = () => {
       loadAnimals();
       setIsEditModalOpen(false);
       setEditingItem(null);
-    } catch (error) {
-      showNotification("Erro ao atualizar registro.", "error");
+    } catch (error: any) {
+      showNotification(`Erro ao atualizar: ${error.message}`, "error");
     }
   };
 
@@ -181,8 +181,8 @@ const Restituicao: React.FC = () => {
       setNewChip('');
       setFoundEntry(null);
       loadAnimals();
-    } catch (e) {
-      showNotification("Erro ao adicionar animal.", "error");
+    } catch (e: any) {
+      showNotification(`Erro: ${e.message || 'Erro desconhecido'}`, "error");
       console.error(e);
     }
   };
