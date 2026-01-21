@@ -12,6 +12,7 @@ const Apreensoes: React.FC = () => {
   const [yearFilter, setYearFilter] = useState('');
   const [speciesFilter, setSpeciesFilter] = useState('');
   const [chipSearch, setChipSearch] = useState('');
+  const [classificationFilter, setClassificationFilter] = useState('');
   const [raFilter, setRaFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
   const [totalExternalCount, setTotalExternalCount] = useState(0);
@@ -112,14 +113,13 @@ const Apreensoes: React.FC = () => {
 
       const matchRa = raFilter === '' || animal.origin.includes(raFilter);
 
-      let matchDate = true;
-      if (dateFilter && animal.dateIn) {
-        matchDate = animal.dateIn === dateFilter;
-      }
+      const matchDate = dateFilter === '' || animal.dateIn === dateFilter;
 
-      return matchSpecies && matchChip && matchYear && matchRa && matchDate;
+      const matchClassification = classificationFilter === '' || animal.classification === classificationFilter;
+
+      return matchSpecies && matchChip && matchYear && matchRa && matchDate && matchClassification;
     });
-  }, [animals, speciesFilter, chipSearch, yearFilter, raFilter, dateFilter]);
+  }, [animals, speciesFilter, chipSearch, yearFilter, raFilter, dateFilter, classificationFilter]);
 
   // Stats calculados dinamicamente
   const stats = [
@@ -206,6 +206,7 @@ const Apreensoes: React.FC = () => {
     setYearFilter('');
     setSpeciesFilter('');
     setChipSearch('');
+    setClassificationFilter('');
     setRaFilter('');
     setDateFilter('');
   };
@@ -568,8 +569,8 @@ const Apreensoes: React.FC = () => {
 
       {/* Filters */}
       <div className="rounded-xl bg-white border border-gray-200 p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 text-left">
-          {/* Campo 1: Ano */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+          {/* Row 1: Ano, Espécie, Classificação */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Ano</label>
             <div className="relative">
@@ -588,7 +589,6 @@ const Apreensoes: React.FC = () => {
             </div>
           </div>
 
-          {/* Campo 2: Espécie */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Espécie</label>
             <div className="relative">
@@ -607,22 +607,39 @@ const Apreensoes: React.FC = () => {
             </div>
           </div>
 
-          {/* Campo 3: Chip */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Classificação</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">label</span>
+              <select
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                value={classificationFilter}
+                onChange={(e) => setClassificationFilter(e.target.value)}
+              >
+                <option value="">Todas</option>
+                <option value="Garanhão">Garanhão</option>
+                <option value="Castrado">Castrado</option>
+                <option value="Potro(a)">Potro(a)</option>
+              </select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
+            </div>
+          </div>
+
+          {/* Row 2: Chip, RA, Data */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Identificação/CHIP</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">memory</span>
               <input
                 className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
-                placeholder="Digite o número do Chip"
-                type="text"
+                placeholder="Busca por Chip"
                 value={chipSearch}
                 onChange={(e) => setChipSearch(e.target.value)}
+                type="text"
               />
             </div>
           </div>
 
-          {/* Campo 4: RA */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Região Administrativa</label>
             <div className="relative">
@@ -632,7 +649,7 @@ const Apreensoes: React.FC = () => {
                 value={raFilter}
                 onChange={(e) => setRaFilter(e.target.value)}
               >
-                <option value="">Todas</option>
+                <option value="">Todas RA's</option>
                 {RA_LIST.map(ra => (
                   <option key={ra} value={ra}>{ra}</option>
                 ))}
@@ -641,30 +658,27 @@ const Apreensoes: React.FC = () => {
             </div>
           </div>
 
-          {/* Campo 5: Data */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Data de Apreensão</label>
             <div className="relative">
               <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">calendar_today</span>
               <input
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none"
                 type="date"
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
               />
             </div>
           </div>
         </div>
-        <div className="flex justify-between items-center pt-6 border-t border-gray-100 mt-6">
+
+        <div className="flex justify-end mt-4">
           <button
-            className="text-sm font-bold text-slate-500 hover:text-gdf-blue transition-colors underline decoration-2 underline-offset-4"
             onClick={clearFilters}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wider"
           >
-            Limpar filtros
-          </button>
-          <button className="flex items-center gap-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-gdf-blue px-8 py-3 text-sm font-black transition-all shadow-sm">
-            <span className="material-symbols-outlined text-[20px]">filter_list</span>
-            Filtrar Resultados
+            <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+            Limpar Filtros
           </button>
         </div>
       </div>
