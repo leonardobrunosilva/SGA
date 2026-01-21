@@ -13,8 +13,7 @@ export const apreensoesService = {
         osNumber:os_number,
         mapsUrl:maps_url,
         daysIn:days_in,
-        imageUrl:image_url,
-        classification
+        imageUrl:image_url
       `)
             .order('date_in', { ascending: false })
             .range(0, 4999);
@@ -37,8 +36,7 @@ export const apreensoesService = {
                 osNumber:os_number,
                 mapsUrl:maps_url,
                 daysIn:days_in,
-                imageUrl:image_url,
-                classification
+                imageUrl:image_url
             `)
             .eq('chip', chip)
             .order('date_in', { ascending: false })

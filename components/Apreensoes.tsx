@@ -84,9 +84,9 @@ const Apreensoes: React.FC = () => {
       mappedData.sort((a, b) => new Date(b.dateIn).getTime() - new Date(a.dateIn).getTime());
 
       setAnimals(mappedData);
-    } catch (error) {
-      console.error('Error loading animals:', error);
-      alert('Erro ao carregar apreensões do Supabase.');
+    } catch (error: any) {
+      console.error('Error loading animals from Supabase:', error);
+      alert(`Erro ao carregar apreensões do Supabase: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsLoading(false);
     }
