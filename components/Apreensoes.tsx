@@ -4,6 +4,7 @@ import { Animal } from '../types';
 import { formatDate } from '../utils';
 
 import { apreensoesService } from '../services/apreensoesService';
+import { adocaoService, restituicaoService, outrosOrgaosService } from '../services/worklistService';
 
 const Apreensoes: React.FC = () => {
   const [animals, setAnimals] = useState<Animal[]>([]);
@@ -13,6 +14,7 @@ const Apreensoes: React.FC = () => {
   const [chipSearch, setChipSearch] = useState('');
   const [raFilter, setRaFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [totalExternalCount, setTotalExternalCount] = useState(0);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -34,23 +36,43 @@ const Apreensoes: React.FC = () => {
   const stats = [
     {
       label: 'Total de Apreensões',
-      value: animals.length.toString(),
-      change: 'Atualizado agora',
+      value: filteredAnimals.length.toString(),
+      change: 'Filtradas na tabela',
       icon: 'verified_user',
       bgColor: 'bg-blue-50',
       textColor: 'text-gdf-blue',
       accentColor: 'bg-blue-50/50'
     },
-    { label: 'Em Quarentena', value: animals.filter(a => a.status === 'Em Custódia').length.toString(), change: 'Aguardando exames', icon: 'medical_services', bgColor: 'bg-yellow-50', textColor: 'text-yellow-600', accentColor: 'bg-yellow-50/50' },
-    { label: 'Disponíveis', value: '45', change: 'Para leilão/doação', icon: 'check_circle', bgColor: 'bg-green-50', textColor: 'text-green-600', accentColor: 'bg-green-50/50' },
-    { label: 'Restituídos', value: '62', change: 'Devolvidos ao proprietário', icon: 'assignment_return', bgColor: 'bg-purple-50', textColor: 'text-purple-600', accentColor: 'bg-purple-50/50' },
+    {
+      label: 'Disponíveis',
+      value: totalExternalCount.toString(),
+      change: 'Adoc/Restit/Outros',
+      icon: 'check_circle',
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-600',
+      accentColor: 'bg-green-50/50'
+    },
   ];
 
 
   // Fetch data on mount
   React.useEffect(() => {
     loadAnimals();
+    loadExternalStats();
   }, []);
+
+  const loadExternalStats = async () => {
+    try {
+      const [adocoes, restituicoes, outros] = await Promise.all([
+        adocaoService.getAll(),
+        restituicaoService.getAll(),
+        outrosOrgaosService.getAll()
+      ]);
+      setTotalExternalCount(adocoes.length + restituicoes.length + outros.length);
+    } catch (error) {
+      console.error('Error loading external stats:', error);
+    }
+  };
 
   // Carregar dados REAIS do Supabase
   const loadAnimals = async () => {
@@ -490,7 +512,7 @@ const Apreensoes: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-gdf-blue/30 transition-colors">
             <div className={`absolute right-0 top-0 h-16 w-16 ${stat.accentColor} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
