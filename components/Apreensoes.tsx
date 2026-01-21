@@ -640,7 +640,6 @@ const Apreensoes: React.FC = () => {
                 <th className="p-4 font-semibold text-left">Data de Entrada</th>
                 <th className="p-4 font-semibold text-left">Localização</th>
                 <th className="p-4 font-semibold text-left">Histórico</th>
-                <th className="p-4 font-semibold w-16 text-center">Status</th>
                 <th className="p-4 font-semibold text-right">Ações</th>
               </tr>
             </thead>
@@ -713,14 +712,14 @@ const Apreensoes: React.FC = () => {
                       return <span className="text-[10px] uppercase font-bold text-slate-400">Primário</span>;
                     })()}
                   </td>
-                  <td className="p-4 text-center">
-                    <div className={`mx-auto w-2.5 h-2.5 rounded-full ring-4 ${animal.status === 'Em Custódia' ? 'bg-amber-400 ring-amber-100' :
-                      animal.status === 'Liberado' ? 'bg-green-500 ring-green-100' :
-                        'bg-purple-500 ring-purple-100'
-                      }`}></div>
-                  </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => console.log('Visualizar', animal.id)}
+                        className="p-2 text-slate-400 hover:text-gdf-blue hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">visibility</span>
+                      </button>
                       <button
                         onClick={() => handleEdit(animal)}
                         className="p-2 text-slate-400 hover:text-gdf-blue hover:bg-blue-50 rounded-lg transition-all"
