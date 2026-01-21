@@ -32,27 +32,6 @@ const Apreensoes: React.FC = () => {
   const [recurrenceData, setRecurrenceData] = useState<{ count: number; lastDate: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Stats calculados dinamicamente
-  const stats = [
-    {
-      label: 'Total de Apreensões',
-      value: filteredAnimals.length.toString(),
-      change: 'Filtradas na tabela',
-      icon: 'verified_user',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-gdf-blue',
-      accentColor: 'bg-blue-50/50'
-    },
-    {
-      label: 'Disponíveis',
-      value: totalExternalCount.toString(),
-      change: 'Adoc/Restit/Outros',
-      icon: 'check_circle',
-      bgColor: 'bg-green-50',
-      textColor: 'text-green-600',
-      accentColor: 'bg-green-50/50'
-    },
-  ];
 
 
   // Fetch data on mount
@@ -140,6 +119,28 @@ const Apreensoes: React.FC = () => {
       return matchSpecies && matchChip && matchYear && matchRa && matchDate;
     });
   }, [animals, speciesFilter, chipSearch, yearFilter, raFilter, dateFilter]);
+
+  // Stats calculados dinamicamente
+  const stats = [
+    {
+      label: 'Total de Apreensões',
+      value: filteredAnimals.length.toString(),
+      change: 'Filtradas na tabela',
+      icon: 'verified_user',
+      bgColor: 'bg-blue-50',
+      textColor: 'text-gdf-blue',
+      accentColor: 'bg-blue-50/50'
+    },
+    {
+      label: 'Disponíveis',
+      value: totalExternalCount.toString(),
+      change: 'Adoc/Restit/Outros',
+      icon: 'check_circle',
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-600',
+      accentColor: 'bg-green-50/50'
+    },
+  ];
 
   // Calculate slice for current page
   const indexOfLastItem = currentPage * itemsPerPage;
