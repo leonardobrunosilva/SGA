@@ -31,6 +31,7 @@ export interface Animal {
   osNumber: string;
   mapsUrl?: string;
   contactInitiated?: boolean;
+  classification?: string;
 }
 
 export interface Metric {

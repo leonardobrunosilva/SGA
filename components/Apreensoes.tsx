@@ -75,6 +75,7 @@ const Apreensoes: React.FC = () => {
         timeIn: item.time_in || item.timeIn || '',
         observations: item.observations || '',
         imageUrl: item.image_url || item.imageUrl || 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=2071&auto=format&fit=crop',
+        classification: item.classification || '',
         mapsUrl: item.maps_url || item.mapsUrl || '',
         daysIn: item.days_in || item.daysIn || 0,
       }));
@@ -169,6 +170,7 @@ const Apreensoes: React.FC = () => {
       organ: '',
       origin: '',
       specie: ESPECIES[0],
+      classification: '',
       mapsUrl: ''
     });
     setSelectedGender('Macho');
@@ -340,6 +342,19 @@ const Apreensoes: React.FC = () => {
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Classificação / Observação</label>
+                  <select
+                    value={formData.classification || ''}
+                    onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none transition-all"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="Garanhão">Garanhão</option>
+                    <option value="Castrado">Castrado</option>
+                    <option value="Potro(a)">Potro(a)</option>
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Sexo</label>
                   <div className="flex gap-2">
                     <button
@@ -456,6 +471,7 @@ const Apreensoes: React.FC = () => {
                         specie: formData.specie || editingAnimal.specie, // Ensure required fields
                         breed: formData.breed || editingAnimal.breed,
                         status: formData.status || editingAnimal.status,
+                        classification: formData.classification !== undefined ? formData.classification : editingAnimal.classification,
                       });
 
                       setIsFormOpen(false);
@@ -490,6 +506,7 @@ const Apreensoes: React.FC = () => {
                         organ: formData.organ || 'Outros',
                         osNumber: formData.osNumber || 'S/N',
                         mapsUrl: formData.mapsUrl,
+                        classification: formData.classification,
                         daysIn: 0
                       });
 

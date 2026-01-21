@@ -13,7 +13,8 @@ export const apreensoesService = {
         osNumber:os_number,
         mapsUrl:maps_url,
         daysIn:days_in,
-        imageUrl:image_url
+        imageUrl:image_url,
+        classification
       `)
             .order('date_in', { ascending: false })
             .range(0, 4999);
@@ -36,7 +37,8 @@ export const apreensoesService = {
                 osNumber:os_number,
                 mapsUrl:maps_url,
                 daysIn:days_in,
-                imageUrl:image_url
+                imageUrl:image_url,
+                classification
             `)
             .eq('chip', chip)
             .order('date_in', { ascending: false })
@@ -67,7 +69,8 @@ export const apreensoesService = {
             organ: animal.organ,
             os_number: animal.osNumber,
             maps_url: animal.mapsUrl,
-            days_in: animal.daysIn
+            days_in: animal.daysIn,
+            classification: animal.classification
         };
 
         const { data, error } = await supabase
@@ -120,6 +123,7 @@ export const apreensoesService = {
         if (animal.osNumber !== undefined) dbPayload.os_number = animal.osNumber;
         if (animal.mapsUrl !== undefined) dbPayload.maps_url = animal.mapsUrl;
         if (animal.daysIn !== undefined) dbPayload.days_in = animal.daysIn;
+        if (animal.classification !== undefined) dbPayload.classification = animal.classification;
 
         const { data, error } = await supabase
             .from('apreensoes')
