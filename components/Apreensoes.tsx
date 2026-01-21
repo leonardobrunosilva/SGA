@@ -8,8 +8,9 @@ import { apreensoesService } from '../services/apreensoesService';
 const Apreensoes: React.FC = () => {
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [osSearch, setOsSearch] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
+  const [speciesFilter, setSpeciesFilter] = useState('');
+  const [chipSearch, setChipSearch] = useState('');
   const [raFilter, setRaFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
 
@@ -95,20 +96,28 @@ const Apreensoes: React.FC = () => {
     if (currentPage !== 1) setCurrentPage(1);
 
     return animals.filter(animal => {
-      const matchChip = animal.chip.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        animal.specie.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchOs = animal.osNumber.toLowerCase().includes(osSearch.toLowerCase());
+      // Comparação exata de Espécie
+      const matchSpecies = speciesFilter === '' || animal.specie === speciesFilter;
+
+      // Busca parcial por CHIP
+      const matchChip = chipSearch === '' || animal.chip.toLowerCase().includes(chipSearch.toLowerCase());
+
+      // Filtro por Ano (Extraído de dateIn YYYY-MM-DD)
+      let matchYear = true;
+      if (yearFilter && animal.dateIn) {
+        matchYear = animal.dateIn.startsWith(yearFilter);
+      }
+
       const matchRa = raFilter === '' || animal.origin.includes(raFilter);
 
       let matchDate = true;
       if (dateFilter && animal.dateIn) {
-        // Supabase returns YYYY-MM-DD, input dateFilter is also YYYY-MM-DD
         matchDate = animal.dateIn === dateFilter;
       }
 
-      return matchChip && matchOs && matchRa && matchDate;
+      return matchSpecies && matchChip && matchYear && matchRa && matchDate;
     });
-  }, [animals, searchTerm, osSearch, raFilter, dateFilter]);
+  }, [animals, speciesFilter, chipSearch, yearFilter, raFilter, dateFilter]);
 
   // Calculate slice for current page
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -169,8 +178,9 @@ const Apreensoes: React.FC = () => {
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setOsSearch('');
+    setYearFilter('');
+    setSpeciesFilter('');
+    setChipSearch('');
     setRaFilter('');
     setDateFilter('');
   };
@@ -516,43 +526,71 @@ const Apreensoes: React.FC = () => {
 
       {/* Filters */}
       <div className="rounded-xl bg-white border border-gray-200 p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-left">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-4 text-left">
+          {/* Campo 1: Ano */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-700">Buscar por Identificação, Espécie ou Processo</label>
+            <label className="text-sm font-medium text-slate-700">Ano</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">search</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">calendar_month</span>
+              <select
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+              >
+                <option value="">Todos</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+              </select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
+            </div>
+          </div>
+
+          {/* Campo 2: Espécie */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Espécie</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">pets</span>
+              <select
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                value={speciesFilter}
+                onChange={(e) => setSpeciesFilter(e.target.value)}
+              >
+                <option value="">Todas</option>
+                {ESPECIES.map(esp => (
+                  <option key={esp} value={esp}>{esp}</option>
+                ))}
+              </select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
+            </div>
+          </div>
+
+          {/* Campo 3: Chip */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Identificação/CHIP</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">memory</span>
               <input
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
-                placeholder="Buscar por Identificação, Espécie ou Processo..."
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
+                placeholder="Digite o número do Chip"
                 type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                value={chipSearch}
+                onChange={(e) => setChipSearch(e.target.value)}
               />
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-700">Ordem de Serviço (OS)</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">description</span>
-              <input
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
-                placeholder="Ex: OS-2023..."
-                type="text"
-                value={osSearch}
-                onChange={(e) => setOsSearch(e.target.value)}
-              />
-            </div>
-          </div>
+
+          {/* Campo 4: RA */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Região Administrativa</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">location_on</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">location_on</span>
               <select
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-10 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
                 value={raFilter}
                 onChange={(e) => setRaFilter(e.target.value)}
               >
-                <option value="">Todas as Regiões</option>
+                <option value="">Todas</option>
                 {RA_LIST.map(ra => (
                   <option key={ra} value={ra}>{ra}</option>
                 ))}
@@ -560,12 +598,14 @@ const Apreensoes: React.FC = () => {
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
             </div>
           </div>
+
+          {/* Campo 5: Data */}
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Data de Apreensão</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">calendar_today</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">calendar_today</span>
               <input
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-4 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none"
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none"
                 type="date"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
