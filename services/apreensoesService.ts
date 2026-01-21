@@ -145,24 +145,18 @@ export const apreensoesService = {
         if (error) {
             console.error('Erro ao verificar reincidência:', error);
             // Return 0 if error to avoid blocking UI, but log it
-            return { count: 0, lastOwner: null, lastDate: null };
+            return { count: 0, lastOwner: null, lastDate: null, seiProcess: null };
         }
 
         let lastOwner = null;
         let lastDate = null;
+        let seiProcess = null;
 
         if (count && count > 0) {
             // Fetch the latest entry to get details
             const { data: latest } = await supabase
                 .from('apreensoes')
-                .select('created_at, date_in') // Assuming we might want to know who was the owner. But wait, do we have 'owner' field? 
-                // The user mentioned "busque no campo owner ou responsavel do registro anterior".
-                // Current schema in createApreensao doesn't show 'owner'. 
-                // However, RegiaoAdm mock data had 'owner'. 
-                // Let's check 'types.ts' to see if Animal has owner.
-                // For now, I will just return the count. I'll need to check if 'owner' exists.
-                // If it doesn't exist in Supabase yet, we can't fetch it. 
-                // I will add a placeholder for now or checking types.
+                .select('created_at, date_in, sei_process')
                 .eq('chip', chip)
                 .order('date_in', { ascending: false })
                 .limit(1)
@@ -170,10 +164,11 @@ export const apreensoesService = {
 
             if (latest) {
                 lastDate = latest.date_in;
+                seiProcess = latest.sei_process;
             }
         }
 
-        return { count: count || 0, lastOwner, lastDate };
+        return { count: count || 0, lastOwner, lastDate, seiProcess };
     },
 
     async delete(id: string) {

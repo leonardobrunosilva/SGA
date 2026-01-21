@@ -733,6 +733,7 @@ const Adocao: React.FC = () => {
                     <div>
                       <p className="text-sm font-bold text-slate-800">Entrada: {formatDate(entry['Data de Entrada'] || entry.date_in || entry.dateIn)}</p>
                       <p className="text-xs text-slate-500">Origem: {entry['Região Administrativa'] || 'Não informado'}</p>
+                      <p className="text-[10px] text-primary font-black uppercase mt-1">PROCESSO SEI: {entry.sei_process || entry.seiProcess || '-'}</p>
                     </div>
                     <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                       <span className="material-symbols-outlined text-primary">arrow_forward</span>

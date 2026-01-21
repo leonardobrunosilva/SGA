@@ -518,6 +518,7 @@ const Restituicao: React.FC = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-800">Entrada em: {formatDate(entry.dateIn || entry.date_in || entry['Data de Entrada'])}</p>
                     <p className="text-xs text-slate-500 mt-0.5">Origem: {entry.origin || entry.organ || entry['Região Administrativa']} | OS: {entry.osNumber || entry.os_number || entry['Ordem de Serviço (OS)'] || 'N/A'}</p>
+                    <p className="text-[10px] text-gdf-blue font-black uppercase mt-1">PROCESSO SEI: {entry.seiProcess || entry.sei_process || '-'}</p>
                     <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">{entry.specie || entry['Espécie']} - {entry.color || entry['Pelagem']}</p>
                   </div>
                 </button>

@@ -489,6 +489,7 @@ const OutrosOrgaos: React.FC = () => {
                     <div>
                       <p className="text-sm font-bold text-slate-800">Entrada: {formatDate(entry.dateIn || entry.date_in || entry['Data de Entrada'])}</p>
                       <p className="text-xs text-slate-500">Origem: {entry.origin || entry.organ || entry['Região Administrativa'] || 'Não informado'}</p>
+                      <p className="text-[10px] text-gdf-blue font-black uppercase mt-1">PROCESSO SEI: {entry.sei_process || entry.seiProcess || '-'}</p>
                     </div>
                     <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                       <span className="material-symbols-outlined text-gdf-blue">arrow_forward</span>

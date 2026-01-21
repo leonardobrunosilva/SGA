@@ -314,4 +314,4 @@ export const RA_LIST = [
   'Fercal', 'Sol Nascente/Pôr do Sol', 'Arniqueira', 'Arapoanga', 'Água Quente'
 ];
 
-export const ESPECIES = ['Equino', 'Bovino', 'Muar', 'Asinino', 'Bubalino', 'Caprino/Ovino'];
+export const ESPECIES = ['Equino', 'Equino - Garanhão', 'Equino - Potro(a)', 'Bovino', 'Muar', 'Asinino', 'Bubalino', 'Caprino/Ovino'];

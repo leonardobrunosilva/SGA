@@ -29,7 +29,7 @@ const Apreensoes: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [recurrenceData, setRecurrenceData] = useState<{ count: number; lastDate: string | null } | null>(null);
+  const [recurrenceData, setRecurrenceData] = useState<{ count: number; lastDate: string | null; seiProcess: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
 
@@ -193,7 +193,7 @@ const Apreensoes: React.FC = () => {
       // Only check if it looks like a valid partial chip
       const result = await apreensoesService.checkRecurrence(formData.chip);
       if (result.count > 0) {
-        setRecurrenceData({ count: result.count, lastDate: result.lastDate });
+        setRecurrenceData({ count: result.count, lastDate: result.lastDate, seiProcess: result.seiProcess });
       } else {
         setRecurrenceData(null);
       }
@@ -253,15 +253,17 @@ const Apreensoes: React.FC = () => {
               {recurrenceData && recurrenceData.count > 0 && (
                 <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in text-left">
                   <span className="material-symbols-outlined text-red-600 mt-0.5">warning</span>
-                  <div>
+                  <div className="flex-1">
                     <h4 className="text-sm font-black text-red-800 uppercase tracking-tight">⚠ Animal Reincidente: {recurrenceData.count + 1}ª Apreensão</h4>
                     <p className="text-xs text-red-600 mt-1 font-medium">
                       Este animal já consta no sistema.
                       {recurrenceData.lastDate && <> Última entrada em: <strong>{new Date(recurrenceData.lastDate).toLocaleDateString('pt-BR')}</strong>.</>}
                     </p>
-                    <p className="text-[10px] text-red-500 mt-2 bg-white px-2 py-1 rounded border border-red-100 inline-block font-bold uppercase">
-                      Último Responsável: Não Informado (BD)
-                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <p className="text-[10px] text-red-700 bg-white px-2 py-1 rounded border border-red-100 font-bold uppercase shadow-sm">
+                        PROCESSO SEI: {recurrenceData.seiProcess || '-'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
