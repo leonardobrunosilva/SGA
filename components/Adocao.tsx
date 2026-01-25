@@ -4,7 +4,9 @@ import { Animal } from '../types';
 import { calculateDays, formatDate } from '../utils';
 import { supabase } from '../supabaseClient';
 import { apreensoesService } from '../services/apreensoesService';
+import { adocaoService } from '../services/worklistService';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import EditModal, { FieldConfig } from './EditModal';
 
 const DATA_MONTHLY = [
   { label: 'Jan', val: 150 },
@@ -51,20 +53,21 @@ const ADOPTION_STATUS_OPTIONS = [
 
 const Adocao: React.FC = () => {
   // --- STATE WITH PERSISTENCE ---
-  const [animals, setAnimals] = useState<Animal[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('adocoes_lista_trabalho');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return []; // Start empty unless saved data exists
-  });
+  const [animals, setAnimals] = useState<any[]>([]);
 
-  // Save to localStorage whenever list changes
+  // Load from Supabase
   useEffect(() => {
-    localStorage.setItem('adocoes_lista_trabalho', JSON.stringify(animals));
-  }, [animals]);
+    loadAnimals();
+  }, []);
+
+  const loadAnimals = async () => {
+    try {
+      const data = await adocaoService.getAll();
+      setAnimals(data || []);
+    } catch (error: any) {
+      showNotification(`Erro ao carregar lista: ${error.message || 'Desconhecido'}`, "error");
+    }
+  };
 
   // --- LOCAL STATE ---
   const [searchTerm, setSearchTerm] = useState('');
@@ -76,6 +79,19 @@ const Adocao: React.FC = () => {
   // Multi-entry handling
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
   const [isModalOpen, setIsModalOpen] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Animal | null>(null);
+
+  const editFields: FieldConfig[] = [
+    { name: 'chip', label: 'Chip', readOnly: true },
+    { name: 'specie', label: 'Espécie' },
+    { name: 'gender', label: 'Sexo', type: 'select', options: ['Macho', 'Fêmea'] },
+    { name: 'color', label: 'Pelagem' },
+    { name: 'status', label: 'Status', type: 'select', options: ADOPTION_STATUS_OPTIONS },
+    { name: 'observations', label: 'Observações', type: 'textarea' },
+  ];
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -134,41 +150,25 @@ const Adocao: React.FC = () => {
     }
   };
 
-  const addAnimalToList = (entry: any) => {
-    const chip = String(entry.chip || entry['CHIP'] || '');
-
-    // Check if already in list
-    if (animals.some(a => a.chip === chip)) {
-      showNotification("Este animal já está na lista de adoção.", "info");
+  const addAnimalToList = async (entry: any) => {
+    // Check if duplicate logic (optional, but good UX. Supabase might error on duplicate PK if defined, but id is uuid usually)
+    // Here we check if animal_id already exists in list
+    if (animals.some(a => a.animal_id === entry.id)) {
+      showNotification("Este animal já está na lista.", "info");
       return;
     }
 
-    const dateInRaw = entry.dateIn || entry.date_in || entry['Data de Entrada'] || '-';
-    const formattedDate = formatDate(dateInRaw);
-
-    const newAnimal: Animal = {
-      id: String(Date.now()),
-      chip: chip,
-      specie: entry.specie || entry['Espécie'] || 'Desconhecido',
-      gender: entry.gender || entry['Sexo'] || '-',
-      color: entry.color || entry['Pelagem'] || '-',
-      breed: entry.breed || entry['Raça'] || 'SRD',
-      dateIn: formattedDate,
-      exitDate: '-',
-      origin: entry.origin || entry.organ || entry['Região Administrativa'] || 'Não informado',
-      status: newStatus,
-      organ: entry.organ || entry['Órgão'] || 'Não informado',
-      observations: entry.observations || entry['Observações'] || entry['Observações Complementares'] || '',
-      osNumber: entry.osNumber || entry.os_number || entry['Ordem de Serviço (OS)'] || '-',
-      imageUrl: entry.imageUrl || entry.image_url || getImageUrl(animals.length),
-      daysIn: entry.daysIn || entry.days_in || 0,
-    };
-
-    setAnimals([newAnimal, ...animals]);
-    setFoundEntry(null);
-    setSearchTerm('');
-    setIsModalOpen(false);
-    showNotification("Animal adicionado à lista com sucesso!", "success");
+    try {
+      await adocaoService.add(entry.id, newStatus, entry.observations || entry['Observações'] || '');
+      showNotification("Animal adicionado à lista com sucesso!", "success");
+      loadAnimals(); // Refresh list
+      setFoundEntry(null);
+      setSearchTerm('');
+      setIsModalOpen(false);
+    } catch (error: any) {
+      console.error(error);
+      showNotification(`Erro: ${error.message || 'Falha desconhecida'}`, "error");
+    }
   };
 
   const handleAdd = async () => {
@@ -201,10 +201,52 @@ const Adocao: React.FC = () => {
     addAnimalToList(entry);
   };
 
-  const handleRemove = (id: string) => {
+  const handleEdit = (worklistItem: any) => {
+    // Transform worklist item to flat structure for EditModal if needed, 
+    // or just pass the fields that are editable (status, observations)
+    // The EditModal expects 'data' to match 'fields'.
+    // We need to pass the joined data for read-only fields (chip, specie)
+    // and the worklist data for editable fields.
+
+    // Combining for the modal:
+    const modalData = {
+      id: worklistItem.id,
+      chip: worklistItem.animal?.chip,
+      specie: worklistItem.animal?.specie,
+      gender: worklistItem.animal?.gender,
+      color: worklistItem.animal?.color,
+      status: worklistItem.status,
+      observations: worklistItem.observations
+    };
+
+    setEditingItem(modalData);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (updatedItem: any) => {
+    try {
+      await adocaoService.update(updatedItem.id, {
+        status: updatedItem.status,
+        observations: updatedItem.observations
+      });
+      showNotification("Registro atualizado com sucesso!", "success");
+      loadAnimals();
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+    } catch (error) {
+      showNotification("Erro ao atualizar registro.", "error");
+    }
+  };
+
+  const handleRemove = async (id: string) => {
     if (window.confirm("Deseja remover este animal da lista?")) {
-      setAnimals(prev => prev.filter(a => a.id !== id));
-      showNotification("Animal removido.", "info");
+      try {
+        await adocaoService.remove(id);
+        showNotification("Animal removido.", "info");
+        loadAnimals();
+      } catch (error) {
+        showNotification("Erro ao remover animal.", "error");
+      }
     }
   };
 
@@ -421,7 +463,7 @@ const Adocao: React.FC = () => {
                 <span className="material-symbols-outlined">search</span>
               </button>
             </div>
-            {foundEntry && <span className="text-[10px] text-green-600 font-bold mt-1 block">Encontrado: {foundEntry['Espécie']} ({foundEntry['Sexo']})</span>}
+            {foundEntry && <span className="absolute top-full left-0 mt-1 text-[10px] text-green-600 font-bold whitespace-nowrap">Encontrado: {foundEntry['Espécie']} ({foundEntry['Sexo']})</span>}
           </div>
           <div className="w-full md:w-64">
             <label className="text-xs font-bold text-gray-500 mb-1 block">Status Inicial</label>
@@ -460,46 +502,51 @@ const Adocao: React.FC = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {currentAnimals.map(animal => (
-                <tr key={animal.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4">
-                    <div>
-                      <p className="font-bold text-slate-800">{animal.specie}</p>
-                      <p className="text-[10px] text-slate-500">{animal.gender} / {animal.color}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 font-mono text-slate-600">{animal.chip}</td>
-                  <td className="px-6 py-4 text-slate-500 text-xs max-w-xs truncate" title={animal.observations}>
-                    {animal.observations || '-'}
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{animal.osNumber}</td>
-                  <td className="px-6 py-4 text-slate-600">{animal.dateIn}</td>
-                  <td className="px-6 py-4">
-                    {(() => {
-                      const days = calculateDays(animal.dateIn);
-                      return <span className="font-bold text-slate-700">{days} dias</span>;
-                    })()}
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
-                      {animal.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => showNotification("Visualizar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
-                        <span className="material-symbols-outlined text-[20px]">visibility</span>
-                      </button>
-                      <button onClick={() => showNotification("Editar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
-                        <span className="material-symbols-outlined text-[20px]">edit</span>
-                      </button>
-                      <button onClick={() => handleRemove(animal.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50">
-                        <span className="material-symbols-outlined text-[20px]">delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+              {currentAnimals.map(row => {
+                // Destructure nested animal or fallback
+                const animalData = row.animal || {};
+
+                return (
+                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4">
+                      <div>
+                        <p className="font-bold text-slate-800">{animalData.specie || 'Desconhecido'}</p>
+                        <p className="text-[10px] text-slate-500">{animalData.gender} / {animalData.color}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4 font-mono text-slate-600">{animalData.chip}</td>
+                    <td className="px-6 py-4 text-slate-500 text-xs max-w-xs truncate" title={row.observations}>
+                      {row.observations || '-'}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{animalData.os_number}</td>
+                    <td className="px-6 py-4 text-slate-600">{formatDate(animalData.date_in)}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const days = calculateDays(animalData.date_in);
+                        return <span className="font-bold text-slate-700">{days} dias</span>;
+                      })()}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => showNotification("Visualizar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
+                          <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        </button>
+                        <button onClick={() => handleEdit(row)} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
+                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button onClick={() => handleRemove(row.id)} className="p-1.5 text-gray-400 hover:text-red-600 rounded-full hover:bg-red-50">
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {animals.length === 0 && (
                 <tr><td colSpan={8} className="p-8 text-center text-gray-400 italic">Nenhum registro encontrado.</td></tr>
               )}
@@ -686,6 +733,7 @@ const Adocao: React.FC = () => {
                     <div>
                       <p className="text-sm font-bold text-slate-800">Entrada: {formatDate(entry['Data de Entrada'] || entry.date_in || entry.dateIn)}</p>
                       <p className="text-xs text-slate-500">Origem: {entry['Região Administrativa'] || 'Não informado'}</p>
+                      <p className="text-[10px] text-primary font-black uppercase mt-1">PROCESSO SEI: {entry.sei_process || entry.seiProcess || '-'}</p>
                     </div>
                     <div className="ml-auto opacity-0 group-hover:opacity-100 transition-opacity">
                       <span className="material-symbols-outlined text-primary">arrow_forward</span>
@@ -702,6 +750,16 @@ const Adocao: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Edit Modal */}
+      <EditModal
+        isOpen={isEditModalOpen}
+        title="Editar Animal (Adoção)"
+        data={editingItem}
+        fields={editFields}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 };

@@ -31,6 +31,7 @@ export interface Animal {
   osNumber: string;
   mapsUrl?: string;
   contactInitiated?: boolean;
+  classification?: string;
 }
 
 export interface Metric {
@@ -40,4 +41,25 @@ export interface Metric {
   trend: 'up' | 'down' | 'neutral';
   icon: string;
   color: string;
+}
+
+export interface WorklistItem {
+  id: string; // The ID of the worklist entry itself
+  animal_id: string;
+  created_at: string;
+  status: string;
+  observations: string;
+  animal?: Animal; // Nested animal data from JOIN
+}
+
+export interface WorklistRestituicao extends WorklistItem {
+  contact_made?: boolean;
+}
+
+export interface WorklistOutros extends WorklistItem {
+  organ_destination?: string;
+}
+
+export interface WorklistAdocao extends WorklistItem {
+  // Add specific fields if any
 }

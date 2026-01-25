@@ -13,9 +13,11 @@ export const apreensoesService = {
         osNumber:os_number,
         mapsUrl:maps_url,
         daysIn:days_in,
-        imageUrl:image_url
+        imageUrl:image_url,
+        classification
       `)
-            .order('date_in', { ascending: false });
+            .order('date_in', { ascending: false })
+            .range(0, 4999);
 
         if (error) {
             console.error('Erro ao buscar apreensões:', error);
@@ -35,10 +37,12 @@ export const apreensoesService = {
                 osNumber:os_number,
                 mapsUrl:maps_url,
                 daysIn:days_in,
-                imageUrl:image_url
+                imageUrl:image_url,
+                classification
             `)
             .eq('chip', chip)
-            .order('date_in', { ascending: false });
+            .order('date_in', { ascending: false })
+            .range(0, 4999);
 
         if (error) {
             console.error('Erro ao buscar por CHIP:', error);
@@ -65,7 +69,8 @@ export const apreensoesService = {
             organ: animal.organ,
             os_number: animal.osNumber,
             maps_url: animal.mapsUrl,
-            days_in: animal.daysIn
+            days_in: animal.daysIn,
+            classification: animal.classification
         };
 
         const { data, error } = await supabase
@@ -118,6 +123,7 @@ export const apreensoesService = {
         if (animal.osNumber !== undefined) dbPayload.os_number = animal.osNumber;
         if (animal.mapsUrl !== undefined) dbPayload.maps_url = animal.mapsUrl;
         if (animal.daysIn !== undefined) dbPayload.days_in = animal.daysIn;
+        if (animal.classification !== undefined) dbPayload.classification = animal.classification;
 
         const { data, error } = await supabase
             .from('apreensoes')
@@ -143,24 +149,18 @@ export const apreensoesService = {
         if (error) {
             console.error('Erro ao verificar reincidência:', error);
             // Return 0 if error to avoid blocking UI, but log it
-            return { count: 0, lastOwner: null, lastDate: null };
+            return { count: 0, lastOwner: null, lastDate: null, seiProcess: null };
         }
 
         let lastOwner = null;
         let lastDate = null;
+        let seiProcess = null;
 
         if (count && count > 0) {
             // Fetch the latest entry to get details
             const { data: latest } = await supabase
                 .from('apreensoes')
-                .select('created_at, date_in') // Assuming we might want to know who was the owner. But wait, do we have 'owner' field? 
-                // The user mentioned "busque no campo owner ou responsavel do registro anterior".
-                // Current schema in createApreensao doesn't show 'owner'. 
-                // However, RegiaoAdm mock data had 'owner'. 
-                // Let's check 'types.ts' to see if Animal has owner.
-                // For now, I will just return the count. I'll need to check if 'owner' exists.
-                // If it doesn't exist in Supabase yet, we can't fetch it. 
-                // I will add a placeholder for now or checking types.
+                .select('created_at, date_in, sei_process')
                 .eq('chip', chip)
                 .order('date_in', { ascending: false })
                 .limit(1)
@@ -168,9 +168,32 @@ export const apreensoesService = {
 
             if (latest) {
                 lastDate = latest.date_in;
+                seiProcess = latest.sei_process;
             }
         }
 
-        return { count: count || 0, lastOwner, lastDate };
+        return { count: count || 0, lastOwner, lastDate, seiProcess };
+    },
+
+    async delete(id: string) {
+        // Log para debug
+        console.log('Tentando deletar ID:', id);
+
+        const { error, count } = await supabase
+            .from('apreensoes')
+            .delete({ count: 'exact' }) // Solicita contagem de afetados
+            .eq('id', id);
+
+        if (error) {
+            console.error('Erro do Supabase ao excluir:', error);
+            throw error;
+        }
+
+        // Se nenhum registro for deletado (ex: ID errado ou bloqueio de RLS silencioso)
+        if (count === 0) {
+            const msg = 'Nenhum registro foi excluído. Verifique permissões (RLS) ou se o ID existe.';
+            console.warn(msg);
+            throw new Error(msg);
+        }
     }
 };

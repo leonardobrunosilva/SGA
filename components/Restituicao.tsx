@@ -1,9 +1,11 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Animal } from '../types';
 import { calculateDays, formatDate } from '../utils';
 import { apreensoesService } from '../services/apreensoesService';
 import { saidasService } from '../services/saidasService';
+import { restituicaoService } from '../services/worklistService';
+import EditModal, { FieldConfig } from './EditModal';
+
 
 const ENTRY_STATUS_OPTIONS = [
   'Disponível',
@@ -28,22 +30,39 @@ const DESTINATION_OPTIONS = [
 
 const Restituicao: React.FC = () => {
   // --- STATE MANAGEMENT (BATCH FLOW) ---
-  const [animals, setAnimals] = useState<Animal[]>(() => {
-    // Lazy init from localStorage to prevent overwriting with empty array
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('restituicoes_working_list');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
+  const [animals, setAnimals] = useState<any[]>([]);
+
+  // Load from Supabase
+  useEffect(() => {
+    loadAnimals();
+  }, []);
+
+  const loadAnimals = async () => {
+    try {
+      const data = await restituicaoService.getAll();
+      setAnimals(data || []);
+    } catch (error: any) {
+      showNotification(`Erro ao carregar lista: ${error.message || 'Desconhecido'}`, "error");
     }
-    return [];
-  });
+  };
 
   const [newChip, setNewChip] = useState('');
   const [newStatus, setNewStatus] = useState(ENTRY_STATUS_OPTIONS[0]); // Default status
   const [foundEntry, setFoundEntry] = useState<any>(null);
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
   const [showEntrySelectionModal, setShowEntrySelectionModal] = useState(false);
+
+  // Edit Modal State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingItem, setEditingItem] = useState<Animal | null>(null);
+
+  const editFields: FieldConfig[] = [
+    { name: 'chip', label: 'Chip', readOnly: true },
+    { name: 'specie', label: 'Espécie' },
+    { name: 'contactInitiated', label: 'Contato Realizado pelo Proprietário?', type: 'toggle' },
+    { name: 'status', label: 'Status', type: 'select', options: ENTRY_STATUS_OPTIONS },
+    { name: 'observations', label: 'Observações', type: 'textarea' },
+  ];
 
   // Footer state
   const [batchExitDate, setBatchExitDate] = useState('');
@@ -91,7 +110,7 @@ const Restituicao: React.FC = () => {
       } else if (entries.length === 1) {
         setFoundEntry(entries[0]);
         setMultipleEntries([]);
-        showNotification(`Animal localizado: ${entries[0].specie || entries[0]['Espécie']} - Entrada: ${formatDate(entries[0].date_in || entries[0].dateIn || entries[0]['Data de Entrada'])}`, "success");
+        showNotification(`Animal localizado: ${entries[0].specie || entries[0]['Espécie']} - Entrada: ${formatDate(entries[0].dateIn || entries[0]['Data de Entrada'])}`, "success");
       } else {
         setMultipleEntries(entries);
         setFoundEntry(null);
@@ -112,44 +131,70 @@ const Restituicao: React.FC = () => {
     showNotification(`Registro de ${formatDate(dateIn)} selecionado.`, "success");
   };
 
-  const handleAddToStaging = () => {
+  const handleEdit = (worklistItem: any) => {
+    const modalData = {
+      id: worklistItem.id,
+      chip: worklistItem.animal?.chip,
+      specie: worklistItem.animal?.specie,
+      gender: worklistItem.animal?.gender,
+      color: worklistItem.animal?.color,
+      status: worklistItem.status,
+      observations: worklistItem.observations,
+      contactInitiated: worklistItem.contact_made
+    };
+    setEditingItem(modalData);
+    setIsEditModalOpen(true);
+  };
+
+  const handleSaveEdit = async (updatedItem: any) => {
+    try {
+      await restituicaoService.update(updatedItem.id, {
+        status: updatedItem.status,
+        observations: updatedItem.observations,
+        contact_made: updatedItem.contactInitiated
+      });
+      showNotification("Registro atualizado com sucesso!", "success");
+      loadAnimals();
+      setIsEditModalOpen(false);
+      setEditingItem(null);
+    } catch (error: any) {
+      showNotification(`Erro ao atualizar: ${error.message}`, "error");
+    }
+  };
+
+  const handleAddToStaging = async () => {
     if (!foundEntry) {
       showNotification("Busque e selecione um animal primeiro.", "info");
       return;
     }
 
-    const chip = String(foundEntry.chip || foundEntry['CHIP'] || '');
-    const dateInRaw = foundEntry.dateIn || foundEntry.date_in || foundEntry['Data de Entrada'] || '-';
-    const formattedDate = formatDate(dateInRaw);
+    // Check duplicate
+    if (animals.some(a => a.animal_id === foundEntry.id)) {
+      showNotification("Este animal já está na lista.", "info");
+      return;
+    }
 
-    const newAnimal: Animal = {
-      id: String(Date.now()),
-      specie: foundEntry.specie || foundEntry['Espécie'] || 'Desconhecido',
-      chip: chip,
-      dateIn: formattedDate,
-      exitDate: '-',
-      origin: foundEntry.origin || foundEntry.organ || foundEntry['Região Administrativa'] || 'Não informado',
-      gender: foundEntry.gender || foundEntry['Sexo'] || '-',
-      breed: foundEntry.breed || foundEntry['Pelagem'] || '-',
-      color: foundEntry.color || foundEntry['Pelagem'] || '-',
-      status: newStatus, // Use selected status
-      seiProcess: '-',
-      osNumber: foundEntry.osNumber || foundEntry.os_number || foundEntry['Ordem de Serviço (OS)'] || '-',
-      imageUrl: foundEntry.imageUrl || foundEntry.image_url || getImageUrl(animals.length),
-      daysIn: foundEntry.daysIn || foundEntry.days_in || 0,
-      observations: foundEntry.observations || foundEntry['Observações Complementares'] || '',
-      organ: foundEntry.organ || foundEntry['Órgão'] || 'Não informado'
-    };
+    try {
+      await restituicaoService.add(foundEntry.id, newStatus, foundEntry.observations || foundEntry['Observações Complementares'] || '');
 
-    setAnimals([newAnimal, ...animals]);
-    setNewChip('');
-    setFoundEntry(null);
-    showNotification("Animal inserido na lista de restituição.", "success");
+      showNotification("Animal inserido na lista de restituição.", "success");
+      setNewChip('');
+      setFoundEntry(null);
+      loadAnimals();
+    } catch (e: any) {
+      showNotification(`Erro: ${e.message || 'Erro desconhecido'}`, "error");
+      console.error(e);
+    }
   };
 
-  const handleRemove = (id: string) => {
-    setAnimals(prev => prev.filter(a => a.id !== id));
-    showNotification("Item removido da lista.", "info");
+  const handleRemove = async (id: string) => {
+    try {
+      await restituicaoService.remove(id);
+      showNotification("Item removido da lista.", "info");
+      loadAnimals();
+    } catch (error) {
+      showNotification("Erro ao remover item.", "error");
+    }
   };
 
   const handleBatchSave = async () => {
@@ -250,7 +295,7 @@ const Restituicao: React.FC = () => {
             <button onClick={handleSearchEntry} className="absolute right-2 top-7 p-1.5 text-gray-400 hover:text-gdf-blue">
               <span className="material-symbols-outlined">search</span>
             </button>
-            {foundEntry && <span className="text-[10px] text-green-600 font-bold mt-1 block">Selecionado: {foundEntry['Espécie']} - {foundEntry['Data de Entrada']}</span>}
+            {foundEntry && <span className="absolute top-full left-0 mt-1 text-[10px] text-green-600 font-bold whitespace-nowrap">Selecionado: {foundEntry['Espécie']} - {foundEntry['Data de Entrada']}</span>}
           </div>
 
           <div className="w-full md:w-48">
@@ -289,65 +334,80 @@ const Restituicao: React.FC = () => {
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Identificação</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Animal (Espécie)</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Data Entrada</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Permanência</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Origem</th>
-                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs text-right">Ações</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
-              {currentAnimals.map(animal => (
-                <tr key={animal.id} className="hover:bg-gray-50 transition-colors">
-                  <td className="px-6 py-4 font-mono font-bold text-slate-700">{animal.chip}</td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-cover" style={{ backgroundImage: `url(${animal.imageUrl})` }}></div>
-                      <div>
-                        <p className="font-bold text-slate-800">{animal.specie}</p>
-                        <p className="text-[10px] text-slate-500">{animal.gender} / {animal.color}</p>
+              {currentAnimals.map(row => {
+                const animalData = row.animal || {};
+
+                return (
+                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-mono font-bold text-slate-700">{animalData.chip}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-cover" style={{ backgroundImage: `url(${animalData.image_url || getImageUrl(0)})` }}></div>
+                        <div>
+                          <p className="font-bold text-slate-800">{animalData.specie}</p>
+                          <p className="text-[10px] text-slate-500">{animalData.gender} / {animalData.color}</p>
+                        </div>
                       </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <span className="px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-bold border border-gray-200">
-                      {animal.status}
-                    </span>
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{animal.dateIn}</td>
-                  <td className="px-6 py-4">
-                    {(() => {
-                      /* Logic for Today - DateIn */
-                      try {
-                        const today = new Date();
-                        const parts = animal.dateIn ? animal.dateIn.split('/') : [];
-                        if (parts.length === 3) {
-                          const entryDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
-                          if (isNaN(entryDate.getTime())) return <span>-</span>;
-                          const diffTime = Math.abs(today.getTime() - entryDate.getTime());
-                          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-                          const isAlert = diffDays > 30;
-                          return <span className={`font-bold ${isAlert ? 'text-red-500' : 'text-slate-600'}`}>{diffDays} dias</span>;
-                        }
-                        return <span>-</span>;
-                      } catch { return <span>-</span>; }
-                    })()}
-                  </td>
-                  <td className="px-6 py-4 text-slate-600">{animal.origin}</td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button onClick={() => showNotification(`Visualizar Detalhes: ${animal.specie} (${animal.chip}) - Em breve`, "info")} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Visualizar">
-                        <span className="material-symbols-outlined text-[20px]">visibility</span>
-                      </button>
-                      <button onClick={() => showNotification(`Editar Registro: ${animal.specie} - Em breve`, "info")} className="text-gray-400 hover:text-orange-600 p-1.5 rounded-full hover:bg-orange-50 transition-colors" title="Editar">
-                        <span className="material-symbols-outlined text-[20px]">edit</span>
-                      </button>
-                      <button onClick={() => handleRemove(animal.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Remover">
-                        <span className="material-symbols-outlined text-[20px]">delete</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
+                    </td>
+                    <td className="px-6 py-4">
+                      <span className="px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-bold border border-gray-200">
+                        {row.status}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {row.contact_made ? (
+                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full border border-emerald-200">
+                          <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                          Contato Realizado
+                        </span>
+                      ) : (
+                        <span className="text-xs text-slate-400 font-medium">-</span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{formatDate(animalData.date_in)}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        /* Logic for Today - DateIn */
+                        try {
+                          const today = new Date();
+                          const parts = animalData.date_in ? formatDate(animalData.date_in).split('/') : [];
+                          if (parts.length === 3) {
+                            const entryDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                            if (isNaN(entryDate.getTime())) return <span>-</span>;
+                            const diffTime = Math.abs(today.getTime() - entryDate.getTime());
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const isAlert = diffDays > 30;
+                            return <span className={`font-bold ${isAlert ? 'text-red-500' : 'text-slate-600'}`}>{diffDays} dias</span>;
+                          }
+                          return <span>-</span>;
+                        } catch { return <span>-</span>; }
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{animalData.origin || animalData.organ || 'Não informado'}</td>
+                    <td className="px-6 py-4 text-right">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => showNotification(`Visualizar Detalhes: ${animalData.specie} (${animalData.chip}) - Em breve`, "info")} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Visualizar">
+                          <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        </button>
+                        <button onClick={() => handleEdit(row)} className="text-gray-400 hover:text-orange-600 p-1.5 rounded-full hover:bg-orange-50 transition-colors" title="Editar">
+                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button onClick={() => handleRemove(row.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Remover">
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
               {animals.length === 0 && (
                 <tr><td colSpan={7} className="p-8 text-center text-gray-400 italic">Nenhum animal adicionado à lista ainda.</td></tr>
               )}
@@ -458,6 +518,7 @@ const Restituicao: React.FC = () => {
                   <div>
                     <p className="text-sm font-bold text-slate-800">Entrada em: {formatDate(entry.dateIn || entry.date_in || entry['Data de Entrada'])}</p>
                     <p className="text-xs text-slate-500 mt-0.5">Origem: {entry.origin || entry.organ || entry['Região Administrativa']} | OS: {entry.osNumber || entry.os_number || entry['Ordem de Serviço (OS)'] || 'N/A'}</p>
+                    <p className="text-[10px] text-gdf-blue font-black uppercase mt-1">PROCESSO SEI: {entry.seiProcess || entry.sei_process || '-'}</p>
                     <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">{entry.specie || entry['Espécie']} - {entry.color || entry['Pelagem']}</p>
                   </div>
                 </button>
@@ -467,6 +528,15 @@ const Restituicao: React.FC = () => {
         </div>
       )}
 
+      {/* Edit Modal */}
+      <EditModal
+        isOpen={isEditModalOpen}
+        title="Editar Animal (Restituição)"
+        data={editingItem}
+        fields={editFields}
+        onClose={() => setIsEditModalOpen(false)}
+        onSave={handleSaveEdit}
+      />
     </div>
   );
 };

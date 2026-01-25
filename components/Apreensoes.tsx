@@ -4,14 +4,18 @@ import { Animal } from '../types';
 import { formatDate } from '../utils';
 
 import { apreensoesService } from '../services/apreensoesService';
+import { adocaoService, restituicaoService, outrosOrgaosService } from '../services/worklistService';
 
 const Apreensoes: React.FC = () => {
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [osSearch, setOsSearch] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
+  const [speciesFilter, setSpeciesFilter] = useState('');
+  const [chipSearch, setChipSearch] = useState('');
+  const [classificationFilter, setClassificationFilter] = useState('');
   const [raFilter, setRaFilter] = useState('');
   const [dateFilter, setDateFilter] = useState('');
+  const [totalExternalCount, setTotalExternalCount] = useState(0);
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -26,30 +30,29 @@ const Apreensoes: React.FC = () => {
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
 
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [recurrenceData, setRecurrenceData] = useState<{ count: number; lastDate: string | null } | null>(null);
+  const [recurrenceData, setRecurrenceData] = useState<{ count: number; lastDate: string | null; seiProcess: string | null } | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Stats calculados dinamicamente
-  const stats = [
-    {
-      label: 'Total de Apreensões',
-      value: animals.length.toString(),
-      change: 'Atualizado agora',
-      icon: 'verified_user',
-      bgColor: 'bg-blue-50',
-      textColor: 'text-gdf-blue',
-      accentColor: 'bg-blue-50/50'
-    },
-    { label: 'Em Quarentena', value: animals.filter(a => a.status === 'Em Custódia').length.toString(), change: 'Aguardando exames', icon: 'medical_services', bgColor: 'bg-yellow-50', textColor: 'text-yellow-600', accentColor: 'bg-yellow-50/50' },
-    { label: 'Disponíveis', value: '45', change: 'Para leilão/doação', icon: 'check_circle', bgColor: 'bg-green-50', textColor: 'text-green-600', accentColor: 'bg-green-50/50' },
-    { label: 'Restituídos', value: '62', change: 'Devolvidos ao proprietário', icon: 'assignment_return', bgColor: 'bg-purple-50', textColor: 'text-purple-600', accentColor: 'bg-purple-50/50' },
-  ];
 
 
   // Fetch data on mount
   React.useEffect(() => {
     loadAnimals();
+    loadExternalStats();
   }, []);
+
+  const loadExternalStats = async () => {
+    try {
+      const [adocoes, restituicoes, outros] = await Promise.all([
+        adocaoService.getAll(),
+        restituicaoService.getAll(),
+        outrosOrgaosService.getAll()
+      ]);
+      setTotalExternalCount(adocoes.length + restituicoes.length + outros.length);
+    } catch (error) {
+      console.error('Error loading external stats:', error);
+    }
+  };
 
   // Carregar dados REAIS do Supabase
   const loadAnimals = async () => {
@@ -73,6 +76,7 @@ const Apreensoes: React.FC = () => {
         timeIn: item.time_in || item.timeIn || '',
         observations: item.observations || '',
         imageUrl: item.image_url || item.imageUrl || 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=2071&auto=format&fit=crop',
+        classification: item.classification || '',
         mapsUrl: item.maps_url || item.mapsUrl || '',
         daysIn: item.days_in || item.daysIn || 0,
       }));
@@ -81,9 +85,9 @@ const Apreensoes: React.FC = () => {
       mappedData.sort((a, b) => new Date(b.dateIn).getTime() - new Date(a.dateIn).getTime());
 
       setAnimals(mappedData);
-    } catch (error) {
-      console.error('Error loading animals:', error);
-      alert('Erro ao carregar apreensões do Supabase.');
+    } catch (error: any) {
+      console.error('Error loading animals from Supabase:', error);
+      alert(`Erro ao carregar apreensões do Supabase: ${error.message || 'Erro desconhecido'}`);
     } finally {
       setIsLoading(false);
     }
@@ -95,20 +99,49 @@ const Apreensoes: React.FC = () => {
     if (currentPage !== 1) setCurrentPage(1);
 
     return animals.filter(animal => {
-      const matchChip = animal.chip.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        animal.specie.toLowerCase().includes(searchTerm.toLowerCase());
-      const matchOs = animal.osNumber.toLowerCase().includes(osSearch.toLowerCase());
-      const matchRa = raFilter === '' || animal.origin.includes(raFilter);
+      // Comparação exata de Espécie
+      const matchSpecies = speciesFilter === '' || animal.specie === speciesFilter;
 
-      let matchDate = true;
-      if (dateFilter && animal.dateIn) {
-        // Supabase returns YYYY-MM-DD, input dateFilter is also YYYY-MM-DD
-        matchDate = animal.dateIn === dateFilter;
+      // Busca parcial por CHIP
+      const matchChip = chipSearch === '' || animal.chip.toLowerCase().includes(chipSearch.toLowerCase());
+
+      // Filtro por Ano (Extraído de dateIn YYYY-MM-DD)
+      let matchYear = true;
+      if (yearFilter && animal.dateIn) {
+        matchYear = animal.dateIn.startsWith(yearFilter);
       }
 
-      return matchChip && matchOs && matchRa && matchDate;
+      const matchRa = raFilter === '' || animal.origin.includes(raFilter);
+
+      const matchDate = dateFilter === '' || animal.dateIn === dateFilter;
+
+      const matchClassification = classificationFilter === '' || animal.classification === classificationFilter;
+
+      return matchSpecies && matchChip && matchYear && matchRa && matchDate && matchClassification;
     });
-  }, [animals, searchTerm, osSearch, raFilter, dateFilter]);
+  }, [animals, speciesFilter, chipSearch, yearFilter, raFilter, dateFilter, classificationFilter]);
+
+  // Stats calculados dinamicamente
+  const stats = [
+    {
+      label: 'Total de Apreensões',
+      value: filteredAnimals.length.toString(),
+      change: 'Filtradas na tabela',
+      icon: 'verified_user',
+      bgColor: 'bg-blue-50',
+      textColor: 'text-gdf-blue',
+      accentColor: 'bg-blue-50/50'
+    },
+    {
+      label: 'Disponíveis',
+      value: totalExternalCount.toString(),
+      change: 'Adoc/Restit/Outros',
+      icon: 'check_circle',
+      bgColor: 'bg-green-50',
+      textColor: 'text-green-600',
+      accentColor: 'bg-green-50/50'
+    },
+  ];
 
   // Calculate slice for current page
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -137,6 +170,7 @@ const Apreensoes: React.FC = () => {
       organ: '',
       origin: '',
       specie: ESPECIES[0],
+      classification: '',
       mapsUrl: ''
     });
     setSelectedGender('Macho');
@@ -161,7 +195,7 @@ const Apreensoes: React.FC = () => {
       // Only check if it looks like a valid partial chip
       const result = await apreensoesService.checkRecurrence(formData.chip);
       if (result.count > 0) {
-        setRecurrenceData({ count: result.count, lastDate: result.lastDate });
+        setRecurrenceData({ count: result.count, lastDate: result.lastDate, seiProcess: result.seiProcess });
       } else {
         setRecurrenceData(null);
       }
@@ -169,10 +203,25 @@ const Apreensoes: React.FC = () => {
   };
 
   const clearFilters = () => {
-    setSearchTerm('');
-    setOsSearch('');
+    setYearFilter('');
+    setSpeciesFilter('');
+    setChipSearch('');
+    setClassificationFilter('');
     setRaFilter('');
     setDateFilter('');
+  };
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Tem certeza que deseja excluir esta apreensão? A ação não pode ser desfeita.")) {
+      try {
+        await apreensoesService.delete(id);
+        alert("Apreensão excluída com sucesso!");
+        loadAnimals();
+      } catch (error: any) {
+        console.error(error);
+        alert(`Erro ao excluir: ${error.message || "Tente novamente."}`);
+      }
+    }
   };
 
   if (isFormOpen) {
@@ -207,15 +256,17 @@ const Apreensoes: React.FC = () => {
               {recurrenceData && recurrenceData.count > 0 && (
                 <div className="mb-6 bg-red-50 border border-red-200 rounded-xl p-4 flex items-start gap-3 animate-fade-in text-left">
                   <span className="material-symbols-outlined text-red-600 mt-0.5">warning</span>
-                  <div>
+                  <div className="flex-1">
                     <h4 className="text-sm font-black text-red-800 uppercase tracking-tight">⚠ Animal Reincidente: {recurrenceData.count + 1}ª Apreensão</h4>
                     <p className="text-xs text-red-600 mt-1 font-medium">
                       Este animal já consta no sistema.
                       {recurrenceData.lastDate && <> Última entrada em: <strong>{new Date(recurrenceData.lastDate).toLocaleDateString('pt-BR')}</strong>.</>}
                     </p>
-                    <p className="text-[10px] text-red-500 mt-2 bg-white px-2 py-1 rounded border border-red-100 inline-block font-bold uppercase">
-                      Último Responsável: Não Informado (BD)
-                    </p>
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      <p className="text-[10px] text-red-700 bg-white px-2 py-1 rounded border border-red-100 font-bold uppercase shadow-sm">
+                        PROCESSO SEI: {recurrenceData.seiProcess || '-'}
+                      </p>
+                    </div>
                   </div>
                 </div>
               )}
@@ -289,6 +340,19 @@ const Apreensoes: React.FC = () => {
                     {ESPECIES.map((esp) => (
                       <option key={esp} value={esp}>{esp}</option>
                     ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Classificação / Observação</label>
+                  <select
+                    value={formData.classification || ''}
+                    onChange={(e) => setFormData({ ...formData, classification: e.target.value })}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none transition-all"
+                  >
+                    <option value="">Selecione...</option>
+                    <option value="Garanhão">Garanhão</option>
+                    <option value="Castrado">Castrado</option>
+                    <option value="Potro(a)">Potro(a)</option>
                   </select>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -408,6 +472,7 @@ const Apreensoes: React.FC = () => {
                         specie: formData.specie || editingAnimal.specie, // Ensure required fields
                         breed: formData.breed || editingAnimal.breed,
                         status: formData.status || editingAnimal.status,
+                        classification: formData.classification !== undefined ? formData.classification : editingAnimal.classification,
                       });
 
                       setIsFormOpen(false);
@@ -442,6 +507,7 @@ const Apreensoes: React.FC = () => {
                         organ: formData.organ || 'Outros',
                         osNumber: formData.osNumber || 'S/N',
                         mapsUrl: formData.mapsUrl,
+                        classification: formData.classification,
                         daysIn: 0
                       });
 
@@ -467,7 +533,7 @@ const Apreensoes: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-gdf-blue/30 transition-colors">
             <div className={`absolute right-0 top-0 h-16 w-16 ${stat.accentColor} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
@@ -503,43 +569,87 @@ const Apreensoes: React.FC = () => {
 
       {/* Filters */}
       <div className="rounded-xl bg-white border border-gray-200 p-6 shadow-sm">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 text-left">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
+          {/* Row 1: Ano, Espécie, Classificação */}
           <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-700">Buscar por Identificação, Espécie ou Processo</label>
+            <label className="text-sm font-medium text-slate-700">Ano</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">search</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">calendar_month</span>
+              <select
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                value={yearFilter}
+                onChange={(e) => setYearFilter(e.target.value)}
+              >
+                <option value="">Todos</option>
+                <option value="2024">2024</option>
+                <option value="2025">2025</option>
+                <option value="2026">2026</option>
+              </select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Espécie</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">pets</span>
+              <select
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                value={speciesFilter}
+                onChange={(e) => setSpeciesFilter(e.target.value)}
+              >
+                <option value="">Todas</option>
+                {ESPECIES.map(esp => (
+                  <option key={esp} value={esp}>{esp}</option>
+                ))}
+              </select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Classificação</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">label</span>
+              <select
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                value={classificationFilter}
+                onChange={(e) => setClassificationFilter(e.target.value)}
+              >
+                <option value="">Todas</option>
+                <option value="Garanhão">Garanhão</option>
+                <option value="Castrado">Castrado</option>
+                <option value="Potro(a)">Potro(a)</option>
+              </select>
+              <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
+            </div>
+          </div>
+
+          {/* Row 2: Chip, RA, Data */}
+          <div className="flex flex-col gap-1.5">
+            <label className="text-sm font-medium text-slate-700">Identificação/CHIP</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">memory</span>
               <input
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
-                placeholder="Buscar por Identificação, Espécie ou Processo..."
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
+                placeholder="Busca por Chip"
+                value={chipSearch}
+                onChange={(e) => setChipSearch(e.target.value)}
                 type="text"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
           </div>
-          <div className="flex flex-col gap-1.5">
-            <label className="text-sm font-medium text-slate-700">Ordem de Serviço (OS)</label>
-            <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">description</span>
-              <input
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-4 py-3 text-sm text-slate-900 placeholder-gray-400 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
-                placeholder="Ex: OS-2023..."
-                type="text"
-                value={osSearch}
-                onChange={(e) => setOsSearch(e.target.value)}
-              />
-            </div>
-          </div>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Região Administrativa</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">location_on</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">location_on</span>
               <select
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-10 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-8 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none appearance-none cursor-pointer"
                 value={raFilter}
                 onChange={(e) => setRaFilter(e.target.value)}
               >
-                <option value="">Todas as Regiões</option>
+                <option value="">Todas RA's</option>
                 {RA_LIST.map(ra => (
                   <option key={ra} value={ra}>{ra}</option>
                 ))}
@@ -547,29 +657,28 @@ const Apreensoes: React.FC = () => {
               <span className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px] pointer-events-none">expand_more</span>
             </div>
           </div>
+
           <div className="flex flex-col gap-1.5">
             <label className="text-sm font-medium text-slate-700">Data de Apreensão</label>
             <div className="relative">
-              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[22px]">calendar_today</span>
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[20px]">calendar_today</span>
               <input
-                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-11 pr-4 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none"
                 type="date"
+                className="w-full rounded-xl bg-gray-50 border border-gray-200 pl-10 pr-4 py-3 text-sm text-slate-900 focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
                 value={dateFilter}
                 onChange={(e) => setDateFilter(e.target.value)}
               />
             </div>
           </div>
         </div>
-        <div className="flex justify-between items-center pt-6 border-t border-gray-100 mt-6">
+
+        <div className="flex justify-end mt-4">
           <button
-            className="text-sm font-bold text-slate-500 hover:text-gdf-blue transition-colors underline decoration-2 underline-offset-4"
             onClick={clearFilters}
+            className="flex items-center gap-1.5 text-xs font-bold text-slate-400 hover:text-primary transition-colors uppercase tracking-wider"
           >
-            Limpar filtros
-          </button>
-          <button className="flex items-center gap-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-gdf-blue px-8 py-3 text-sm font-black transition-all shadow-sm">
-            <span className="material-symbols-outlined text-[20px]">filter_list</span>
-            Filtrar Resultados
+            <span className="material-symbols-outlined text-[16px]">restart_alt</span>
+            Limpar Filtros
           </button>
         </div>
       </div>
@@ -587,7 +696,6 @@ const Apreensoes: React.FC = () => {
                 <th className="p-4 font-semibold text-left">Data de Entrada</th>
                 <th className="p-4 font-semibold text-left">Localização</th>
                 <th className="p-4 font-semibold text-left">Histórico</th>
-                <th className="p-4 font-semibold w-16 text-center">Status</th>
                 <th className="p-4 font-semibold text-right">Ações</th>
               </tr>
             </thead>
@@ -660,21 +768,24 @@ const Apreensoes: React.FC = () => {
                       return <span className="text-[10px] uppercase font-bold text-slate-400">Primário</span>;
                     })()}
                   </td>
-                  <td className="p-4 text-center">
-                    <div className={`mx-auto w-2.5 h-2.5 rounded-full ring-4 ${animal.status === 'Em Custódia' ? 'bg-amber-400 ring-amber-100' :
-                      animal.status === 'Liberado' ? 'bg-green-500 ring-green-100' :
-                        'bg-purple-500 ring-purple-100'
-                      }`}></div>
-                  </td>
                   <td className="p-4 text-right">
                     <div className="flex items-center justify-end gap-2">
+                      <button
+                        onClick={() => console.log('Visualizar', animal.id)}
+                        className="p-2 text-slate-400 hover:text-gdf-blue hover:bg-blue-50 rounded-lg transition-all"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">visibility</span>
+                      </button>
                       <button
                         onClick={() => handleEdit(animal)}
                         className="p-2 text-slate-400 hover:text-gdf-blue hover:bg-blue-50 rounded-lg transition-all"
                       >
                         <span className="material-symbols-outlined text-[20px]">edit_square</span>
                       </button>
-                      <button className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all">
+                      <button
+                        onClick={() => handleDelete(animal.id)}
+                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                      >
                         <span className="material-symbols-outlined text-[20px]">delete</span>
                       </button>
                     </div>
