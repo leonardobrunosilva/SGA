@@ -692,6 +692,7 @@ const Apreensoes: React.FC = () => {
                 <th className="p-4 font-semibold text-left">Órgão Solicitante</th>
                 <th className="p-4 font-semibold text-left">Identificação</th>
                 <th className="p-4 font-semibold text-left">Espécie</th>
+                <th className="p-4 font-semibold text-left">Classificação</th>
                 <th className="p-4 font-semibold text-left">Origem (RA)</th>
                 <th className="p-4 font-semibold text-left">Data de Entrada</th>
                 <th className="p-4 font-semibold text-left">Localização</th>
@@ -730,6 +731,15 @@ const Apreensoes: React.FC = () => {
                         </p>
                       </div>
                     </div>
+                  </td>
+                  <td className="p-4 text-left">
+                    {animal.classification ? (
+                      <span className="px-2 py-0.5 rounded bg-gray-100 text-[10px] font-bold text-gray-600 border border-gray-200 uppercase">
+                        {animal.classification}
+                      </span>
+                    ) : (
+                      <span className="text-[10px] text-gray-400 font-medium">N/A</span>
+                    )}
                   </td>
                   <td className="p-4 text-left">
                     <p className="text-xs font-bold text-slate-700">{animal.origin}</p>
