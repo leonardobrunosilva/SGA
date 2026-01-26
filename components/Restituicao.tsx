@@ -158,7 +158,13 @@ const Restituicao: React.FC = () => {
   };
 
   const handleSaveEdit = async () => {
-    if (!editingWorklistItem) return;
+    console.log('Tentando salvar alterações...', { editingWorklistItem, formData });
+
+    if (!editingWorklistItem || !editingWorklistItem.id) {
+      console.error('Erro: ID do item da worklist não encontrado no estado.');
+      showNotification("Erro interno: ID do item não localizado.", "error");
+      return;
+    }
 
     try {
       showNotification("Salvando alterações...", "info");
@@ -166,6 +172,7 @@ const Restituicao: React.FC = () => {
       // 1. Update Photo if needed
       let uploadedImageUrl = '';
       if (selectedFile) {
+        console.log('Subindo nova foto...');
         uploadedImageUrl = await apreensoesService.uploadPhoto(selectedFile);
       }
 
@@ -176,17 +183,22 @@ const Restituicao: React.FC = () => {
         color: formData.color,
         seiProcess: formData.seiProcess,
         imageUrl: uploadedImageUrl || formData.imageUrl,
-        chip: formData.chip, // Should be read-only in UI but included for consistency
+        chip: formData.chip,
+        observations: formData.observations, // General observations from animal
       };
 
+      console.log('Atualizando dados do animal (apreensoes)...', animalUpdates);
       await apreensoesService.updateApreensao(editingWorklistItem.animal_id, animalUpdates);
 
       // 3. Update Worklist (Worklist Restituicao Table)
-      await restituicaoService.update(editingWorklistItem.id, {
+      const worklistUpdates = {
         status: (formData as any).worklistStatus,
         observations: (formData as any).worklistObservations,
         contato_realizado: (formData as any).contato_realizado
-      });
+      };
+
+      console.log('Atualizando dados da worklist (restituicao)...', worklistUpdates);
+      await restituicaoService.update(editingWorklistItem.id, worklistUpdates);
 
       showNotification("Registro atualizado com sucesso!", "success");
       loadAnimals();
@@ -194,8 +206,8 @@ const Restituicao: React.FC = () => {
       setEditingWorklistItem(null);
       setSelectedFile(null);
     } catch (e: any) {
-      showNotification(`Erro ao salvar: ${e.message}`, "error");
-      console.error(e);
+      console.error('Erro ao salvar alterações:', e);
+      showNotification(`Erro ao salvar: ${e.message || 'Erro desconhecido'}`, "error");
     }
   };
 
@@ -467,12 +479,14 @@ const Restituicao: React.FC = () => {
 
           <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex justify-between items-center">
             <button
+              type="button"
               onClick={() => setIsFormOpen(false)}
               className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"
             >
               Cancelar
             </button>
             <button
+              type="button"
               onClick={handleSaveEdit}
               className="px-10 py-2.5 bg-gdf-blue text-white text-sm font-black rounded-lg hover:bg-gdf-blue-dark transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2"
             >
