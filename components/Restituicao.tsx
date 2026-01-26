@@ -149,7 +149,7 @@ const Restituicao: React.FC = () => {
       ...prev,
       worklistStatus: worklistItem.status,
       worklistObservations: worklistItem.observations,
-      contactMade: worklistItem.contact_made
+      contato_realizado: worklistItem.contato_realizado
     }));
 
     setSelectedGender(animal.gender || 'Macho');
@@ -185,7 +185,7 @@ const Restituicao: React.FC = () => {
       await restituicaoService.update(editingWorklistItem.id, {
         status: (formData as any).worklistStatus,
         observations: (formData as any).worklistObservations,
-        contact_made: (formData as any).contactMade
+        contato_realizado: (formData as any).contato_realizado
       });
 
       showNotification("Registro atualizado com sucesso!", "success");
@@ -249,17 +249,18 @@ const Restituicao: React.FC = () => {
 
       // Save all to Supabase
       const savePromises = animals.map(a => {
+        const animalData = a.animal || {};
         return saidasService.create({
-          chip: a.chip,
-          specie: a.specie,
-          gender: a.gender as any,
-          color: a.color,
+          chip: animalData.chip,
+          specie: animalData.specie,
+          gender: animalData.gender as any,
+          color: animalData.color,
           history: '',
-          observations: a.observations,
-          osNumber: a.osNumber,
+          observations: animalData.observations,
+          osNumber: animalData.osNumber,
           dateOut: batchExitDate,
           destination: batchDestinationType,
-          seiProcess: a.seiProcess || ''
+          seiProcess: animalData.seiProcess || ''
         });
       });
 
@@ -417,8 +418,8 @@ const Restituicao: React.FC = () => {
 
               <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mb-6 flex items-center justify-between">
                 <div className="flex items-center gap-3">
-                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${(formData as any).contactMade ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'}`}>
-                    <span className="material-symbols-outlined">{(formData as any).contactMade ? 'notifications_active' : 'notifications_off'}</span>
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${(formData as any).contato_realizado ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'}`}>
+                    <span className="material-symbols-outlined">{(formData as any).contato_realizado ? 'notifications_active' : 'notifications_off'}</span>
                   </div>
                   <div className="text-left">
                     <p className="text-sm font-black text-emerald-900 uppercase tracking-tight">Contato Realizado pelo Proprietário?</p>
@@ -427,11 +428,11 @@ const Restituicao: React.FC = () => {
                 </div>
                 <button
                   type="button"
-                  onClick={() => setFormData({ ...formData, contactMade: !(formData as any).contactMade } as any)}
-                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${(formData as any).contactMade ? 'bg-emerald-600' : 'bg-gray-300'}`}
+                  onClick={() => setFormData({ ...formData, contato_realizado: !(formData as any).contato_realizado } as any)}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${(formData as any).contato_realizado ? 'bg-emerald-600' : 'bg-gray-300'}`}
                 >
                   <span
-                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${(formData as any).contactMade ? 'translate-x-8' : 'translate-x-1'}`}
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${(formData as any).contato_realizado ? 'translate-x-8' : 'translate-x-1'}`}
                   />
                 </button>
               </div>
@@ -601,13 +602,15 @@ const Restituicao: React.FC = () => {
                       </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                      {row.contact_made ? (
-                        <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-1 rounded-full border border-emerald-200">
-                          <span className="material-symbols-outlined text-[14px]">check_circle</span>
+                      {row.contato_realizado ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 border border-green-200 text-[10px] font-black uppercase tracking-tight">
+                          <span className="material-symbols-outlined text-[14px]">phone_in_talk</span>
                           Contato Realizado
                         </span>
                       ) : (
-                        <span className="text-xs text-slate-400 font-medium">-</span>
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-400 border border-gray-200 text-[10px] font-bold uppercase tracking-tight">
+                          Pendente
+                        </span>
                       )}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{formatDate(animalData.date_in)}</td>

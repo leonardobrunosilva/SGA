@@ -53,7 +53,7 @@ export interface WorklistItem {
 }
 
 export interface WorklistRestituicao extends WorklistItem {
-  contact_made?: boolean;
+  contato_realizado?: boolean;
 }
 
 export interface WorklistOutros extends WorklistItem {
