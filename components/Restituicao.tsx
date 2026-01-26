@@ -28,6 +28,8 @@ const DESTINATION_OPTIONS = [
   'Outros'
 ];
 
+import { ORGAOS_LIST, RA_LIST, ESPECIES } from '../constants';
+
 const Restituicao: React.FC = () => {
   // --- STATE MANAGEMENT (BATCH FLOW) ---
   const [animals, setAnimals] = useState<any[]>([]);
@@ -52,17 +54,14 @@ const Restituicao: React.FC = () => {
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
   const [showEntrySelectionModal, setShowEntrySelectionModal] = useState(false);
 
-  // Edit Modal State
-  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
-  const [editingItem, setEditingItem] = useState<Animal | null>(null);
-
-  const editFields: FieldConfig[] = [
-    { name: 'chip', label: 'Chip', readOnly: true },
-    { name: 'specie', label: 'Espécie' },
-    { name: 'contactInitiated', label: 'Contato Realizado pelo Proprietário?', type: 'toggle' },
-    { name: 'status', label: 'Status', type: 'select', options: ENTRY_STATUS_OPTIONS },
-    { name: 'observations', label: 'Observações', type: 'textarea' },
-  ];
+  // Edit Form State (Robust)
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingWorklistItem, setEditingWorklistItem] = useState<any | null>(null);
+  const [formData, setFormData] = useState<Partial<Animal>>({});
+  const [selectedGender, setSelectedGender] = useState<'Macho' | 'Fêmea'>('Macho');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Footer state
   const [batchExitDate, setBatchExitDate] = useState('');
@@ -132,33 +131,71 @@ const Restituicao: React.FC = () => {
   };
 
   const handleEdit = (worklistItem: any) => {
-    const modalData = {
-      id: worklistItem.id,
-      chip: worklistItem.animal?.chip,
-      specie: worklistItem.animal?.specie,
-      gender: worklistItem.animal?.gender,
-      color: worklistItem.animal?.color,
-      status: worklistItem.status,
-      observations: worklistItem.observations,
-      contactInitiated: worklistItem.contact_made
-    };
-    setEditingItem(modalData);
-    setIsEditModalOpen(true);
+    const animal = worklistItem.animal || {};
+    setEditingWorklistItem(worklistItem);
+    setFormData({
+      ...animal,
+      id: animal.id,
+      chip: animal.chip,
+      specie: animal.specie,
+      gender: animal.gender,
+      color: animal.color,
+      seiProcess: animal.seiProcess || animal.sei_process,
+      observations: animal.observations,
+      imageUrl: animal.imageUrl || animal.image_url,
+    });
+    // Specific worklist fields stored in a separate temporary object or within formData
+    setFormData((prev: any) => ({
+      ...prev,
+      worklistStatus: worklistItem.status,
+      worklistObservations: worklistItem.observations,
+      contactMade: worklistItem.contact_made
+    }));
+
+    setSelectedGender(animal.gender || 'Macho');
+    setPhotoPreview(animal.imageUrl || animal.image_url);
+    setIsFormOpen(true);
   };
 
-  const handleSaveEdit = async (updatedItem: any) => {
+  const handleSaveEdit = async () => {
+    if (!editingWorklistItem) return;
+
     try {
-      await restituicaoService.update(updatedItem.id, {
-        status: updatedItem.status,
-        observations: updatedItem.observations,
-        contact_made: updatedItem.contactInitiated
+      showNotification("Salvando alterações...", "info");
+
+      // 1. Update Photo if needed
+      let uploadedImageUrl = '';
+      if (selectedFile) {
+        uploadedImageUrl = await apreensoesService.uploadPhoto(selectedFile);
+      }
+
+      // 2. Update Animal (Apreensões Table)
+      const animalUpdates: Partial<Animal> = {
+        specie: formData.specie,
+        gender: selectedGender,
+        color: formData.color,
+        seiProcess: formData.seiProcess,
+        imageUrl: uploadedImageUrl || formData.imageUrl,
+        chip: formData.chip, // Should be read-only in UI but included for consistency
+      };
+
+      await apreensoesService.updateApreensao(editingWorklistItem.animal_id, animalUpdates);
+
+      // 3. Update Worklist (Worklist Restituicao Table)
+      await restituicaoService.update(editingWorklistItem.id, {
+        status: (formData as any).worklistStatus,
+        observations: (formData as any).worklistObservations,
+        contact_made: (formData as any).contactMade
       });
+
       showNotification("Registro atualizado com sucesso!", "success");
       loadAnimals();
-      setIsEditModalOpen(false);
-      setEditingItem(null);
-    } catch (error: any) {
-      showNotification(`Erro ao atualizar: ${error.message}`, "error");
+      setIsFormOpen(false);
+      setEditingWorklistItem(null);
+      setSelectedFile(null);
+    } catch (e: any) {
+      showNotification(`Erro ao salvar: ${e.message}`, "error");
+      console.error(e);
     }
   };
 
@@ -245,6 +282,207 @@ const Restituicao: React.FC = () => {
   const currentAnimals = animals.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(animals.length / itemsPerPage);
   const handlePageChange = (page: number) => setCurrentPage(page);
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  if (isFormOpen) {
+    return (
+      <div className="flex flex-col gap-6 animate-fade-in max-w-4xl mx-auto pb-20">
+        <div className="flex items-center gap-4 mb-2">
+          <button
+            onClick={() => setIsFormOpen(false)}
+            className="p-2 rounded-full hover:bg-gray-100 text-slate-500 transition-colors"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div className="text-left">
+            <h2 className="text-2xl font-black tracking-tight text-slate-800">
+              Editando Animal (Restituição)
+            </h2>
+            <p className="text-slate-500 text-sm">
+              Atualize as informações do semovente e o status da restituição abaixo.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-8 space-y-8">
+            {/* Secção 1: Características do Animal */}
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">pets</span>
+                Características do Animal
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Chip (Identificação)</label>
+                  <input
+                    value={formData.chip || ''}
+                    readOnly
+                    className="w-full rounded-lg bg-gray-100 border border-gray-200 px-4 py-2.5 text-sm font-mono text-slate-500 outline-none"
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Espécie</label>
+                  <select
+                    value={formData.specie || ''}
+                    onChange={(e) => setFormData({ ...formData, specie: e.target.value })}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none transition-all"
+                  >
+                    {ESPECIES.map((esp) => (
+                      <option key={esp} value={esp}>{esp}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Sexo</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGender('Macho')}
+                      className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all border ${selectedGender === 'Macho'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-blue-50 border-blue-100 text-blue-700'
+                        }`}
+                    >
+                      Macho
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGender('Fêmea')}
+                      className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all border ${selectedGender === 'Fêmea'
+                        ? 'bg-pink-600 text-white border-pink-600'
+                        : 'bg-gray-50 border-gray-200 text-slate-500'
+                        }`}
+                    >
+                      Fêmea
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Pelagem / Cor</label>
+                  <input
+                    value={formData.color || ''}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none"
+                    placeholder="Ex: Alazã, Tordilho..."
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Processo SEI</label>
+                  <input
+                    value={formData.seiProcess || ''}
+                    onChange={(e) => setFormData({ ...formData, seiProcess: e.target.value })}
+                    className="w-full rounded-lg bg-gray-100 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none font-bold text-blue-800"
+                    placeholder="00000-00000000/0000-00"
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Foto do Semovente</label>
+                  <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
+                  {photoPreview ? (
+                    <div className="relative w-full h-10 group">
+                      <img src={photoPreview} alt="Preview" className="w-full h-full object-cover rounded-lg border border-primary" />
+                      <button onClick={() => setPhotoPreview(null)} className="absolute -top-2 -right-2 bg-red-500 text-white size-5 rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined text-[14px]">close</span></button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full rounded-lg border-2 border-dashed border-gray-200 py-2 text-xs text-slate-400 hover:bg-gray-50 hover:border-primary transition-all flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">add_a_photo</span>
+                      Alterar Imagem
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Secção 2: Status da Restituição */}
+            <div className="pt-8 border-t border-gray-100">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#059669] mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">rebase_edit</span>
+                Status e Fluxo de Restituição
+              </h3>
+
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${(formData as any).contactMade ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'}`}>
+                    <span className="material-symbols-outlined">{(formData as any).contactMade ? 'notifications_active' : 'notifications_off'}</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-black text-emerald-900 uppercase tracking-tight">Contato Realizado pelo Proprietário?</p>
+                    <p className="text-xs text-emerald-600 font-medium italic">Marque se o dono já entrou em contato para reaver o animal.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, contactMade: !(formData as any).contactMade } as any)}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${(formData as any).contactMade ? 'bg-emerald-600' : 'bg-gray-300'}`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${(formData as any).contactMade ? 'translate-x-8' : 'translate-x-1'}`}
+                  />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Status Atual (Worklist)</label>
+                  <select
+                    value={(formData as any).worklistStatus || ''}
+                    onChange={(e) => setFormData({ ...formData, worklistStatus: e.target.value } as any)}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none transition-all"
+                  >
+                    {ENTRY_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Observações da Restituição</label>
+                  <textarea
+                    rows={3}
+                    value={(formData as any).worklistObservations || ''}
+                    onChange={(e) => setFormData({ ...formData, worklistObservations: e.target.value } as any)}
+                    className="w-full rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:border-gdf-blue outline-none transition-all"
+                    placeholder="Informações sobre o proprietário, prazos, etc..."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex justify-between items-center">
+            <button
+              onClick={() => setIsFormOpen(false)}
+              className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSaveEdit}
+              className="px-10 py-2.5 bg-gdf-blue text-white text-sm font-black rounded-lg hover:bg-gdf-blue-dark transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              Salvar Alterações
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in pb-12">
@@ -527,16 +765,6 @@ const Restituicao: React.FC = () => {
           </div>
         </div>
       )}
-
-      {/* Edit Modal */}
-      <EditModal
-        isOpen={isEditModalOpen}
-        title="Editar Animal (Restituição)"
-        data={editingItem}
-        fields={editFields}
-        onClose={() => setIsEditModalOpen(false)}
-        onSave={handleSaveEdit}
-      />
     </div>
   );
 };
