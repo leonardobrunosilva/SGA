@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Animal } from '../types';
 import { calculateDays, formatDate } from '../utils';
 import { saidasService } from '../services/saidasService';
@@ -45,15 +45,27 @@ const Destinacoes: React.FC = () => {
     fetchHistory();
   }, []);
 
-  // Pagination
+  // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
-  const filteredAnimals = animals.filter(a => a.chip.includes(searchTerm) || a.specie.toLowerCase().includes(searchTerm.toLowerCase()));
 
+  // Lógica de Filtragem e Paginação con Reset
+  const filteredAnimals = useMemo(() => {
+    // Reset page on filter change
+    if (currentPage !== 1) setCurrentPage(1);
+
+    return animals.filter(a =>
+      a.chip.includes(searchTerm) ||
+      a.specie.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [animals, searchTerm]);
+
+  // Pagination Calculations
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentAnimals = filteredAnimals.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredAnimals.length / itemsPerPage);
+
   const handlePageChange = (page: number) => setCurrentPage(page);
 
   // View Details Modal State
@@ -161,9 +173,40 @@ const Destinacoes: React.FC = () => {
         <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200 flex justify-between items-center text-xs text-slate-500">
           <p>Exibindo <span className="font-bold text-slate-900">{filteredAnimals.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, filteredAnimals.length)}</span> de <span className="font-bold text-slate-900">{filteredAnimals.length}</span> registros</p>
           <div className="flex gap-1">
-            <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1} className="px-2 py-1 border rounded bg-white disabled:opacity-50">Anterior</button>
-            <span className="px-2 py-1">{currentPage} of {totalPages}</span>
-            <button onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages} className="px-2 py-1 border rounded bg-white disabled:opacity-50">Próximo</button>
+            <button
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+              className={`px-2 py-1 rounded border border-gray-200 bg-white transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+            >
+              Anterior
+            </button>
+
+            {[...Array(totalPages)].map((_, i) => {
+              const page = i + 1;
+              // Show first, last, current, and adjacent
+              if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                return (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`px-2 py-1 rounded border ${currentPage === page ? 'border-gdf-blue bg-gdf-blue text-white font-bold' : 'border-gray-200 bg-white hover:bg-gray-50 transition-colors'}`}
+                  >
+                    {page}
+                  </button>
+                );
+              } else if (page === currentPage - 2 || page === currentPage + 2) {
+                return <span key={page} className="px-1 text-slate-400">...</span>;
+              }
+              return null;
+            })}
+
+            <button
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              className={`px-2 py-1 rounded border border-gray-200 bg-white transition-colors ${currentPage === totalPages ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+            >
+              Próximo
+            </button>
           </div>
         </div>
       </div>
