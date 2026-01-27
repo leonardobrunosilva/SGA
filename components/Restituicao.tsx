@@ -205,7 +205,6 @@ const Restituicao: React.FC = () => {
       setSelectedFile(null);
     } catch (e: any) {
       console.error('Erro ao salvar:', e);
-      window.alert("Erro ao salvar: " + (e.message || 'Erro desconhecido'));
       showNotification(`Erro ao salvar: ${e.message || 'Erro desconhecido'}`, "error");
     } finally {
       setIsSaving(false);

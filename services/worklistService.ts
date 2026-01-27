@@ -40,7 +40,8 @@ const enrichWithAnimalData = async (worklistItems: any[]) => {
 const getWorklistItems = async (table: string) => {
     const { data, error } = await supabase
         .from(table)
-        .select('*'); // No JOIN here
+        .select('*')
+        .order('created_at', { ascending: true }); // Ensure stable sorting
 
     if (error) {
         console.error(`Erro ao buscar itens de ${table}:`, error);
