@@ -61,6 +61,7 @@ const Restituicao: React.FC = () => {
   const [selectedGender, setSelectedGender] = useState<'Macho' | 'Fêmea'>('Macho');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Footer state
@@ -165,6 +166,7 @@ const Restituicao: React.FC = () => {
     }
 
     try {
+      setIsSaving(true);
       showNotification("Salvando alterações...", "info");
 
       // 1. Update Photo if needed
@@ -207,6 +209,8 @@ const Restituicao: React.FC = () => {
     } catch (e: any) {
       console.error('Erro ao salvar alterações:', e);
       showNotification(`Erro ao salvar: ${e.message || 'Erro desconhecido'}`, "error");
+    } finally {
+      setIsSaving(false);
     }
   };
 
@@ -491,10 +495,13 @@ const Restituicao: React.FC = () => {
             <button
               type="button"
               onClick={handleSaveEdit}
-              className="px-10 py-2.5 bg-gdf-blue text-white text-sm font-black rounded-lg hover:bg-gdf-blue-dark transition-all shadow-lg shadow-blue-900/20 flex items-center gap-2"
+              disabled={isSaving}
+              className={`px-10 py-2.5 ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-gdf-blue hover:bg-gdf-blue-dark'} text-white text-sm font-black rounded-lg transition-all shadow-lg flex items-center gap-2`}
             >
-              <span className="material-symbols-outlined text-[18px]">save</span>
-              Salvar Alterações
+              <span className="material-symbols-outlined text-[18px]">
+                {isSaving ? 'sync' : 'save'}
+              </span>
+              {isSaving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>
         </div>
