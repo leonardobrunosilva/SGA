@@ -118,6 +118,38 @@ export const restituicaoService = {
 
         if (error) throw error;
     },
+    async completeRestituicao(worklistId: string, animalData: any, lowData: any) {
+        // 1. Create entry in destinacoes
+        const destinacaoPayload = {
+            animal_id: animalData.id,
+            chip: animalData.chip,
+            specie: animalData.specie,
+            gender: animalData.gender,
+            color: animalData.color,
+            date_out: lowData.exitDate,
+            sei_process: lowData.seiProcess,
+            status: 'Restituído',
+            receiver_name: lowData.receiverName,
+            receiver_cpf: lowData.receiverCpf,
+            auto_infracao: lowData.autoInfracao,
+            auto_apreensao: lowData.autoApreensao,
+            observations: lowData.observations
+        };
+
+        const { error: insertError } = await supabase
+            .from('destinacoes')
+            .insert([destinacaoPayload]);
+
+        if (insertError) throw insertError;
+
+        // 2. Remove from worklist
+        const { error: deleteError } = await supabase
+            .from('worklist_restituicao')
+            .delete()
+            .eq('id', worklistId);
+
+        if (deleteError) throw deleteError;
+    },
     async remove(id: string) {
         const { error } = await supabase.from('worklist_restituicao').delete().eq('id', id);
         if (error) throw error;

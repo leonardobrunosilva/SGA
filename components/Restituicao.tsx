@@ -64,9 +64,19 @@ const Restituicao: React.FC = () => {
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Footer state
-  const [batchExitDate, setBatchExitDate] = useState('');
-  const [batchDestinationType, setBatchDestinationType] = useState(DESTINATION_OPTIONS[0]);
+  // Footer state (Section 3 - Baixa)
+  const [searchChipBaixa, setSearchChipBaixa] = useState('');
+  const [selectedForBaixa, setSelectedForBaixa] = useState<any | null>(null);
+  const [isBaixaModalOpen, setIsBaixaModalOpen] = useState(false);
+  const [baixaFormData, setBaixaFormData] = useState({
+    exitDate: new Date().toISOString().split('T')[0],
+    receiverName: '',
+    receiverCpf: '',
+    autoInfracao: '',
+    autoApreensao: '',
+    observations: '',
+    seiProcess: ''
+  });
 
   // --- NOTIFICATION HANDLER ---
 
@@ -246,49 +256,60 @@ const Restituicao: React.FC = () => {
     }
   };
 
-  const handleBatchSave = async () => {
-    if (animals.length === 0) {
-      showNotification("A lista está vazia.", "info");
+  const handleSearchChipBaixa = () => {
+    if (!searchChipBaixa.trim()) {
+      showNotification("Digite o chip para buscar na lista.", "info");
       return;
     }
-    if (!batchExitDate) {
-      showNotification("Informe a Data da Saída/Restituição.", "info");
+
+    const found = animals.find(a => a.animal?.chip === searchChipBaixa.trim());
+    if (found) {
+      setSelectedForBaixa(found);
+      setBaixaFormData(prev => ({ ...prev, seiProcess: found.animal?.seiProcess || found.animal?.sei_process || '' }));
+      showNotification("Animal localizado na lista!", "success");
+    } else {
+      setSelectedForBaixa(null);
+      showNotification("Animal não encontrado nesta lista de Restituição.", "error");
+    }
+  };
+
+  const handleCompleteBaixa = async () => {
+    if (!selectedForBaixa) return;
+    if (!baixaFormData.exitDate) {
+      showNotification("A data de saída é obrigatória.", "error");
       return;
     }
 
     try {
-      showNotification("Salvando no banco de dados...", "info");
+      setIsSaving(true);
+      showNotification("Processando baixa...", "info");
 
-      // Save all to Supabase
-      const savePromises = animals.map(a => {
-        const animalData = a.animal || {};
-        return saidasService.create({
-          chip: animalData.chip,
-          specie: animalData.specie,
-          gender: animalData.gender as any,
-          color: animalData.color,
-          history: '',
-          observations: animalData.observations,
-          osNumber: animalData.osNumber,
-          dateOut: batchExitDate,
-          destination: batchDestinationType,
-          seiProcess: animalData.seiProcess || ''
-        });
-      });
+      await restituicaoService.completeRestituicao(
+        selectedForBaixa.id,
+        selectedForBaixa.animal,
+        baixaFormData
+      );
 
-      await Promise.all(savePromises);
-
-      // Remove all processed items from the worklist
-      const removePromises = animals.map(a => restituicaoService.remove(a.id));
-      await Promise.all(removePromises);
-
-      setAnimals([]); // This clears the state
-      setBatchExitDate('');
-      showNotification(`${animals.length} registros salvos no banco de dados e removidos da lista de preparação!`, "success");
-    } catch (e) {
-      showNotification("Erro ao salvar no banco de dados.", "error");
-      console.error(e);
+      showNotification("Restituição realizada com sucesso!", "success");
+      setIsBaixaModalOpen(false);
+      setSelectedForBaixa(null);
+      setSearchChipBaixa('');
+      loadAnimals();
+    } catch (e: any) {
+      console.error('Erro na baixa:', e);
+      showNotification(`Erro ao concluir baixa: ${e.message || 'Erro desconhecido'}`, "error");
+    } finally {
+      setIsSaving(false);
     }
+  };
+
+  const formatCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
   };
 
   // Pagination
@@ -714,45 +735,246 @@ const Restituicao: React.FC = () => {
         )}
       </div>
 
-      {/* Step 3: Footer (Register Exit) */}
-      <div className="fixed bottom-0 left-0 md:left-64 right-0 bg-white border-t border-gray-200 p-6 shadow-2xl z-50 flex flex-col md:flex-row justify-between items-center gap-4">
-        <div className="flex items-center gap-4">
-          <div className="bg-blue-50 p-3 rounded-full text-blue-600"><span className="material-symbols-outlined">event_available</span></div>
-          <div>
-            <h4 className="font-bold text-slate-800">3. Registrar Saída</h4>
-            <p className="text-xs text-slate-500">Defina a data para baixar todo o lote acima.</p>
+      {/* Step 3: Registration Exit Search Bar */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-lg mb-20">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-gdf-blue p-3 rounded-full text-white shadow-md">
+              <span className="material-symbols-outlined">output</span>
+            </div>
+            <div className="text-left">
+              <h4 className="font-black text-slate-800 text-lg">3. Registrar Saída (Baixa)</h4>
+              <p className="text-xs text-slate-500 font-medium">Busque pelo chip para processar a baixa individualmente.</p>
+            </div>
           </div>
-        </div>
-        <div className="flex items-center gap-4 w-full md:w-auto">
-          <div className="flex flex-col">
-            <label className="text-[10px] uppercase font-bold text-slate-500 mb-1">Data da Restituicao</label>
-            <input
-              type="date"
-              value={batchExitDate}
-              onChange={(e) => setBatchExitDate(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-gdf-blue"
-            />
-          </div>
-          <div className="flex flex-col">
-            <label className="text-[10px] uppercase font-bold text-slate-500 mb-1">Tipo de Destinação</label>
-            <select
-              value={batchDestinationType}
-              onChange={(e) => setBatchDestinationType(e.target.value)}
-              className="border border-gray-300 rounded-lg px-3 py-2 text-sm outline-none focus:border-gdf-blue min-w-[200px]"
+
+          <div className="flex-1 flex gap-2 w-full max-w-md">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Digitar CHIP para Baixa..."
+                value={searchChipBaixa}
+                onChange={(e) => setSearchChipBaixa(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearchChipBaixa()}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-gdf-blue outline-none transition-all font-mono"
+              />
+              <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400">search</span>
+            </div>
+            <button
+              onClick={handleSearchChipBaixa}
+              className="bg-gdf-blue hover:bg-gdf-blue-dark text-white p-3 rounded-xl shadow-lg transition-all"
             >
-              {DESTINATION_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
-            </select>
+              <span className="material-symbols-outlined font-black">arrow_forward</span>
+            </button>
           </div>
-          <button
-            onClick={handleBatchSave}
-            disabled={animals.length === 0}
-            className="flex-1 md:flex-none px-8 py-3 bg-green-600 hover:bg-green-700 disabled:opacity-50 disabled:cursor-not-allowed text-white font-black rounded-lg shadow-lg shadow-green-900/20 transition-all flex items-center justify-center gap-2"
-          >
-            <span className="material-symbols-outlined">check_circle</span>
-            Concluir Baixa
-          </button>
         </div>
+
+        {/* Selected Animal Summary Card */}
+        {selectedForBaixa && (
+          <div className="mt-6 animate-fade-in">
+            <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50 border border-slate-200 rounded-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-2">
+                <button
+                  onClick={() => setSelectedForBaixa(null)}
+                  className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+
+              <div className="w-24 h-24 rounded-2xl bg-cover bg-center border-4 border-white shadow-sm"
+                style={{ backgroundImage: `url(${selectedForBaixa.animal?.image_url || getImageUrl(0)})` }}
+              ></div>
+
+              <div className="flex-1 text-left grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chip</span>
+                  <span className="font-mono text-sm font-bold text-slate-700">{selectedForBaixa.animal?.chip}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Espécie</span>
+                  <span className="text-sm font-bold text-slate-800">{selectedForBaixa.animal?.specie}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Entrada</span>
+                  <span className="text-sm font-medium text-slate-600">{formatDate(selectedForBaixa.animal?.date_in)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Atual</span>
+                  <span className="text-sm font-bold text-blue-600 uppercase italic">{selectedForBaixa.status}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsBaixaModalOpen(true)}
+                className="w-full md:w-auto px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-black rounded-xl shadow-xl shadow-green-900/20 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined">exit_to_app</span>
+                Iniciar Baixa
+              </button>
+            </div>
+          </div>
+        )}
       </div>
+
+      {/* NEW: Modal de Baixa */}
+      {isBaixaModalOpen && selectedForBaixa && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden flex flex-col relative">
+            {/* Header */}
+            <div className="p-8 border-b border-gray-100 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
+              <div className="flex items-center gap-4 text-left">
+                <div className="bg-green-500 p-3 rounded-2xl text-white shadow-lg">
+                  <span className="material-symbols-outlined">task_alt</span>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Registro de Restituição</h3>
+                  <p className="text-sm text-slate-500 font-medium">Finalizando processo para o CHIP: <span className="font-mono font-bold text-primary">{selectedForBaixa.animal?.chip}</span></p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBaixaModalOpen(false)}
+                className="p-2 rounded-full hover:bg-gray-200 text-slate-400 transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-8 space-y-6 text-left">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Basic Info */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Data de Saída *</label>
+                  <input
+                    type="date"
+                    required
+                    value={baixaFormData.exitDate}
+                    onChange={(e) => setBaixaFormData({ ...baixaFormData, exitDate: e.target.value })}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Processo SEI</label>
+                  <input
+                    type="text"
+                    value={baixaFormData.seiProcess}
+                    onChange={(e) => setBaixaFormData({ ...baixaFormData, seiProcess: e.target.value })}
+                    placeholder="00000-00000000/0000-00"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-blue-800 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Status Final</label>
+                  <select
+                    disabled
+                    className="w-full rounded-xl border border-gray-200 bg-gray-200 px-4 py-3 text-sm text-slate-600 outline-none cursor-not-allowed font-bold"
+                  >
+                    <option>Restituído</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Reciever Info */}
+              <div className="pt-6 border-t border-gray-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Dados do Proprietário / Recebedor</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">Nome Completo</label>
+                    <input
+                      type="text"
+                      value={baixaFormData.receiverName}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, receiverName: e.target.value })}
+                      placeholder="Nome do Proprietário"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">CPF</label>
+                    <input
+                      type="text"
+                      maxLength={14}
+                      value={baixaFormData.receiverCpf}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, receiverCpf: formatCPF(e.target.value) })}
+                      placeholder="000.000.000-00"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Docs Info */}
+              <div className="pt-6 border-t border-gray-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Documentação de Baixa</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">Auto de Infração nº</label>
+                    <input
+                      type="text"
+                      value={baixaFormData.autoInfracao}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, autoInfracao: e.target.value })}
+                      placeholder="Nº do Auto"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">Auto de Apreensão nº</label>
+                    <input
+                      type="text"
+                      value={baixaFormData.autoApreensao}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, autoApreensao: e.target.value })}
+                      placeholder="Nº do Auto"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Observações Complementares</label>
+                <textarea
+                  rows={2}
+                  value={baixaFormData.observations}
+                  onChange={(e) => setBaixaFormData({ ...baixaFormData, observations: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all resize-none"
+                  placeholder="Informações adicionais sobre o ato de restituição..."
+                ></textarea>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-8 border-t border-gray-100 bg-gray-50 flex justify-end items-center sticky bottom-0 z-10">
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsBaixaModalOpen(false)}
+                  className="px-8 py-3 text-slate-500 font-bold hover:text-slate-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCompleteBaixa}
+                  disabled={isSaving}
+                  className={`px-10 py-3 ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'} text-white font-black rounded-xl shadow-xl shadow-green-900/20 transition-all flex items-center gap-2`}
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                      Concluir Baixa
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Modal Multi Entries */}
       {showEntrySelectionModal && (
