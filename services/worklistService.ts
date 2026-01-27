@@ -102,26 +102,21 @@ export const restituicaoService = {
         const enriched = await enrichWithAnimalData([data]);
         return enriched[0];
     },
-    async update(id: string, updates: any) {
-        const dbPayload: any = {};
-        if (updates.status !== undefined) dbPayload.status = updates.status;
-        if (updates.observations !== undefined) dbPayload.observacoes = updates.observations;
-        if (updates.observacoes !== undefined) dbPayload.observacoes = updates.observacoes;
-        if (updates.contato_realizado !== undefined) dbPayload.contato_realizado = updates.contato_realizado;
-        if (updates.seiProcess !== undefined) dbPayload.processo_sei = updates.seiProcess;
-        if (updates.processo_sei !== undefined) dbPayload.processo_sei = updates.processo_sei;
+    async update(id: string, data: any) {
+        // Strict mapping to database columns
+        const payload = {
+            observacoes: data.observacoes,
+            contato_realizado: !!data.contato_realizado, // Ensure boolean
+            processo_sei: data.processo_sei,
+            status: data.status
+        };
 
-        const { data, error } = await supabase
+        const { error } = await supabase
             .from('worklist_restituicao')
-            .update(dbPayload)
-            .eq('id', id)
-            .select('*')
-            .single();
+            .update(payload)
+            .eq('id', id);
 
         if (error) throw error;
-
-        const enriched = await enrichWithAnimalData([data]);
-        return enriched[0];
     },
     async remove(id: string) {
         const { error } = await supabase.from('worklist_restituicao').delete().eq('id', id);

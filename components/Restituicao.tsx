@@ -169,14 +169,14 @@ const Restituicao: React.FC = () => {
       setIsSaving(true);
       showNotification("Salvando alterações...", "info");
 
-      // 1. Update Photo if needed
+      // 1. Update Photo if needed (Keep functionality)
       let uploadedImageUrl = '';
       if (selectedFile) {
         console.log('Subindo nova foto...');
         uploadedImageUrl = await apreensoesService.uploadPhoto(selectedFile);
       }
 
-      // 2. Update Animal (Apreensões Table)
+      // 2. Update Animal (Apreensões Table) - Keep synced
       const animalUpdates: Partial<Animal> = {
         specie: formData.specie,
         gender: selectedGender,
@@ -186,20 +186,18 @@ const Restituicao: React.FC = () => {
         chip: formData.chip,
         observations: formData.observations,
       };
-
-      console.log('Atualizando dados do animal (apreensoes)...', animalUpdates);
       await apreensoesService.updateApreensao(editingWorklistItem.animal_id, animalUpdates);
 
-      // 3. Update Worklist (Worklist Restituicao Table)
-      const worklistUpdates = {
+      // 3. Update Worklist (Worklist Restituicao Table) - CRITICAL REFECTOR
+      const worklistPayload = {
         status: (formData as any).worklistStatus,
-        observations: (formData as any).worklistObservations,
+        observacoes: (formData as any).worklistObservations,
         contato_realizado: !!(formData as any).contato_realizado,
-        seiProcess: formData.seiProcess // This will be mapped to processo_sei in the service
+        processo_sei: formData.seiProcess
       };
 
-      console.log('Atualizando dados da worklist (restituicao)...', worklistUpdates);
-      await restituicaoService.update(editingWorklistItem.id, worklistUpdates);
+      console.log('Chamando update da worklist com ID:', editingWorklistItem.id, 'Payload:', worklistPayload);
+      await restituicaoService.update(editingWorklistItem.id, worklistPayload);
 
       showNotification("Registro atualizado com sucesso!", "success");
       loadAnimals();
@@ -207,7 +205,8 @@ const Restituicao: React.FC = () => {
       setEditingWorklistItem(null);
       setSelectedFile(null);
     } catch (e: any) {
-      console.error('Erro ao salvar alterações:', e);
+      console.error('Erro ao salvar:', e);
+      window.alert("Erro ao salvar: " + (e.message || 'Erro desconhecido'));
       showNotification(`Erro ao salvar: ${e.message || 'Erro desconhecido'}`, "error");
     } finally {
       setIsSaving(false);
