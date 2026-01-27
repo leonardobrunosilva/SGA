@@ -108,7 +108,6 @@ export const apreensoesService = {
     async updateApreensao(id: string, animal: Partial<Animal>) {
         const dbPayload: any = {};
         if (animal.chip !== undefined) dbPayload.chip = animal.chip;
-        // if (animal.name !== undefined) dbPayload.name = animal.name; // removed
         if (animal.specie !== undefined) dbPayload.specie = animal.specie;
         if (animal.breed !== undefined) dbPayload.breed = animal.breed;
         if (animal.gender !== undefined) dbPayload.gender = animal.gender;
@@ -124,6 +123,7 @@ export const apreensoesService = {
         if (animal.mapsUrl !== undefined) dbPayload.maps_url = animal.mapsUrl;
         if (animal.daysIn !== undefined) dbPayload.days_in = animal.daysIn;
         if (animal.classification !== undefined) dbPayload.classification = animal.classification;
+        if (animal.seiProcess !== undefined) dbPayload.sei_process = animal.seiProcess;
 
         const { data, error } = await supabase
             .from('apreensoes')

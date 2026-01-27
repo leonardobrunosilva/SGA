@@ -67,10 +67,7 @@ const Restituicao: React.FC = () => {
   const [batchExitDate, setBatchExitDate] = useState('');
   const [batchDestinationType, setBatchDestinationType] = useState(DESTINATION_OPTIONS[0]);
 
-  // --- PERSISTENCE LOGIC ---
-  React.useEffect(() => {
-    localStorage.setItem('restituicoes_working_list', JSON.stringify(animals));
-  }, [animals]);
+  // --- NOTIFICATION HANDLER ---
 
 
   // Notifications
@@ -278,9 +275,13 @@ const Restituicao: React.FC = () => {
 
       await Promise.all(savePromises);
 
+      // Remove all processed items from the worklist
+      const removePromises = animals.map(a => restituicaoService.remove(a.id));
+      await Promise.all(removePromises);
+
       setAnimals([]); // This clears the state
       setBatchExitDate('');
-      showNotification(`${animals.length} registros salvos no banco de dados!`, "success");
+      showNotification(`${animals.length} registros salvos no banco de dados e removidos da lista de preparação!`, "success");
     } catch (e) {
       showNotification("Erro ao salvar no banco de dados.", "error");
       console.error(e);
