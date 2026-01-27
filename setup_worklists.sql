@@ -15,7 +15,7 @@ CREATE TABLE IF NOT EXISTS worklist_restituicao (
     animal_id UUID NOT NULL REFERENCES apreensoes(id) ON DELETE CASCADE,
     status TEXT NOT NULL DEFAULT 'Disponível',
     observations TEXT,
-    contact_made BOOLEAN DEFAULT FALSE,
+    contato_realizado BOOLEAN DEFAULT FALSE,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL,
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT timezone('utc'::text, now()) NOT NULL
 );
