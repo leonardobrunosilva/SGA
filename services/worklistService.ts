@@ -104,11 +104,10 @@ export const restituicaoService = {
     },
     async update(id: string, data: any) {
         // Strict mapping to database columns
-        const payload = {
-            observacoes: data.observacoes,
-            contato_realizado: !!data.contato_realizado, // Ensure boolean
-            processo_sei: data.processo_sei,
-            status: data.status
+        const payload: any = {
+            status: data.status,
+            observations: data.observations, // Corrected column name
+            contato_realizado: !!data.contato_realizado // Ensure boolean
         };
 
         const { error } = await supabase

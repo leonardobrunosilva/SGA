@@ -191,9 +191,8 @@ const Restituicao: React.FC = () => {
       // 3. Update Worklist (Worklist Restituicao Table) - CRITICAL REFECTOR
       const worklistPayload = {
         status: (formData as any).worklistStatus,
-        observacoes: (formData as any).worklistObservations,
-        contato_realizado: !!(formData as any).contato_realizado,
-        processo_sei: formData.seiProcess
+        observations: (formData as any).worklistObservations, // Correct column: observations
+        contato_realizado: !!(formData as any).contato_realizado
       };
 
       console.log('Chamando update da worklist com ID:', editingWorklistItem.id, 'Payload:', worklistPayload);
