@@ -155,7 +155,8 @@ const Restituicao: React.FC = () => {
   };
 
   const handleSaveEdit = async () => {
-    console.log('Tentando salvar alterações...', { editingWorklistItem, formData });
+    console.log('ID para Update:', editingWorklistItem?.id);
+    console.log('Dados Enviados (Animal):', formData);
 
     if (!editingWorklistItem || !editingWorklistItem.id) {
       console.error('Erro: ID do item da worklist não encontrado no estado.');
@@ -181,7 +182,7 @@ const Restituicao: React.FC = () => {
         seiProcess: formData.seiProcess,
         imageUrl: uploadedImageUrl || formData.imageUrl,
         chip: formData.chip,
-        observations: formData.observations, // General observations from animal
+        observations: formData.observations,
       };
 
       console.log('Atualizando dados do animal (apreensoes)...', animalUpdates);
@@ -191,7 +192,8 @@ const Restituicao: React.FC = () => {
       const worklistUpdates = {
         status: (formData as any).worklistStatus,
         observations: (formData as any).worklistObservations,
-        contato_realizado: (formData as any).contato_realizado
+        contato_realizado: !!(formData as any).contato_realizado,
+        seiProcess: formData.seiProcess // This will be mapped to processo_sei in the service
       };
 
       console.log('Atualizando dados da worklist (restituicao)...', worklistUpdates);

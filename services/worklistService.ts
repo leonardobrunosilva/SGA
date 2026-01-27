@@ -102,10 +102,18 @@ export const restituicaoService = {
         const enriched = await enrichWithAnimalData([data]);
         return enriched[0];
     },
-    async update(id: string, updates: Partial<WorklistRestituicao>) {
+    async update(id: string, updates: any) {
+        const dbPayload: any = {};
+        if (updates.status !== undefined) dbPayload.status = updates.status;
+        if (updates.observations !== undefined) dbPayload.observacoes = updates.observations;
+        if (updates.observacoes !== undefined) dbPayload.observacoes = updates.observacoes;
+        if (updates.contato_realizado !== undefined) dbPayload.contato_realizado = updates.contato_realizado;
+        if (updates.seiProcess !== undefined) dbPayload.processo_sei = updates.seiProcess;
+        if (updates.processo_sei !== undefined) dbPayload.processo_sei = updates.processo_sei;
+
         const { data, error } = await supabase
             .from('worklist_restituicao')
-            .update(updates)
+            .update(dbPayload)
             .eq('id', id)
             .select('*')
             .single();
