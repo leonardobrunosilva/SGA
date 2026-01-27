@@ -119,26 +119,26 @@ export const restituicaoService = {
         if (error) throw error;
     },
     async completeRestituicao(worklistId: string, animalData: any, lowData: any) {
-        // 1. Create entry in destinacoes
-        const destinacaoPayload = {
-            animal_id: animalData.id,
+        // 1. Create entry in saidas (Destinations history)
+        const saidaPayload = {
             chip: animalData.chip,
             specie: animalData.specie,
             gender: animalData.gender,
             color: animalData.color,
             date_out: lowData.exitDate,
             sei_process: lowData.seiProcess,
-            status: 'Restituído',
+            destination: lowData.status || 'Restituído',
             receiver_name: lowData.receiverName,
             receiver_cpf: lowData.receiverCpf,
             auto_infracao: lowData.autoInfracao,
             auto_apreensao: lowData.autoApreensao,
-            observations: lowData.observations
+            observations: lowData.observations,
+            history: 'Baixa via Restituição'
         };
 
         const { error: insertError } = await supabase
-            .from('destinacoes')
-            .insert([destinacaoPayload]);
+            .from('saidas')
+            .insert([saidaPayload]);
 
         if (insertError) throw insertError;
 

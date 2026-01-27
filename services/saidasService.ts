@@ -13,6 +13,10 @@ export interface Saida {
     dateOut: string;
     destination: string;
     seiProcess: string;
+    receiverName?: string;
+    receiverCpf?: string;
+    autoInfracao?: string;
+    autoApreensao?: string;
     createdAt?: string;
 }
 
@@ -24,7 +28,11 @@ export const saidasService = {
         *,
         osNumber:os_number,
         dateOut:date_out,
-        seiProcess:sei_process
+        seiProcess:sei_process,
+        receiverName:receiver_name,
+        receiverCpf:receiver_cpf,
+        autoInfracao:auto_infracao,
+        autoApreensao:auto_apreensao
       `)
             .order('date_out', { ascending: false });
 
@@ -43,7 +51,11 @@ export const saidasService = {
         *,
         osNumber:os_number,
         dateOut:date_out,
-        seiProcess:sei_process
+        seiProcess:sei_process,
+        receiverName:receiver_name,
+        receiverCpf:receiver_cpf,
+        autoInfracao:auto_infracao,
+        autoApreensao:auto_apreensao
       `)
             .eq('chip', chip)
             .order('date_out', { ascending: false });
@@ -63,7 +75,11 @@ export const saidasService = {
         *,
         osNumber:os_number,
         dateOut:date_out,
-        seiProcess:sei_process
+        seiProcess:sei_process,
+        receiverName:receiver_name,
+        receiverCpf:receiver_cpf,
+        autoInfracao:auto_infracao,
+        autoApreensao:auto_apreensao
       `)
             .eq('destination', destination)
             .order('date_out', { ascending: false });
@@ -87,7 +103,11 @@ export const saidasService = {
             os_number: saida.osNumber,
             date_out: saida.dateOut,
             destination: saida.destination,
-            sei_process: saida.seiProcess
+            sei_process: saida.seiProcess,
+            receiver_name: saida.receiverName,
+            receiver_cpf: saida.receiverCpf,
+            auto_infracao: saida.autoInfracao,
+            auto_apreensao: saida.autoApreensao
         };
 
         const { data, error } = await supabase

@@ -75,7 +75,8 @@ const Restituicao: React.FC = () => {
     autoInfracao: '',
     autoApreensao: '',
     observations: '',
-    seiProcess: ''
+    seiProcess: '',
+    status: 'Restituído'
   });
 
   // --- NOTIFICATION HANDLER ---
@@ -291,9 +292,22 @@ const Restituicao: React.FC = () => {
       );
 
       showNotification("Restituição realizada com sucesso!", "success");
+
+      // RESET AND CLOSE
       setIsBaixaModalOpen(false);
       setSelectedForBaixa(null);
       setSearchChipBaixa('');
+      setBaixaFormData({
+        exitDate: new Date().toISOString().split('T')[0],
+        receiverName: '',
+        receiverCpf: '',
+        autoInfracao: '',
+        autoApreensao: '',
+        observations: '',
+        seiProcess: '',
+        status: 'Restituído'
+      });
+
       loadAnimals();
     } catch (e: any) {
       console.error('Erro na baixa:', e);
@@ -867,10 +881,13 @@ const Restituicao: React.FC = () => {
                 <div className="flex flex-col gap-2">
                   <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Status Final</label>
                   <select
-                    disabled
-                    className="w-full rounded-xl border border-gray-200 bg-gray-200 px-4 py-3 text-sm text-slate-600 outline-none cursor-not-allowed font-bold"
+                    value={baixaFormData.status}
+                    onChange={(e) => setBaixaFormData({ ...baixaFormData, status: e.target.value })}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold"
                   >
-                    <option>Restituído</option>
+                    {DESTINATION_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
                   </select>
                 </div>
               </div>
