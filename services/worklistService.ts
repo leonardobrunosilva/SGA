@@ -81,6 +81,37 @@ export const adocaoService = {
         const enriched = await enrichWithAnimalData([data]);
         return enriched[0];
     },
+    async completeAdocao(worklistId: string, animalData: any, formData: any) {
+        // 1. Create entry in saidas (History)
+        const saidaPayload = {
+            chip: animalData.chip,
+            specie: animalData.specie,
+            gender: animalData.gender,
+            color: animalData.color,
+            date_out: new Date().toISOString().split('T')[0],
+            sei_process: formData.seiProcess,
+            destination: formData.status || 'Adoção',
+            receiver_name: formData.adotanteNome,
+            receiver_cpf: formData.adotanteCpf,
+            termo_adocao: formData.termoAdocao,
+            observations: formData.observations,
+            history: 'Processo de Adoção concluído'
+        };
+
+        const { error: insertError } = await supabase
+            .from('saidas')
+            .insert([saidaPayload]);
+
+        if (insertError) throw insertError;
+
+        // 2. Remove from worklist
+        const { error: deleteError } = await supabase
+            .from('worklist_adocao')
+            .delete()
+            .eq('id', worklistId);
+
+        if (deleteError) throw deleteError;
+    },
     async remove(id: string) {
         const { error } = await supabase.from('worklist_adocao').delete().eq('id', id);
         if (error) throw error;

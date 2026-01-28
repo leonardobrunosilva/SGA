@@ -98,6 +98,19 @@ const Adocao: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
+  // --- ADOPTION PROCESS MODAL STATE ---
+  const [isAdocaoProcessModalOpen, setIsAdocaoProcessModalOpen] = useState(false);
+  const [selectedForProcess, setSelectedForProcess] = useState<any>(null);
+  const [adocaoFormData, setAdocaoFormData] = useState({
+    status: 'Adotado',
+    seiProcess: '',
+    termoAdocao: '',
+    adotanteNome: '',
+    adotanteCpf: '',
+    observations: ''
+  });
+  const [isSaving, setIsSaving] = useState(false);
+
   const [timeFilter, setTimeFilter] = useState<'Semanal' | 'Mensal' | 'Anual'>('Mensal');
 
   const getCurrentChartData = () => {
@@ -249,6 +262,67 @@ const Adocao: React.FC = () => {
     }
   };
 
+  const handleOpenProcess = (item: any) => {
+    // If it's a worklist item, it has .animal and .id (worklist id)
+    // If it's a search result, it has the animal data directly
+    const animalData = item.animal || item;
+    const worklistId = item.animal ? item.id : null;
+
+    setSelectedForProcess({
+      animal: animalData,
+      worklistId: worklistId
+    });
+
+    setAdocaoFormData({
+      status: 'Adotado',
+      seiProcess: '',
+      termoAdocao: '',
+      adotanteNome: '',
+      adotanteCpf: '',
+      observations: item.observations || ''
+    });
+
+    setIsAdocaoProcessModalOpen(true);
+  };
+
+  const handleFinalizeAdocao = async () => {
+    if (!selectedForProcess) return;
+    if (!adocaoFormData.adotanteNome || !adocaoFormData.adotanteCpf || !adocaoFormData.seiProcess || !adocaoFormData.termoAdocao) {
+      showNotification("Por favor, preencha todos os campos obrigatórios.", "error");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      showNotification("Processando adoção...", "info");
+
+      // 1. If not in worklist, we might need a dummy ID or handle it specially.
+      // But the user flow says "Ao buscar e encontrar... exiba card... ao clicar... abra modal".
+      // If the animal is NOT in the worklist, adocaoService.completeAdocao will try to DELETE from worklist_adocao.
+      // If worklistId is null, the DELETE will just not find anything, which is fine if supabase doesn't error.
+      // However, it's safer to only DELETE if worklistId exists.
+
+      // Let's call the service
+      await adocaoService.completeAdocao(
+        selectedForProcess.worklistId,
+        selectedForProcess.animal,
+        adocaoFormData
+      );
+
+      showNotification("Adoção realizada com sucesso!", "success");
+      setIsAdocaoProcessModalOpen(false);
+      setSelectedForProcess(null);
+      loadAnimals();
+      // Also increment adoptedCount locally for immediate feedback
+      setAdoptedCount(prev => prev + 1);
+    } catch (e: any) {
+      console.error(e);
+      showNotification(`Erro ao finalizar adoção: ${e.message}`, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   // --- KPI CALCULATIONS ---
   const kpiAvailable = animals.length;
   const kpiAdopted = adoptedCount;
@@ -321,144 +395,11 @@ const Adocao: React.FC = () => {
         </div>
       </div>
 
-      {/* --- RESTORED VISUAL COMPONENT (DETAILS) --- */}
-      <section className="bg-white rounded-xl border border-gray-200 p-8 shadow-sm text-left animate-fade-in">
-        {/* 1. Header Search */}
-        <div className="mb-8">
-          <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">BUSCAR ANIMAL</label>
-          <div className="flex flex-col md:flex-row gap-4">
-            <div className="flex-1 relative">
-              <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                <span className="material-symbols-outlined text-gray-400">qr_code_scanner</span>
-              </div>
-              <input
-                className="block w-full pl-10 pr-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-900 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-green-500/20 focus:border-green-500 transition-all font-mono"
-                placeholder="982000001248"
-                defaultValue="982000001248"
-                readOnly
-              />
-            </div>
-            <button className="px-8 py-3 bg-green-500 hover:bg-green-600 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-green-500/20">
-              <span className="material-symbols-outlined">search</span>
-              Consultar
-            </button>
-          </div>
-        </div>
-
-        {/* 2. Main Area Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
-          {/* Left Col: Profile */}
-          <div className="lg:col-span-4 flex flex-col gap-6">
-            <div className="relative aspect-[4/3] rounded-2xl overflow-hidden group shadow-lg border border-gray-100">
-              <img
-                src="https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop"
-                className="object-cover w-full h-full transform group-hover:scale-105 transition-transform duration-500"
-                alt="Soberano"
-              />
-              <div className="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-md uppercase">
-                APTO PARA ADOÇÃO
-              </div>
-            </div>
-            <div>
-              <h2 className="text-3xl font-black text-gray-900 leading-none">Soberano</h2>
-              <p className="text-gray-500 font-medium mt-2">Equino • Macho • Alazã</p>
-            </div>
-          </div>
-
-          {/* Right Col: Details & History */}
-          <div className="lg:col-span-8 flex flex-col gap-8">
-            {/* 4 Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* Health */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-green-100 text-green-600"><span className="material-symbols-outlined">medical_services</span></div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-black uppercase">Exames Sanitários</p>
-                  <p className="text-gray-900 font-bold text-sm">AIE & Mormo Negativos</p>
-                </div>
-                <div className="ml-auto"><span className="material-symbols-outlined text-green-500 text-sm">check_circle</span></div>
-              </div>
-              {/* Vaccination */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-green-100 text-green-600"><span className="material-symbols-outlined">vaccines</span></div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-black uppercase">Vacinação</p>
-                  <p className="text-gray-900 font-bold text-sm">Influenza & Tétano: OK</p>
-                </div>
-                <div className="ml-auto"><span className="material-symbols-outlined text-green-500 text-sm">check_circle</span></div>
-              </div>
-              {/* Manejo */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-blue-100 text-blue-600"><span className="material-symbols-outlined">content_cut</span></div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-black uppercase">Manejo</p>
-                  <p className="text-gray-900 font-bold text-sm">Castrado / Ferrageado</p>
-                </div>
-                <div className="ml-auto"><span className="material-symbols-outlined text-blue-500 text-sm">schedule</span></div>
-              </div>
-              {/* Temperamento */}
-              <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
-                <div className="p-2 rounded-lg bg-purple-100 text-purple-600"><span className="material-symbols-outlined">psychology</span></div>
-                <div>
-                  <p className="text-[10px] text-gray-400 font-black uppercase">Temperamento</p>
-                  <p className="text-gray-900 font-bold text-sm">Manso de Sela</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Timeline */}
-            <div className="bg-gray-50 p-6 rounded-xl border border-gray-100">
-              <h4 className="text-sm font-black text-gray-900 mb-5 uppercase tracking-wide">Histórico de Apreensão</h4>
-              <ul className="space-y-4">
-                <li className="flex gap-4 text-sm items-center">
-                  <span className="text-gray-400 w-20 shrink-0 font-black text-[11px] uppercase tracking-tighter">10 OUT</span>
-                  <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0"></div>
-                  <span className="text-gray-600 font-medium">Recolhimento em via pública (DF-001).</span>
-                </li>
-                <li className="flex gap-4 text-sm items-center">
-                  <span className="text-gray-400 w-20 shrink-0 font-black text-[11px] uppercase tracking-tighter">11 OUT</span>
-                  <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0"></div>
-                  <span className="text-gray-600 font-medium">Coleta de sangue para exame de AIE e Mormo.</span>
-                </li>
-                <li className="flex gap-4 text-sm items-center">
-                  <span className="text-gray-400 w-20 shrink-0 font-black text-[11px] uppercase tracking-tighter">12 OUT</span>
-                  <div className="w-2 h-2 rounded-full bg-gray-300 shrink-0"></div>
-                  <span className="text-gray-600 font-medium">Resenha realizada e Chip implantado (#001248).</span>
-                </li>
-              </ul>
-            </div>
-          </div>
-        </div>
-
-        {/* 3. Footer Actions */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-10 mt-10 pt-8 border-t border-gray-100 items-center">
-          <div className="lg:col-span-4">
-            <div className="p-4 bg-orange-50 border border-orange-100 rounded-xl flex items-center gap-3">
-              <span className="material-symbols-outlined text-orange-500">timer</span>
-              <div>
-                <p className="text-orange-600 font-black text-[10px] uppercase tracking-wider leading-none mb-1">Prazo de Apreensão</p>
-                <p className="text-gray-600 text-sm">Restam <span className="font-black text-gray-900">5 dias</span> para Restituir.</p>
-              </div>
-            </div>
-          </div>
-          <div className="lg:col-span-8 flex gap-4 h-full">
-            <button className="flex-1 px-6 py-4 border border-red-200 text-red-500 hover:bg-red-50 text-xs rounded-xl font-black transition-all flex items-center justify-center gap-2 uppercase">
-              <span className="material-symbols-outlined text-[20px]">block</span>
-              Cancelar Processo
-            </button>
-            <button className="flex-[2] px-6 py-4 bg-green-500 hover:bg-green-600 text-white text-xs rounded-xl font-black transition-all shadow-lg shadow-green-500/20 flex items-center justify-center gap-2 uppercase">
-              <span className="material-symbols-outlined text-[20px]">check</span>
-              Iniciar Adoção
-            </button>
-          </div>
-        </div>
-      </section>
-
       {/* Insertion Card */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-visible">
         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">add_circle</span>
-          Nova Inclusão
+          Nova Inclusão / Iniciar Processo
         </h3>
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 w-full relative">
@@ -475,10 +416,9 @@ const Adocao: React.FC = () => {
                 <span className="material-symbols-outlined">search</span>
               </button>
             </div>
-            {foundEntry && <span className="absolute top-full left-0 mt-1 text-[10px] text-green-600 font-bold whitespace-nowrap">Encontrado: {foundEntry['Espécie']} ({foundEntry['Sexo']})</span>}
           </div>
           <div className="w-full md:w-64">
-            <label className="text-xs font-bold text-gray-500 mb-1 block">Status Inicial</label>
+            <label className="text-xs font-bold text-gray-500 mb-1 block">Status Inicial (para inclusão)</label>
             <select
               value={newStatus}
               onChange={(e) => setNewStatus(e.target.value)}
@@ -492,9 +432,38 @@ const Adocao: React.FC = () => {
             className="w-full md:w-auto px-8 py-2.5 bg-slate-900 hover:bg-slate-700 text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg"
           >
             <span className="material-symbols-outlined">add</span>
-            Incluir
+            Incluir na Lista
           </button>
         </div>
+
+        {/* Found Entry Summary Card */}
+        {foundEntry && (
+          <div className="mt-6 p-4 bg-green-50 border border-green-200 rounded-xl flex flex-col md:flex-row items-center gap-6 animate-fade-in-up">
+            <div className="h-16 w-16 rounded-full overflow-hidden border-2 border-white shadow-sm shrink-0">
+              <img src={getImageUrl(0)} className="w-full h-full object-cover" alt="Preview" />
+            </div>
+            <div className="flex-1 text-center md:text-left">
+              <p className="text-xs font-black text-green-700 uppercase tracking-widest">Animal Encontrado</p>
+              <h4 className="text-xl font-black text-slate-800">{foundEntry['Espécie']} • {foundEntry['Sexo']}</h4>
+              <p className="text-sm text-slate-500 font-mono">{foundEntry.chip}</p>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={() => setFoundEntry(null)}
+                className="px-4 py-2 border border-green-200 text-green-700 font-bold rounded-lg hover:bg-green-100 transition-all text-xs"
+              >
+                Limpar
+              </button>
+              <button
+                onClick={() => handleOpenProcess(foundEntry)}
+                className="px-6 py-2 bg-green-500 text-white font-black rounded-lg hover:bg-green-600 transition-all text-xs shadow-md shadow-green-500/20 flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">rocket_launch</span>
+                Abrir Processo de Adoção
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Table */}
@@ -548,8 +517,8 @@ const Adocao: React.FC = () => {
                     </td>
                     <td className="px-6 py-4 text-right">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => showNotification("Visualizar - Em breve", "info")} className="p-1.5 text-gray-400 hover:text-blue-600 rounded-full hover:bg-blue-50">
-                          <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        <button onClick={() => handleOpenProcess(row)} className="p-1.5 text-blue-400 hover:text-blue-600 rounded-full hover:bg-blue-50" title="Processo de Adoção">
+                          <span className="material-symbols-outlined text-[22px]">rocket_launch</span>
                         </button>
                         <button onClick={() => handleEdit(row)} className="p-1.5 text-gray-400 hover:text-orange-600 rounded-full hover:bg-orange-50">
                           <span className="material-symbols-outlined text-[20px]">edit</span>
@@ -775,6 +744,202 @@ const Adocao: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveEdit}
       />
+      {/* Adoption Process Modal */}
+      {isAdocaoProcessModalOpen && selectedForProcess && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-6xl w-full my-8 relative flex flex-col max-h-[90vh]">
+            {/* Header */}
+            <div className="px-8 py-6 border-b border-gray-100 flex justify-between items-center bg-gray-50/50 rounded-t-2xl sticky top-0 z-10">
+              <div>
+                <h3 className="text-2xl font-black text-slate-800 uppercase tracking-tight">Processo de Adoção</h3>
+                <p className="text-xs text-slate-500 font-bold tracking-widest mt-1">FINALIZAÇÃO E TERMO DE RESPONSABILIDADE</p>
+              </div>
+              <button
+                onClick={() => setIsAdocaoProcessModalOpen(false)}
+                className="size-10 rounded-full hover:bg-gray-200 flex items-center justify-center text-gray-400 transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Body */}
+            <div className="p-8 overflow-y-auto custom-scrollbar">
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-10">
+                {/* Left Col: Profile */}
+                <div className="lg:col-span-4 flex flex-col gap-6">
+                  <div className="relative aspect-[4/3] rounded-2xl overflow-hidden group shadow-lg border border-gray-100">
+                    <img
+                      src={getImageUrl(0)}
+                      className="object-cover w-full h-full"
+                      alt="Animal"
+                    />
+                    <div className="absolute top-4 right-4 bg-green-500 text-white text-[10px] font-black px-3 py-1 rounded-full shadow-md uppercase">
+                      {selectedForProcess.animal.status || 'APTO PARA ADOÇÃO'}
+                    </div>
+                  </div>
+                  <div>
+                    <h2 className="text-3xl font-black text-gray-900 leading-none">{selectedForProcess.animal.breed || 'Animal'}</h2>
+                    <p className="text-gray-500 font-medium mt-2">{selectedForProcess.animal.specie} • {selectedForProcess.animal.gender} • {selectedForProcess.animal.color}</p>
+                    <p className="text-lg font-mono font-bold text-primary mt-2">{selectedForProcess.animal.chip}</p>
+                  </div>
+                </div>
+
+                {/* Right Col: Details & Form */}
+                <div className="lg:col-span-8 flex flex-col gap-8">
+                  {/* Details Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                      <div className="p-2 rounded-lg bg-green-100 text-green-600"><span className="material-symbols-outlined">medical_services</span></div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-black uppercase">Exames Sanitários</p>
+                        <p className="text-gray-900 font-bold text-sm">AIE & Mormo Negativos</p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                      <div className="p-2 rounded-lg bg-green-100 text-green-600"><span className="material-symbols-outlined">vaccines</span></div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-black uppercase">Vacinação</p>
+                        <p className="text-gray-900 font-bold text-sm">Atualizada</p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                      <div className="p-2 rounded-lg bg-blue-100 text-blue-600"><span className="material-symbols-outlined">content_cut</span></div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-black uppercase">Manejo</p>
+                        <p className="text-gray-900 font-bold text-sm">Castrado / Ferrageado</p>
+                      </div>
+                    </div>
+                    <div className="bg-gray-50 p-4 rounded-xl border border-gray-100 flex items-center gap-4">
+                      <div className="p-2 rounded-lg bg-purple-100 text-purple-600"><span className="material-symbols-outlined">psychology</span></div>
+                      <div>
+                        <p className="text-[10px] text-gray-400 font-black uppercase">Temperamento</p>
+                        <p className="text-gray-900 font-bold text-sm">Dócil / Manso</p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Adoption Form Section */}
+                  <div className="bg-slate-50 p-6 rounded-2xl border-2 border-primary/20 shadow-inner">
+                    <h4 className="text-sm font-black text-slate-800 mb-6 uppercase tracking-widest flex items-center gap-2">
+                      <span className="material-symbols-outlined text-primary">assignment_ind</span>
+                      Formulário de Finalização
+                    </h4>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="md:col-span-1">
+                        <label className="text-[10px] font-black text-gray-400 uppercase">Status Final</label>
+                        <select
+                          value={adocaoFormData.status}
+                          onChange={(e) => setAdocaoFormData({ ...adocaoFormData, status: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                        >
+                          <option value="Adotado">Adotado</option>
+                          <option value="Leilão">Leilão (Venda)</option>
+                          <option value="Outros">Outros</option>
+                        </select>
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase">Processo SEI</label>
+                        <input
+                          type="text"
+                          placeholder="00010-000..."
+                          value={adocaoFormData.seiProcess}
+                          onChange={(e) => setAdocaoFormData({ ...adocaoFormData, seiProcess: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase">Termo de Adoção Nº</label>
+                        <input
+                          type="text"
+                          placeholder="Ex: 2024/001"
+                          value={adocaoFormData.termoAdocao}
+                          onChange={(e) => setAdocaoFormData({ ...adocaoFormData, termoAdocao: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                        />
+                      </div>
+                      <div className="md:col-span-2 grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                          <label className="text-[10px] font-black text-gray-400 uppercase">Nome do Adotante</label>
+                          <input
+                            type="text"
+                            placeholder="Nome Completo"
+                            value={adocaoFormData.adotanteNome}
+                            onChange={(e) => setAdocaoFormData({ ...adocaoFormData, adotanteNome: e.target.value })}
+                            className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[10px] font-black text-gray-400 uppercase">CPF do Adotante</label>
+                          <input
+                            type="text"
+                            placeholder="000.000.000-00"
+                            value={adocaoFormData.adotanteCpf}
+                            onChange={(e) => setAdocaoFormData({ ...adocaoFormData, adotanteCpf: e.target.value })}
+                            className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                          />
+                        </div>
+                      </div>
+                      <div className="md:col-span-2">
+                        <label className="text-[10px] font-black text-gray-400 uppercase">Observações Adicionais</label>
+                        <textarea
+                          rows={2}
+                          value={adocaoFormData.observations}
+                          onChange={(e) => setAdocaoFormData({ ...adocaoFormData, observations: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2 text-sm font-medium focus:ring-2 focus:ring-primary outline-none resize-none"
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Timeline */}
+                  <div className="bg-gray-100/50 p-6 rounded-xl border border-dashed border-gray-300">
+                    <h4 className="text-xs font-black text-gray-500 mb-5 uppercase tracking-widest">Registros de Entrada</h4>
+                    <ul className="space-y-4">
+                      <li className="flex gap-4 text-xs items-center">
+                        <span className="text-gray-400 w-24 shrink-0 font-black uppercase">{formatDate(selectedForProcess.animal.date_in)}</span>
+                        <div className="w-2 h-2 rounded-full bg-primary shrink-0"></div>
+                        <span className="text-gray-600 font-bold">Entrada registrada via SEI {selectedForProcess.animal.os_number || '-'}.</span>
+                      </li>
+                      <li className="flex gap-4 text-xs items-center">
+                        <span className="text-gray-400 w-24 shrink-0 font-black uppercase">STATUS</span>
+                        <div className="w-2 h-2 rounded-full bg-gray-400 shrink-0"></div>
+                        <span className="text-gray-600 font-bold">Animal {selectedForProcess.animal.status || 'Disponível'} no pátio.</span>
+                      </li>
+                    </ul>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer */}
+            <div className="px-8 py-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-6 bg-gray-50/50 lg:rounded-b-2xl">
+              <div className="flex items-center gap-4 bg-orange-100/50 px-4 py-2 rounded-xl border border-orange-200">
+                <span className="material-symbols-outlined text-orange-500 text-2xl">timer</span>
+                <div>
+                  <p className="text-orange-700 font-black text-[10px] uppercase leading-none mb-1">Prazo de Apreensão</p>
+                  <p className="text-gray-700 text-xs font-bold">Animal apto para destinação.</p>
+                </div>
+              </div>
+              <div className="flex gap-4 w-full md:w-auto h-12">
+                <button
+                  onClick={() => setIsAdocaoProcessModalOpen(false)}
+                  className="flex-1 md:w-32 px-6 bg-white border border-gray-200 text-gray-500 hover:bg-gray-100 rounded-xl font-black text-xs transition-all uppercase"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleFinalizeAdocao}
+                  disabled={isSaving}
+                  className="flex-[2] md:w-48 px-8 bg-black hover:bg-slate-800 text-white rounded-xl font-black text-xs transition-all shadow-lg flex items-center justify-center gap-2 uppercase disabled:opacity-50"
+                >
+                  <span className="material-symbols-outlined text-[20px]">{isSaving ? 'sync' : 'verified'}</span>
+                  {isSaving ? 'Finalizando...' : 'Finalizar Adoção'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
