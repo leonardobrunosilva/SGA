@@ -291,31 +291,33 @@ const Adocao: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-        <div className="bg-orange-50 p-3 rounded-full text-orange-600">
-          <span className="material-symbols-outlined text-2xl">gavel</span>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="bg-orange-50 p-3 rounded-full text-orange-600">
+            <span className="material-symbols-outlined text-2xl">gavel</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400">Aptos para Adoção</p>
+            <p className="text-2xl font-black text-gray-800">{kpiAptos}</p>
+          </div>
         </div>
-        <div>
-          <p className="text-[10px] uppercase font-bold text-gray-400">Aptos para Adoção</p>
-          <p className="text-2xl font-black text-gray-800">{kpiAptos}</p>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="bg-green-50 p-3 rounded-full text-green-600">
+            <span className="material-symbols-outlined text-2xl">check_circle</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400">Total de Doações</p>
+            <p className="text-2xl font-black text-gray-800">{kpiAdopted}</p>
+          </div>
         </div>
-      </div>
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-        <div className="bg-green-50 p-3 rounded-full text-green-600">
-          <span className="material-symbols-outlined text-2xl">check_circle</span>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase font-bold text-gray-400">Total de Doações</p>
-          <p className="text-2xl font-black text-gray-800">{kpiAdopted}</p>
-        </div>
-      </div>
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-        <div className="bg-blue-50 p-3 rounded-full text-blue-600">
-          <span className="material-symbols-outlined text-2xl">pets</span>
-        </div>
-        <div>
-          <p className="text-[10px] uppercase font-bold text-gray-400">Disponíveis para Adoção</p>
-          <p className="text-2xl font-black text-gray-800">{kpiAvailable}</p>
+        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+          <div className="bg-blue-50 p-3 rounded-full text-blue-600">
+            <span className="material-symbols-outlined text-2xl">pets</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400">Disponíveis para Adoção</p>
+            <p className="text-2xl font-black text-gray-800">{kpiAvailable}</p>
+          </div>
         </div>
       </div>
 
