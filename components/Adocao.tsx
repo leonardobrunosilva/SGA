@@ -52,6 +52,17 @@ const ADOPTION_STATUS_OPTIONS = [
   'Experimento'
 ];
 
+const FINAL_STATUS_OPTIONS = [
+  { label: 'Adotado', color: '#0f734c' },
+  { label: 'Eutanásia', color: '#b10709' },
+  { label: 'Outros', color: '#593287' },
+  { label: 'Furto', color: '#ffcfc9' },
+  { label: 'Óbito', color: '#d5765c' },
+  { label: 'AIE+', color: '#e5cff3' },
+  { label: 'Mormo', color: '#bfe1f7' },
+  { label: 'Raiva', color: '#205b6d' },
+];
+
 const Adocao: React.FC = () => {
   // --- STATE WITH PERSISTENCE ---
   const [animals, setAnimals] = useState<any[]>([]);
@@ -837,9 +848,11 @@ const Adocao: React.FC = () => {
                           onChange={(e) => setAdocaoFormData({ ...adocaoFormData, status: e.target.value })}
                           className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
                         >
-                          <option value="Adotado">Adotado</option>
-                          <option value="Leilão">Leilão (Venda)</option>
-                          <option value="Outros">Outros</option>
+                          {FINAL_STATUS_OPTIONS.map(opt => (
+                            <option key={opt.label} value={opt.label} style={{ color: opt.color, fontWeight: 'bold' }}>
+                              {opt.label}
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div>
