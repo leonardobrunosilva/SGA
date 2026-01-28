@@ -5,6 +5,7 @@ import { calculateDays, formatDate } from '../utils';
 import { supabase } from '../supabaseClient';
 import { apreensoesService } from '../services/apreensoesService';
 import { adocaoService } from '../services/worklistService';
+import { saidasService } from '../services/saidasService';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import EditModal, { FieldConfig } from './EditModal';
 
@@ -107,20 +108,18 @@ const Adocao: React.FC = () => {
     }
   };
 
-  // Load Adopted Count
+  // Load Total Adoptions from Saidas
   useEffect(() => {
-    const fetchAdopted = async () => {
+    const fetchAdoptedCount = async () => {
       try {
-        const { count } = await supabase
-          .from('saidas')
-          .select('*', { count: 'exact', head: true })
-          .or('destination.ilike.*ado*,destination.ilike.*leilão*');
-        setAdoptedCount(count || 0);
+        const allSaidas = await saidasService.getAll();
+        const adoptionTotal = allSaidas.filter(s => s.destination === 'Adoção').length;
+        setAdoptedCount(adoptionTotal);
       } catch (e) {
-        console.error(e);
+        console.error('Erro ao buscar total de doações:', e);
       }
     };
-    fetchAdopted();
+    fetchAdoptedCount();
   }, []);
 
   // --- HELPERS ---
@@ -253,8 +252,21 @@ const Adocao: React.FC = () => {
   // --- KPI CALCULATIONS ---
   const kpiAvailable = animals.length;
   const kpiAdopted = adoptedCount;
-  // Keep original logic for "Aptos" (Was hardcoded 12 in previous file, we will keep static or logic if it existed, looking at previous it was hardcoded)
-  const kpiAptos = 12;
+  const kpiAptos = animals.filter(a => a.status === 'Disponível').length;
+
+  const getStatusStyle = (status: string) => {
+    switch (status) {
+      case 'Disponível': return { backgroundColor: '#d4edbd', color: '#111814' };
+      case 'Escolhido': return { backgroundColor: '#753802', color: '#ffffff' };
+      case 'Em tratamento': return { backgroundColor: '#ffcfc9', color: '#111814' };
+      case 'HVET': return { backgroundColor: '#593287', color: '#ffffff' };
+      case 'HVET EX': return { backgroundColor: '#e8eaed', color: '#5f6368' };
+      case 'Adotado': return { backgroundColor: '#0f734c', color: '#ffffff' };
+      case 'Sem Exame': return { backgroundColor: '#ffc8a8', color: '#111814' };
+      case 'Experimento': return { backgroundColor: '#f00aae', color: '#ffffff' };
+      default: return { backgroundColor: '#f3f4f6', color: '#6b7280' };
+    }
+  };
 
   // --- PAGINATION LOGIC ---
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -279,33 +291,31 @@ const Adocao: React.FC = () => {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="bg-blue-50 p-3 rounded-full text-blue-600">
-            <span className="material-symbols-outlined text-2xl">pets</span>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-bold text-gray-400">Disponíveis para Adoção</p>
-            <p className="text-2xl font-black text-gray-800">{kpiAvailable}</p>
-          </div>
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+        <div className="bg-orange-50 p-3 rounded-full text-orange-600">
+          <span className="material-symbols-outlined text-2xl">gavel</span>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="bg-green-50 p-3 rounded-full text-green-600">
-            <span className="material-symbols-outlined text-2xl">check_circle</span>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-bold text-gray-400">Adoções Concluídas</p>
-            <p className="text-2xl font-black text-gray-800">{kpiAdopted}</p>
-          </div>
+        <div>
+          <p className="text-[10px] uppercase font-bold text-gray-400">Aptos para Adoção</p>
+          <p className="text-2xl font-black text-gray-800">{kpiAptos}</p>
         </div>
-        <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
-          <div className="bg-orange-50 p-3 rounded-full text-orange-600">
-            <span className="material-symbols-outlined text-2xl">gavel</span>
-          </div>
-          <div>
-            <p className="text-[10px] uppercase font-bold text-gray-400">Aptos para Adoção</p>
-            <p className="text-2xl font-black text-gray-800">{kpiAptos}</p>
-          </div>
+      </div>
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+        <div className="bg-green-50 p-3 rounded-full text-green-600">
+          <span className="material-symbols-outlined text-2xl">check_circle</span>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase font-bold text-gray-400">Total de Doações</p>
+          <p className="text-2xl font-black text-gray-800">{kpiAdopted}</p>
+        </div>
+      </div>
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
+        <div className="bg-blue-50 p-3 rounded-full text-blue-600">
+          <span className="material-symbols-outlined text-2xl">pets</span>
+        </div>
+        <div>
+          <p className="text-[10px] uppercase font-bold text-gray-400">Disponíveis para Adoção</p>
+          <p className="text-2xl font-black text-gray-800">{kpiAvailable}</p>
         </div>
       </div>
 
@@ -527,7 +537,10 @@ const Adocao: React.FC = () => {
                       })()}
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 rounded-md bg-blue-50 text-blue-700 text-xs font-bold border border-blue-100">
+                      <span
+                        className="px-2 py-1 rounded-md text-[10px] font-bold uppercase transition-all"
+                        style={getStatusStyle(row.status)}
+                      >
                         {row.status}
                       </span>
                     </td>
