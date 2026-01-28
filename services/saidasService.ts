@@ -179,5 +179,17 @@ export const saidasService = {
         });
 
         return activeChips;
+    },
+
+    async delete(id: string) {
+        const { error } = await supabase
+            .from('saidas')
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error('Erro ao excluir saída:', error);
+            throw error;
+        }
     }
 };

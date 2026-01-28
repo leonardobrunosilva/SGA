@@ -12,38 +12,38 @@ const Destinacoes: React.FC = () => {
 
   // Initial Load - from Supabase saidas table
   useEffect(() => {
-    const fetchHistory = async () => {
-      try {
-        const data = await saidasService.getAll();
-
-        // Map saidas to Animal objects
-        const history: Animal[] = data.map((saida: any) => ({
-          id: saida.id,
-          specie: saida.specie || 'Semovente',
-          chip: saida.chip,
-          dateIn: formatDate(saida.dateIn),
-          exitDate: formatDate(saida.dateOut),
-          origin: saida.origin || '-',
-          gender: saida.gender || '-',
-          breed: saida.color || '-',
-          color: saida.color || '-',
-          status: saida.destination || 'Outros',
-          seiProcess: saida.seiProcess || '-',
-          osNumber: saida.osNumber || '-',
-          imageUrl: `https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop`,
-          daysIn: calculateDays(saida.dateIn, saida.dateOut),
-          observations: saida.observations || '',
-          organ: saida.organ || '-'
-        }));
-
-        setAnimals(history);
-      } catch (e) {
-        console.error('Erro ao carregar histórico:', e);
-      }
-    };
-
-    fetchHistory();
+    loadHistory();
   }, []);
+
+  const loadHistory = async () => {
+    try {
+      const data = await saidasService.getAll();
+
+      // Map saidas to Animal objects
+      const history: Animal[] = data.map((saida: any) => ({
+        id: saida.id,
+        specie: saida.specie || 'Semovente',
+        chip: saida.chip,
+        dateIn: formatDate(saida.dateIn),
+        exitDate: formatDate(saida.dateOut),
+        origin: saida.origin || '-',
+        gender: saida.gender || '-',
+        breed: saida.color || '-',
+        color: saida.color || '-',
+        status: saida.destination || 'Outros',
+        seiProcess: saida.seiProcess || '-',
+        osNumber: saida.osNumber || '-',
+        imageUrl: `https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop`,
+        daysIn: calculateDays(saida.dateIn, saida.dateOut),
+        observations: saida.observations || '',
+        organ: saida.organ || '-'
+      }));
+
+      setAnimals(history);
+    } catch (e) {
+      console.error('Erro ao carregar histórico:', e);
+    }
+  };
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -71,6 +71,19 @@ const Destinacoes: React.FC = () => {
   // View Details Modal State
   const [viewingAnimal, setViewingAnimal] = useState<Animal | null>(null);
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+
+  const handleDelete = async (id: string) => {
+    if (window.confirm("Tem certeza que deseja excluir este registro de destinação? A ação não pode ser desfeita.")) {
+      try {
+        await saidasService.delete(id);
+        alert("Registro excluído com sucesso!");
+        loadHistory();
+      } catch (error: any) {
+        console.error(error);
+        alert(`Erro ao excluir: ${error.message || "Tente novamente."}`);
+      }
+    }
+  };
 
   return (
     <div className="flex flex-col gap-8 animate-fade-in pb-12">
@@ -161,6 +174,13 @@ const Destinacoes: React.FC = () => {
                       </button>
                       <button className="text-gray-400 hover:text-orange-600 transition-colors p-1.5 rounded-full hover:bg-gray-100" title="Editar">
                         <span className="material-symbols-outlined text-[20px]">edit</span>
+                      </button>
+                      <button
+                        onClick={() => handleDelete(animal.id)}
+                        className="text-gray-400 hover:text-red-500 hover:bg-red-50 transition-colors p-1.5 rounded-full"
+                        title="Excluir"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
                       </button>
                     </div>
                   </td>
