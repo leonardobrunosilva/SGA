@@ -105,6 +105,7 @@ const Adocao: React.FC = () => {
     status: 'Adotado',
     seiProcess: '',
     termoAdocao: '',
+    dataAdocao: new Date().toISOString().split('T')[0],
     adotanteNome: '',
     adotanteCpf: '',
     observations: ''
@@ -277,6 +278,7 @@ const Adocao: React.FC = () => {
       status: 'Adotado',
       seiProcess: '',
       termoAdocao: '',
+      dataAdocao: new Date().toISOString().split('T')[0],
       adotanteNome: '',
       adotanteCpf: '',
       observations: item.observations || ''
@@ -287,7 +289,7 @@ const Adocao: React.FC = () => {
 
   const handleFinalizeAdocao = async () => {
     if (!selectedForProcess) return;
-    if (!adocaoFormData.adotanteNome || !adocaoFormData.adotanteCpf || !adocaoFormData.seiProcess || !adocaoFormData.termoAdocao) {
+    if (!adocaoFormData.adotanteNome || !adocaoFormData.adotanteCpf || !adocaoFormData.seiProcess || !adocaoFormData.termoAdocao || !adocaoFormData.dataAdocao) {
       showNotification("Por favor, preencha todos os campos obrigatórios.", "error");
       return;
     }
@@ -844,6 +846,15 @@ const Adocao: React.FC = () => {
                           placeholder="00010-000..."
                           value={adocaoFormData.seiProcess}
                           onChange={(e) => setAdocaoFormData({ ...adocaoFormData, seiProcess: e.target.value })}
+                          className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
+                        />
+                      </div>
+                      <div>
+                        <label className="text-[10px] font-black text-gray-400 uppercase">Data de Adoção</label>
+                        <input
+                          type="date"
+                          value={adocaoFormData.dataAdocao}
+                          onChange={(e) => setAdocaoFormData({ ...adocaoFormData, dataAdocao: e.target.value })}
                           className="w-full bg-white border border-gray-200 rounded-lg px-4 py-2.5 text-sm font-bold focus:ring-2 focus:ring-primary outline-none"
                         />
                       </div>

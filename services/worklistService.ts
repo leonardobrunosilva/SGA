@@ -88,7 +88,7 @@ export const adocaoService = {
             specie: animalData.specie,
             gender: animalData.gender,
             color: animalData.color,
-            date_out: new Date().toISOString().split('T')[0],
+            date_out: formData.dataAdocao || new Date().toISOString().split('T')[0],
             sei_process: formData.seiProcess,
             destination: formData.status || 'Adoção',
             receiver_name: formData.adotanteNome,
