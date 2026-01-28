@@ -267,7 +267,10 @@ const Adocao: React.FC = () => {
     // If it's a worklist item, it has .animal and .id (worklist id)
     // If it's a search result, it has the animal data directly
     const animalData = item.animal || item;
-    const worklistId = item.animal ? item.id : null;
+
+    // Find if this animal is already in the worklist to get its worklist ID
+    const worklistItem = item.animal ? item : animals.find(a => a.animal_id === animalData.id);
+    const worklistId = worklistItem ? worklistItem.id : null;
 
     setSelectedForProcess({
       animal: animalData,

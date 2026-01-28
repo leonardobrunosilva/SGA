@@ -104,13 +104,15 @@ export const adocaoService = {
 
         if (insertError) throw insertError;
 
-        // 2. Remove from worklist
-        const { error: deleteError } = await supabase
-            .from('worklist_adocao')
-            .delete()
-            .eq('id', worklistId);
+        // 2. Remove from worklist (only if it exists there)
+        if (worklistId) {
+            const { error: deleteError } = await supabase
+                .from('worklist_adocao')
+                .delete()
+                .eq('id', worklistId);
 
-        if (deleteError) throw deleteError;
+            if (deleteError) throw deleteError;
+        }
     },
     async remove(id: string) {
         const { error } = await supabase.from('worklist_adocao').delete().eq('id', id);
