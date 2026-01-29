@@ -42,6 +42,19 @@ const Prontuario: React.FC = () => {
   const [destinacao, setDestinacao] = useState('');
   const [dataExame, setDataExame] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
+  const [examResults, setExamResults] = useState([{ exam: '', result: '' }]);
+
+  const addExamRow = () => setExamResults([...examResults, { exam: '', result: '' }]);
+  const removeExamRow = (index: number) => {
+    if (examResults.length > 1) {
+      setExamResults(examResults.filter((_, i) => i !== index));
+    }
+  };
+  const updateExamRow = (index: number, field: 'exam' | 'result', value: string) => {
+    const newResults = [...examResults];
+    newResults[index][field] = value;
+    setExamResults(newResults);
+  };
 
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -127,6 +140,7 @@ const Prontuario: React.FC = () => {
     setDestinacao('');
     setDataExame('');
     setSelectedFiles(null);
+    setExamResults([{ exam: '', result: '' }]);
     if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
@@ -299,10 +313,10 @@ const Prontuario: React.FC = () => {
               </div>
             </div>
 
-            {/* Data e Anexos */}
+            {/* Data e Resultados dos Exames */}
             <div className="flex flex-col md:flex-row gap-6">
               <div className="flex flex-col gap-2 w-full md:w-1/3">
-                <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Data do Exame (AIE/Mormo)</label>
+                <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Data do Exame</label>
                 <input
                   value={dataExame}
                   onChange={(e) => setDataExame(e.target.value)}
@@ -311,27 +325,84 @@ const Prontuario: React.FC = () => {
                 />
               </div>
               <div className="flex flex-col gap-2 w-full md:w-2/3">
-                <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Anexos (Resenha/Fotos/GTA)</label>
-                <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} />
-                <div onClick={handleFileButtonClick} className="border-2 border-dashed border-gray-300 hover:border-primary bg-gray-50 rounded-lg p-4 flex items-center justify-center gap-4 cursor-pointer transition-colors group">
-                  <div className="size-10 rounded-full bg-white border border-gray-200 flex items-center justify-center group-hover:bg-primary/20 transition-colors">
-                    <span className="material-symbols-outlined text-gray-400 group-hover:text-primary">cloud_upload</span>
-                  </div>
-                  <div className="flex flex-col">
-                    <span className="text-sm text-gray-700 font-bold">
-                      {selectedFiles && selectedFiles.length > 0 ? `${selectedFiles.length} arquivo(s) selecionado(s)` : "Clique para upload ou arraste arquivos"}
-                    </span>
-                    <span className="text-[10px] text-gray-500 font-medium uppercase tracking-tighter">PDF, PNG, JPG (Max 10MB)</span>
-                  </div>
+                <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Resultado Exames:</label>
+                <div className="flex flex-col gap-3">
+                  {examResults.map((result, index) => (
+                    <div key={index} className="flex items-center gap-2 animate-fade-in">
+                      <select
+                        value={result.exam}
+                        onChange={(e) => updateExamRow(index, 'exam', e.target.value)}
+                        className="flex-1 rounded-lg bg-white border border-gray-300 px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none transition-all"
+                      >
+                        <option value="">Tipo de Exame...</option>
+                        <option value="AIE + (Anemia Infecciosa)">AIE + (Anemia Infecciosa)</option>
+                        <option value="Mormo">Mormo</option>
+                        <option value="Tuberculose">Tuberculose</option>
+                        <option value="Brucelose">Brucelose</option>
+                        <option value="Raiva">Raiva</option>
+                      </select>
+                      <select
+                        value={result.result}
+                        onChange={(e) => updateExamRow(index, 'result', e.target.value)}
+                        className={`w-32 rounded-lg border px-3 py-2 text-sm font-bold focus:ring-1 focus:ring-primary outline-none transition-all ${result.result === 'Positivo'
+                            ? 'bg-red-400 border-red-500 text-white'
+                            : result.result === 'Negativo'
+                              ? 'bg-green-100 border-green-200 text-green-800'
+                              : 'bg-white border-gray-300 text-gray-700'
+                          }`}
+                      >
+                        <option value="">Resultado...</option>
+                        <option value="Positivo">Positivo</option>
+                        <option value="Negativo">Negativo</option>
+                      </select>
+                      {examResults.length > 1 && (
+                        <button
+                          type="button"
+                          onClick={() => removeExamRow(index)}
+                          className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                        >
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={addExamRow}
+                    className="text-primary text-[11px] font-black uppercase tracking-widest flex items-center gap-1 self-start hover:underline"
+                  >
+                    <span className="material-symbols-outlined text-[16px]">add</span>
+                    + Inserir novo resultado
+                  </button>
                 </div>
               </div>
             </div>
 
-            <div className="pt-4 border-t border-gray-100 flex justify-end gap-3">
-              <button type="button" onClick={handleCancel} className="px-6 py-2.5 rounded-lg text-gray-500 font-black text-xs uppercase hover:bg-gray-100 transition-colors tracking-widest">Cancelar</button>
-              <button type="submit" className="px-6 py-2.5 rounded-lg bg-primary text-green-900 font-black text-xs uppercase hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2 tracking-widest">
-                <span className="material-symbols-outlined text-[18px]">save</span> Registrar Ocorrência
-              </button>
+            <div className="pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+              {/* Upload Relocado para o Rodapé */}
+              <div className="flex-1 w-full md:w-auto">
+                <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} />
+                <div
+                  onClick={handleFileButtonClick}
+                  className="flex items-center gap-3 cursor-pointer group hover:bg-gray-50 p-2 rounded-lg border border-dashed border-gray-200 transition-all w-fit"
+                >
+                  <div className="size-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/20">
+                    <span className="material-symbols-outlined text-gray-400 group-hover:text-primary text-[18px]">cloud_upload</span>
+                  </div>
+                  <div className="flex flex-col">
+                    <span className="text-[11px] text-gray-700 font-bold uppercase tracking-tight">
+                      {selectedFiles && selectedFiles.length > 0 ? `${selectedFiles.length} arquivo(s)` : "Anexar Arquivos (PDF/JPG)"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-3 w-full md:w-auto justify-end">
+                <button type="button" onClick={handleCancel} className="px-6 py-2.5 rounded-lg text-gray-500 font-black text-xs uppercase hover:bg-gray-100 transition-colors tracking-widest">Cancelar</button>
+                <button type="submit" className="px-6 py-2.5 rounded-lg bg-primary text-green-900 font-black text-xs uppercase hover:bg-primary/90 transition-colors shadow-lg shadow-primary/20 flex items-center gap-2 tracking-widest">
+                  <span className="material-symbols-outlined text-[18px]">save</span> Registrar Ocorrência
+                </button>
+              </div>
             </div>
           </div>
         </form>
