@@ -183,28 +183,24 @@ const Prontuario: React.FC = () => {
                 className="size-20 md:size-24 rounded-full bg-cover bg-center border-4 border-gray-100 shadow-md"
                 style={{ backgroundImage: `url('${animal.imageUrl}')` }}
               ></div>
-              <div className="absolute -bottom-1 -right-1 bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border-2 border-white uppercase">
-                {animal.id === 'NOVO' ? 'NOVO CADASTRO' : (animal.status === 'Liberado' ? 'LIBERADO' : 'APREENDIDO')}
+              <div className="absolute -bottom-1 -right-1 bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border-2 border-white uppercase whitespace-nowrap">
+                {animal.id === 'NOVO' ? 'NOVO CADASTRO' : animal.status}
               </div>
             </div>
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-gray-900 text-2xl md:text-3xl font-black leading-tight tracking-tight">
-                  {animal.id === 'NOVO' ? 'Novo Semovente' : `Semovente ${animal.id}`}
+                  {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.breed}`}
                 </h1>
                 <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded text-[11px] text-primary font-black font-mono tracking-wide border border-gray-200 uppercase">
                   <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
-                  BRINCO #{animal.chip}
+                  CHIP #{animal.chip}
                 </div>
               </div>
               <p className="text-gray-500 text-sm md:text-base font-medium flex items-center gap-2">
-                {animal.specie}
+                Sexo: {animal.gender}
                 <span className="size-1 rounded-full bg-gray-300"></span>
-                {animal.breed}
-                <span className="size-1 rounded-full bg-gray-300"></span>
-                {animal.gender}
-                <span className="size-1 rounded-full bg-gray-300"></span>
-                {animal.color}
+                Pelagem: {animal.color}
               </p>
             </div>
           </div>
