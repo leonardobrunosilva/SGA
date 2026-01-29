@@ -32,6 +32,7 @@ export interface Animal {
   mapsUrl?: string;
   contactInitiated?: boolean;
   classification?: string;
+  age?: string;
 }
 
 export interface Metric {

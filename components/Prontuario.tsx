@@ -21,6 +21,7 @@ const BLANK_ANIMAL: Animal = {
   chip: '',
   specie: '---',
   breed: '---',
+  age: '',
   gender: 'Macho',
   color: '---',
   status: '---',
@@ -97,7 +98,6 @@ const Prontuario: React.FC = () => {
   const [specieForm, setSpecieForm] = useState(animal.specie);
   const [genderForm, setGenderForm] = useState(animal.gender);
   const [colorForm, setColorForm] = useState(animal.color);
-  const [breedForm, setBreedForm] = useState(animal.breed);
 
   // Estados para o formulário de "Nova Ocorrência"
   const [motivo, setMotivo] = useState('');
@@ -148,7 +148,6 @@ const Prontuario: React.FC = () => {
         setSpecieForm(found.specie);
         setGenderForm(found.gender as any);
         setColorForm(found.color);
-        setBreedForm(found.breed);
         setSearchQuery('');
       } else {
         alert("Animal não encontrado. Iniciando primeiro atendimento.");
@@ -162,7 +161,6 @@ const Prontuario: React.FC = () => {
         setSpecieForm('---');
         setGenderForm('Macho');
         setColorForm('---');
-        setBreedForm('---');
       }
     } catch (e) {
       console.error(e);
@@ -183,7 +181,6 @@ const Prontuario: React.FC = () => {
     setSpecieForm(updated.specie);
     setGenderForm(updated.gender);
     setColorForm(updated.color);
-    setBreedForm(updated.breed);
     setIsEditModalOpen(false);
     alert('Cadastro atualizado com sucesso!');
   };
@@ -267,7 +264,7 @@ const Prontuario: React.FC = () => {
             <div className="flex flex-col gap-1">
               <div className="flex items-center gap-3 flex-wrap">
                 <h1 className="text-gray-900 text-2xl md:text-3xl font-black leading-tight tracking-tight">
-                  {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.breed}`}
+                  {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.age || 'Idade não informada'}`}
                 </h1>
                 <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded text-[11px] text-primary font-black font-mono tracking-wide border border-gray-200 uppercase">
                   <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
@@ -326,8 +323,14 @@ const Prontuario: React.FC = () => {
                   <input value={specieForm} onChange={e => setSpecieForm(e.target.value)} className="w-full rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none" placeholder="Ex: Equino" />
                 </div>
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase">Raça</label>
-                  <input value={breedForm} onChange={e => setBreedForm(e.target.value)} className="w-full rounded-lg bg-white border border-gray-200 px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none" placeholder="Ex: Mangalarga" />
+                  <label className="text-xs font-bold text-slate-500 uppercase">Idade</label>
+                  <input
+                    readOnly
+                    disabled
+                    value={animal.age || '--'}
+                    className="w-full rounded-lg bg-gray-100 border border-gray-200 px-3 py-2 text-sm focus:outline-none cursor-not-allowed text-gray-500 font-medium"
+                    placeholder="---"
+                  />
                 </div>
                 <div className="flex flex-col gap-1.5">
                   <label className="text-xs font-bold text-slate-500 uppercase">Sexo</label>
@@ -498,20 +501,20 @@ const Prontuario: React.FC = () => {
                 {/* Marcador na Timeline */}
                 <div className="absolute left-4 md:left-[103px] top-2 z-10 no-print">
                   <div className={`size-4 rounded-full border-4 border-white shadow-sm ${event.type === 'EXAM' ? 'bg-primary' :
-                      event.type === 'DESTINATION' ? 'bg-slate-900' :
-                        'bg-slate-400'
+                    event.type === 'DESTINATION' ? 'bg-slate-900' :
+                      'bg-slate-400'
                     }`}></div>
                 </div>
 
                 {/* Card de Conteúdo */}
                 <div className={`flex-1 bg-white border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${event.type === 'DESTINATION'
-                    ? 'border-slate-900/20 bg-slate-50/30'
-                    : 'border-gray-200'
+                  ? 'border-slate-900/20 bg-slate-50/30'
+                  : 'border-gray-200'
                   }`}>
                   <div className="flex items-start gap-4">
                     <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${event.type === 'EXAM' ? 'bg-primary/10 text-primary' :
-                        event.type === 'DESTINATION' ? 'bg-slate-900 text-white' :
-                          'bg-gray-100 text-gray-500'
+                      event.type === 'DESTINATION' ? 'bg-slate-900 text-white' :
+                        'bg-gray-100 text-gray-500'
                       }`}>
                       <span className="material-symbols-outlined text-[24px]">{event.icon}</span>
                     </div>
@@ -525,8 +528,8 @@ const Prontuario: React.FC = () => {
 
                         {event.type === 'EXAM' && event.result && (
                           <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight border ${event.result === 'Negativo'
-                              ? 'bg-green-50 text-green-700 border-green-100'
-                              : 'bg-red-50 text-red-700 border-red-100'
+                            ? 'bg-green-50 text-green-700 border-green-100'
+                            : 'bg-red-50 text-red-700 border-red-100'
                             }`}>
                             {event.result}
                           </span>
@@ -563,7 +566,7 @@ const Prontuario: React.FC = () => {
                 <div className="size-10 rounded-lg bg-primary/10 text-green-700 flex items-center justify-center">
                   <span className="material-symbols-outlined">edit_square</span>
                 </div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">Editar Cadastro do Semovente</h3>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">Editar Cadastro do Animal</h3>
               </div>
               <button onClick={() => setIsEditModalOpen(false)} className="size-8 text-slate-400 hover:text-slate-600 transition-colors">
                 <span className="material-symbols-outlined">close</span>
@@ -592,14 +595,14 @@ const Prontuario: React.FC = () => {
                   </select>
                 </div>
 
-                {/* Raça (Texto Livre) */}
+                {/* Idade (Texto Livre) */}
                 <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Raça</label>
+                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Idade</label>
                   <input
-                    value={editFormData.breed || ''}
-                    onChange={e => setEditFormData({ ...editFormData, breed: e.target.value })}
+                    value={editFormData.age || ''}
+                    onChange={e => setEditFormData({ ...editFormData, age: e.target.value })}
                     className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                    placeholder="Ex: Mangalarga Marchador"
+                    placeholder="Ex: 5 anos"
                   />
                 </div>
 
