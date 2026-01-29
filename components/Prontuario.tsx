@@ -4,6 +4,18 @@ import { apreensoesService } from '../services/apreensoesService';
 import { Animal } from '../types';
 import { formatDate } from '../utils';
 
+interface TimelineEvent {
+  id: string;
+  type: 'EXAM' | 'OCCURRENCE' | 'DESTINATION';
+  date: string;
+  title: string;
+  subtitle?: string;
+  content?: string;
+  result?: 'Positivo' | 'Negativo';
+  badge?: string;
+  icon: string;
+}
+
 const BLANK_ANIMAL: Animal = {
   id: '',
   chip: '',
@@ -20,6 +32,57 @@ const BLANK_ANIMAL: Animal = {
   organ: '---',
   osNumber: '---'
 };
+
+const mockHistory: TimelineEvent[] = [
+  {
+    id: '1',
+    type: 'DESTINATION',
+    date: '2026-02-15',
+    title: 'Destinação: Adoção Realizada',
+    icon: 'pets'
+  },
+  {
+    id: '2',
+    type: 'OCCURRENCE',
+    date: '2026-02-10',
+    title: 'Descrição dos Fatos / Exame Físico',
+    content: 'Animal apresenta boa condição nutricional, temperamento dócil. Escoriações leves em membro anterior direito.',
+    icon: 'history_edu'
+  },
+  {
+    id: '3',
+    type: 'EXAM',
+    date: '2026-02-05',
+    title: 'Mormo',
+    subtitle: 'Vet. Responsável: Dr. Silva',
+    result: 'Negativo',
+    icon: 'biotech'
+  },
+  {
+    id: '4',
+    type: 'EXAM',
+    date: '2026-02-05',
+    title: 'Anemia Infecciosa (AIE)',
+    subtitle: 'Vet. Responsável: Dr. Silva',
+    result: 'Negativo',
+    icon: 'biotech'
+  },
+  {
+    id: '5',
+    type: 'DESTINATION',
+    date: '2025-08-20',
+    title: 'Destinação: Restituição',
+    icon: 'output'
+  },
+  {
+    id: '6',
+    type: 'OCCURRENCE',
+    date: '2025-08-15',
+    title: 'Entrada/Descrição',
+    content: 'Animal apreendido solto em via pública. Sem identificação no momento da entrada.',
+    icon: 'description'
+  }
+];
 
 const Prontuario: React.FC = () => {
   // Estados para o Semovente principal (Sujeito do Atendimento)
@@ -345,10 +408,10 @@ const Prontuario: React.FC = () => {
                         value={result.result}
                         onChange={(e) => updateExamRow(index, 'result', e.target.value)}
                         className={`w-32 rounded-lg border px-3 py-2 text-sm font-bold focus:ring-1 focus:ring-primary outline-none transition-all ${result.result === 'Positivo'
-                            ? 'bg-red-400 border-red-500 text-white'
-                            : result.result === 'Negativo'
-                              ? 'bg-green-100 border-green-200 text-green-800'
-                              : 'bg-white border-gray-300 text-gray-700'
+                          ? 'bg-red-400 border-red-500 text-white'
+                          : result.result === 'Negativo'
+                            ? 'bg-green-100 border-green-200 text-green-800'
+                            : 'bg-white border-gray-300 text-gray-700'
                           }`}
                       >
                         <option value="">Resultado...</option>
@@ -408,29 +471,86 @@ const Prontuario: React.FC = () => {
         </form>
       </section>
 
-      {/* Histórico do Semovente */}
-      <section className="flex flex-col gap-4">
+      {/* Histórico Clínico Timeline */}
+      <section className="flex flex-col gap-6">
         <div className="flex items-center justify-between px-2">
-          <h3 className="text-gray-900 text-xl font-black uppercase tracking-tight">Histórico do Semovente</h3>
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-black text-primary bg-green-50 px-3 py-1 rounded border border-green-100 uppercase tracking-wider">12 Registros</span>
-          </div>
+          <h3 className="text-gray-900 text-xl font-black uppercase tracking-tight">Histórico Clínico</h3>
+          <span className="text-[10px] font-black text-primary bg-green-50 px-3 py-1 rounded border border-green-100 uppercase tracking-wider">
+            {mockHistory.length} Registros
+          </span>
         </div>
-        <div className="relative pl-4 md:pl-0">
-          <div className="absolute left-[27px] md:left-[27px] top-0 bottom-0 w-px bg-gray-200 z-0 no-print"></div>
-          <article className="relative flex gap-6 mb-8 group print-card">
-            <div className="no-print flex flex-col items-center pt-1 z-10"><div className="size-3 bg-primary rounded-full ring-4 ring-white shadow-sm"></div></div>
-            <div className="flex-1 bg-white border border-gray-200 rounded-xl p-6 shadow-sm hover:border-primary/30 transition-colors print-card">
-              <div className="flex flex-col md:flex-row md:items-start justify-between gap-4 mb-4 border-b border-gray-100 pb-4">
-                <div>
-                  <h4 className="text-gray-900 text-lg font-black tracking-tight uppercase">Exame AIE (Anemia Infecciosa)</h4>
-                  <p className="text-gray-400 text-[11px] font-bold uppercase tracking-wider">Dr. Silva • 12 Out 2023</p>
+
+        <div className="relative">
+          {/* Linha Vertical da Timeline */}
+          <div className="absolute left-[20px] md:left-[110px] top-0 bottom-0 w-px bg-gray-200 z-0 no-print"></div>
+
+          <div className="flex flex-col gap-8">
+            {mockHistory.map((event) => (
+              <div key={event.id} className="relative flex flex-col md:flex-row gap-4 md:gap-12 group">
+
+                {/* Coluna da Esquerda: Data */}
+                <div className="w-full md:w-20 pt-2 flex md:justify-end shrink-0 pl-10 md:pl-0">
+                  <time className="text-[11px] font-black text-slate-400 uppercase leading-none tracking-tighter">
+                    {new Date(event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '')}
+                  </time>
                 </div>
-                <span className="bg-green-50 text-green-700 text-[10px] font-black px-3 py-1.5 rounded-full border border-green-100 uppercase tracking-tight">Negativo</span>
+
+                {/* Marcador na Timeline */}
+                <div className="absolute left-4 md:left-[103px] top-2 z-10 no-print">
+                  <div className={`size-4 rounded-full border-4 border-white shadow-sm ${event.type === 'EXAM' ? 'bg-primary' :
+                      event.type === 'DESTINATION' ? 'bg-slate-900' :
+                        'bg-slate-400'
+                    }`}></div>
+                </div>
+
+                {/* Card de Conteúdo */}
+                <div className={`flex-1 bg-white border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${event.type === 'DESTINATION'
+                    ? 'border-slate-900/20 bg-slate-50/30'
+                    : 'border-gray-200'
+                  }`}>
+                  <div className="flex items-start gap-4">
+                    <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${event.type === 'EXAM' ? 'bg-primary/10 text-primary' :
+                        event.type === 'DESTINATION' ? 'bg-slate-900 text-white' :
+                          'bg-gray-100 text-gray-500'
+                      }`}>
+                      <span className="material-symbols-outlined text-[24px]">{event.icon}</span>
+                    </div>
+
+                    <div className="flex-1">
+                      <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-1">
+                        <h4 className={`text-sm md:text-base font-black tracking-tight uppercase ${event.type === 'DESTINATION' ? 'text-slate-900' : 'text-gray-900'
+                          }`}>
+                          {event.title}
+                        </h4>
+
+                        {event.type === 'EXAM' && event.result && (
+                          <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight border ${event.result === 'Negativo'
+                              ? 'bg-green-50 text-green-700 border-green-100'
+                              : 'bg-red-50 text-red-700 border-red-100'
+                            }`}>
+                            {event.result}
+                          </span>
+                        )}
+                      </div>
+
+                      {event.subtitle && (
+                        <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">
+                          {event.subtitle}
+                        </p>
+                      )}
+
+                      {event.content && (
+                        <p className={`text-sm leading-relaxed ${event.type === 'DESTINATION' ? 'text-slate-700' : 'text-gray-600'
+                          }`}>
+                          {event.content}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                </div>
               </div>
-              <p className="text-slate-600 leading-relaxed text-sm">Animal testado com resultado negativo. Sem sinais clínicos da doença.</p>
-            </div>
-          </article>
+            ))}
+          </div>
         </div>
       </section>
 
