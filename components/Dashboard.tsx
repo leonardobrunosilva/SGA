@@ -8,16 +8,7 @@ import { saidasService } from '../services/saidasService';
 const Dashboard: React.FC = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [metrics, setMetrics] = useState([
-    { label: 'Total Apreendidos', value: '0', change: '0%', icon: 'fence', color: 'blue' },
-    { label: 'Disp. Restituição', value: '0', change: '0%', icon: 'assignment_return', color: 'green' },
-    { label: 'Disp. Adoção', value: '0', change: '0%', icon: 'volunteer_activism', color: 'purple' },
-    { label: 'Eutanásia/Óbito', value: '0', change: '0%', icon: 'medical_services', color: 'red' },
-    { label: 'Furtos', value: '0', change: '0%', icon: 'warning', color: 'orange' },
-    { label: 'Óbitos', value: '0', change: '0%', icon: 'heart_broken', color: 'gray' },
-    { label: 'HVET', value: '0', change: '0%', icon: 'local_hospital', color: 'cyan' },
-    { label: 'Animais de outros órgãos', value: '0', change: '0%', icon: 'account_balance', color: 'indigo' },
-  ]);
+  const [metrics, setMetrics] = useState<any[]>([]);
 
   const [organsData, setOrgansData] = useState([
     { name: 'BPMA', val: 0, color: '#2563eb' },
@@ -49,32 +40,69 @@ const Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch Basic Metrics
-        const { count: totalApreendidos } = await supabase.from('apreensoes').select('*', { count: 'exact', head: true });
+        // 1. Fetch Basic Metrics via Promise.all
+        const [
+          { count: totalApreensoes },
+          { count: activeAdocao },
+          { count: activeRestituicao },
+          { count: activeOutros },
+          { count: hvetAdocao },
+          { count: hvetRestituicao },
+          { count: hvetOutros },
+          { count: histAdocao },
+          { count: histRestituicao },
+          { count: histObito },
+          { count: histFurto }
+        ] = await Promise.all([
+          // Apreensões (Estoque Total Histórico)
+          supabase.from('apreensoes').select('*', { count: 'exact', head: true }),
 
-        // Active animals (Simplified logic for now: all entries - all exits)
-        const { count: totalSaidas } = await supabase.from('saidas').select('*', { count: 'exact', head: true });
-        const activeCount = (totalApreendidos || 0) - (totalSaidas || 0);
+          // Worklists (Saldos Atuais)
+          supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }),
+          supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }),
+          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }),
 
-        const { count: adocoes } = await supabase.from('saidas').select('*', { count: 'exact', head: true }).ilike('destination', '%adoção%');
-        const { count: restituicoes } = await supabase.from('saidas').select('*', { count: 'exact', head: true }).ilike('destination', '%restituição%');
-        const { count: obitos } = await supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%óbito%,destination.ilike.%eutanásia%');
-        const { count: furtos } = await supabase.from('saidas').select('*', { count: 'exact', head: true }).ilike('destination', '%furto%');
+          // HVET (Filtragem por status/local contendo HVET nas worklists)
+          supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }).or('status.ilike.%HVET%,local.ilike.%HVET%'),
+          supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }).or('status.ilike.%HVET%,local.ilike.%HVET%'),
+          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).or('status.ilike.%HVET%,local.ilike.%HVET%'),
 
-        setMetrics([
-          { label: 'Total Apreendidos', value: (totalApreendidos || 0).toLocaleString(), change: '+0%', icon: 'fence', color: 'blue' },
-          { label: 'Em Curral (Ativos)', value: (activeCount || 0).toLocaleString(), change: '+0%', icon: 'home', color: 'green' },
-          { label: 'Restituídos', value: (restituicoes || 0).toLocaleString(), change: '+0%', icon: 'assignment_return', color: 'blue' },
-          { label: 'Adotados', value: (adocoes || 0).toLocaleString(), change: '+0%', icon: 'volunteer_activism', color: 'purple' },
-          { label: 'Eutanásia/Óbito', value: (obitos || 0).toLocaleString(), change: '+0%', icon: 'medical_services', color: 'red' },
-          { label: 'Furtos', value: (furtos || 0).toLocaleString(), change: '0%', icon: 'warning', color: 'orange' },
-          { label: 'HVET (Estimado)', value: '85', change: '+0%', icon: 'local_hospital', color: 'cyan' },
-          { label: 'Outros Órgãos', value: '42', change: '+0%', icon: 'account_balance', color: 'indigo' },
+          // Destinações (Histórico de Saídas - mapeamento por tipo_destinacao ou status)
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%adoção%,status.ilike.%adoção%'),
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%restituição%,status.ilike.%restituição%'),
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%eutanásia%,status.ilike.%eutanásia%,destination.ilike.%óbito%,status.ilike.%óbito%'),
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%furto%,status.ilike.%furto%')
         ]);
 
-        // 2. Fetch Distribution by Organ
-        const { data: organStats } = await supabase.rpc('get_organ_distribution'); // If exists, else approximate
-        // Fallback or manual aggregation
+        const albergadosTotal = (activeAdocao || 0) + (activeRestituicao || 0) + (activeOutros || 0);
+        const hvetTotal = (hvetAdocao || 0) + (hvetRestituicao || 0) + (hvetOutros || 0);
+
+        setMetrics([
+          { label: 'Total Apreendidos', value: (totalApreensoes || 0).toLocaleString(), change: '+0%', icon: 'fence', color: 'blue' },
+          { label: 'Albergados (Saldo Atual)', value: (albergadosTotal || 0).toLocaleString(), change: '+0%', icon: 'home', color: 'green' },
+          {
+            label: 'Restituídos',
+            value: (histRestituicao || 0).toLocaleString(),
+            change: '+0%',
+            icon: 'assignment_return',
+            color: 'blue',
+            subLabel: `Disponíveis: ${activeRestituicao || 0}`
+          },
+          {
+            label: 'Adotados',
+            value: (histAdocao || 0).toLocaleString(),
+            change: '+0%',
+            icon: 'volunteer_activism',
+            color: 'purple',
+            subLabel: `Disponíveis: ${activeAdocao || 0}`
+          },
+          { label: 'Eutanásia/Óbito', value: (histObito || 0).toLocaleString(), change: '+0%', icon: 'medical_services', color: 'red' },
+          { label: 'Furtos', value: (histFurto || 0).toLocaleString(), change: '0%', icon: 'warning', color: 'orange' },
+          { label: 'HVET', value: (hvetTotal || 0).toLocaleString(), change: '+0%', icon: 'local_hospital', color: 'cyan' },
+          { label: 'Outros Órgãos', value: (activeOutros || 0).toLocaleString(), change: '+0%', icon: 'account_balance', color: 'indigo' },
+        ]);
+
+        // 2. Fetch Distribution by Organ (Keeping original logic for now)
         const { data: entries } = await supabase.from('apreensoes').select('organ');
         const organCounts: Record<string, number> = {};
         entries?.forEach(e => {
@@ -183,6 +211,9 @@ const Dashboard: React.FC = () => {
             </div>
             <p className="text-gray-500 text-sm font-medium">{m.label}</p>
             <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-blue-600 transition-colors">{m.value}</h3>
+            {m.subLabel && (
+              <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-tight">{m.subLabel}</p>
+            )}
           </div>
         ))}
       </div>
