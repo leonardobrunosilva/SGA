@@ -8,6 +8,8 @@ import { saidasService } from '../services/saidasService';
 const Dashboard: React.FC = () => {
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [albergadosCount, setAlbergadosCount] = useState(0);
+  const MAX_CAPACITY = 80;
   const [metrics, setMetrics] = useState<any[]>([]);
 
   const [organsData, setOrgansData] = useState([
@@ -77,6 +79,7 @@ const Dashboard: React.FC = () => {
         const albergadosTotal = (activeAdocao || 0) + (activeRestituicao || 0) + (activeOutros || 0);
         const hvetTotal = (hvetAdocao || 0) + (hvetRestituicao || 0) + (hvetOutros || 0);
 
+        setAlbergadosCount(albergadosTotal);
         setMetrics([
           { label: 'Total Apreendidos', value: (totalApreensoes || 0).toLocaleString(), change: '+0%', icon: 'fence', color: 'blue' },
           { label: 'Albergados (Saldo Atual)', value: (albergadosTotal || 0).toLocaleString(), change: '+0%', icon: 'home', color: 'green' },
@@ -223,23 +226,74 @@ const Dashboard: React.FC = () => {
         <div className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm flex flex-col justify-between relative overflow-hidden">
           <div className="absolute inset-0 opacity-[0.03] bg-[radial-gradient(#000000_1px,transparent_1px)] [background-size:16px_16px]"></div>
           <div className="relative z-10">
-            <div className="flex items-center justify-between mb-2">
-              <h3 className="text-gray-900 text-lg font-bold">Ocupação do Curral</h3>
-              <span className="flex size-2 rounded-full bg-red-500 animate-pulse"></span>
-            </div>
-            <p className="text-gray-500 text-sm mb-6">Capacidade atual em relação ao limite máximo estabelecido.</p>
-            <div className="flex items-end justify-between mb-2">
-              <span className="text-4xl font-black text-gray-900">85%</span>
-              <span className="text-sm font-bold text-red-600 bg-red-100 px-2 py-1 rounded mb-1 border border-red-200">Capacidade Crítica</span>
-            </div>
-            <div className="h-4 w-full bg-gray-200 rounded-full overflow-hidden">
-              <div className="h-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 rounded-full" style={{ width: '85%' }}></div>
-            </div>
-            <div className="flex justify-between mt-2 text-xs text-gray-400 font-medium font-mono">
-              <span>0%</span>
-              <span>50%</span>
-              <span>100%</span>
-            </div>
+            {/* Lógica de Ocupação */}
+            {(() => {
+              const occupancyRate = (albergadosCount / MAX_CAPACITY) * 100;
+              const isOverCapacity = albergadosCount > MAX_CAPACITY;
+              const excessPercentage = isOverCapacity ? ((albergadosCount - MAX_CAPACITY) / MAX_CAPACITY) * 100 : 0;
+
+              let statusLabel = "Normal";
+              let statusColor = "text-green-600 bg-green-100 border-green-200";
+
+              if (occupancyRate > 90) {
+                statusLabel = "Capacidade Crítica";
+                statusColor = "text-red-600 bg-red-100 border-red-200";
+              } else if (occupancyRate > 70) {
+                statusLabel = "Atenção";
+                statusColor = "text-amber-600 bg-amber-100 border-amber-200";
+              }
+
+              return (
+                <>
+                  <div className="flex items-center justify-between mb-2">
+                    <h3 className="text-gray-900 text-lg font-bold">Ocupação do Curral</h3>
+                    <span className={`flex size-2 rounded-full ${occupancyRate > 90 ? 'bg-red-500 animate-pulse' : 'bg-green-500'}`}></span>
+                  </div>
+                  <p className="text-gray-500 text-sm mb-6 uppercase font-bold tracking-wider">Lotação: {albergadosCount} / {MAX_CAPACITY} Animais</p>
+
+                  <div className="flex items-end justify-between mb-2">
+                    <div className="flex flex-col">
+                      <span className="text-4xl font-black text-gray-900">{Math.round(occupancyRate)}%</span>
+                      {isOverCapacity && (
+                        <span className="text-[10px] font-black text-red-600 uppercase tracking-tighter">
+                          +{Math.round(excessPercentage)}% acima do limite
+                        </span>
+                      )}
+                    </div>
+                    <span className={`text-[10px] font-black px-2 py-1 rounded mb-1 border uppercase tracking-wider ${statusColor}`}>
+                      {statusLabel}
+                    </span>
+                  </div>
+
+                  <div className="relative h-6 w-full bg-gray-100 rounded-lg overflow-hidden border border-gray-200 shadow-inner">
+                    {/* Barra de Progresso Real */}
+                    <div
+                      className="h-full bg-gradient-to-r from-green-500 via-yellow-400 to-red-500 transition-all duration-1000 ease-out"
+                      style={{ width: `${Math.min(occupancyRate, 100)}%` }}
+                    ></div>
+
+                    {/* Barra de Excesso (Superlotação) */}
+                    {isOverCapacity && (
+                      <div
+                        className="absolute top-0 left-0 h-full bg-red-600/30 animate-pulse"
+                        style={{ width: '100%' }}
+                      ></div>
+                    )}
+
+                    {/* Marcador de 100% (80 Animais) */}
+                    <div className="absolute top-0 bottom-0 left-[100%] w-0.5 bg-slate-900 z-20 shadow-[0_0_8px_rgba(0,0,0,0.5)]">
+                      <div className="absolute -top-1 -left-1 size-2 rounded-full bg-slate-900"></div>
+                      <div className="absolute -bottom-1 -left-1 size-2 rounded-full bg-slate-900"></div>
+                    </div>
+                  </div>
+
+                  <div className="flex justify-between mt-3 text-[10px] text-gray-400 font-black uppercase tracking-widest">
+                    <span>Vazio</span>
+                    <span className="text-slate-900 bg-slate-100 px-1.5 py-0.5 rounded border border-slate-200">Limite: 80</span>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
 
