@@ -12,14 +12,7 @@ const Dashboard: React.FC = () => {
   const MAX_CAPACITY = 80;
   const [metrics, setMetrics] = useState<any[]>([]);
 
-  const [organsData, setOrgansData] = useState([
-    { name: 'BPMA', val: 0, color: '#2563eb' },
-    { name: 'DER', val: 0, color: '#3b82f6' },
-    { name: 'SLU', val: 0, color: '#60a5fa' },
-    { name: 'NOVACAP', val: 0, color: '#93c5fd' },
-  ]);
-
-  const [chartData, setChartData] = useState<any[]>([]);
+  const [organsData, setOrgansData] = useState<any[]>([]);
   const [flowData, setFlowData] = useState<any[]>([]);
 
   const years = [2024, 2025, 2026];
@@ -105,32 +98,74 @@ const Dashboard: React.FC = () => {
           { label: 'Outros Órgãos', value: (activeOutros || 0).toLocaleString(), change: '+0%', icon: 'account_balance', color: 'indigo' },
         ]);
 
-        // 2. Fetch Distribution by Organ (Keeping original logic for now)
-        const { data: entries } = await supabase.from('apreensoes').select('organ');
+        // 2. Fetch All Data for Charts (Frontend Aggregation)
+        const [
+          { data: allEntries },
+          { data: allExits }
+        ] = await Promise.all([
+          supabase.from('apreensoes').select('date_in, organ'),
+          supabase.from('saidas').select('dateOut, destination')
+        ]);
+
+        // Process Organ Distribution (Top 5)
         const organCounts: Record<string, number> = {};
-        entries?.forEach(e => {
+        allEntries?.forEach(e => {
           const org = e.organ || 'Outros';
           organCounts[org] = (organCounts[org] || 0) + 1;
         });
 
-        const topOrgans = Object.entries(organCounts)
-          .sort((a, b) => b[1] - a[1])
-          .slice(0, 4)
-          .map(([name, val], idx) => ({
-            name,
-            val,
-            color: idx === 0 ? '#2563eb' : idx === 1 ? '#3b82f6' : idx === 2 ? '#60a5fa' : '#93c5fd'
+        const sortedOrgans = Object.entries(organCounts)
+          .map(([name, val]) => ({ name, val }))
+          .sort((a, b) => b.val - a.val)
+          .slice(0, 5)
+          .map((item, idx) => ({
+            ...item,
+            color: ['#2563eb', '#059669', '#d97706', '#7c3aed', '#db2777'][idx % 5]
           }));
-        setOrgansData(topOrgans.length > 0 ? topOrgans : organsData);
+        setOrgansData(sortedOrgans);
 
-        // 3. Flow Data (Current Year)
-        const currentYear = new Date().getFullYear().toString();
+        // Process Monthly Data (Fluxo e Evolução)
         const monthsLabel = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
-        const flow = monthsLabel.map(m => ({ month: m, in: 0, out: 0 }));
+        const monthlyStats = monthsLabel.map(m => ({
+          month: m,
+          in: 0,
+          out: 0,
+          restituicao: 0,
+          adocao: 0
+        }));
 
-        // Note: For real large data, this should be done via SQL aggregation
-        // Simple mock for chart visibility if no data
-        setFlowData(flow.map((f, i) => ({ ...f, in: Math.floor(Math.random() * 20) + 10, out: Math.floor(Math.random() * 15) })));
+        // Aggregate Entries
+        allEntries?.forEach(e => {
+          const dateStr = e.date_in;
+          if (!dateStr) return;
+          const date = new Date(dateStr);
+          if (isNaN(date.getTime())) return;
+          const monthIdx = date.getMonth();
+          if (monthlyStats[monthIdx]) {
+            monthlyStats[monthIdx].in += 1;
+          }
+        });
+
+        // Aggregate Exits
+        allExits?.forEach(s => {
+          const dateStr = s.dateOut;
+          if (!dateStr) return;
+          const date = new Date(dateStr);
+          if (isNaN(date.getTime())) return;
+          const monthIdx = date.getMonth();
+          if (monthlyStats[monthIdx]) {
+            monthlyStats[monthIdx].out += 1;
+
+            const dest = (s.destination || '').toLowerCase();
+            if (dest.includes('restitu')) {
+              monthlyStats[monthIdx].restituicao += 1;
+            } else if (dest.includes('ado')) {
+              monthlyStats[monthIdx].adocao += 1;
+            }
+          }
+        });
+
+        setFlowData(monthlyStats);
 
       } catch (e) {
         console.error(e);
@@ -145,10 +180,13 @@ const Dashboard: React.FC = () => {
   const [chartView, setChartView] = useState<'Apreendido' | 'Restituído' | 'Adotado'>('Apreendido');
 
   const annualChartData = useMemo(() => {
-    // If we had the real monthly data in chartData, we'd use it. 
-    // For now, using a placeholder based on flowData or mock to keep UI alive.
-    return flowData.map(f => ({ name: f.month, val: chartView === 'Apreendido' ? f.in : f.out }));
-  }, [chartView, flowData]);
+    return flowData.map(f => ({
+      name: f.month,
+      val: chartView === 'Apreendido' ? f.in :
+        chartView === 'Restituído' ? f.restituicao :
+          f.adocao
+    }));
+  }, [flowData, chartView]);
 
   const monthlyFlowData = flowData;
 
