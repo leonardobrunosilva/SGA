@@ -104,7 +104,7 @@ const Dashboard: React.FC = () => {
           { data: allExits }
         ] = await Promise.all([
           supabase.from('apreensoes').select('date_in, organ'),
-          supabase.from('saidas').select('dateOut, destination')
+          supabase.from('saidas').select('date_out, destination')
         ]);
 
         // Process Organ Distribution (Top 5)
@@ -125,6 +125,7 @@ const Dashboard: React.FC = () => {
         setOrgansData(sortedOrgans);
 
         // Process Monthly Data (Fluxo e Evolução)
+        const targetYear = appliedFilters.year || new Date().getFullYear().toString();
         const monthsLabel = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
         const monthlyStats = monthsLabel.map(m => ({
           month: m,
@@ -140,6 +141,10 @@ const Dashboard: React.FC = () => {
           if (!dateStr) return;
           const date = new Date(dateStr);
           if (isNaN(date.getTime())) return;
+
+          // Filtrar por ano alvo
+          if (date.getFullYear().toString() !== targetYear) return;
+
           const monthIdx = date.getMonth();
           if (monthlyStats[monthIdx]) {
             monthlyStats[monthIdx].in += 1;
@@ -148,10 +153,14 @@ const Dashboard: React.FC = () => {
 
         // Aggregate Exits
         allExits?.forEach(s => {
-          const dateStr = s.dateOut;
+          const dateStr = s.date_out; // Corrigido para bater com o select
           if (!dateStr) return;
           const date = new Date(dateStr);
           if (isNaN(date.getTime())) return;
+
+          // Filtrar por ano alvo
+          if (date.getFullYear().toString() !== targetYear) return;
+
           const monthIdx = date.getMonth();
           if (monthlyStats[monthIdx]) {
             monthlyStats[monthIdx].out += 1;
