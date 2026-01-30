@@ -33,6 +33,8 @@ export interface Animal {
   contactInitiated?: boolean;
   classification?: string;
   age?: string;
+  receiverName?: string;
+  receiverCpf?: string;
 }
 
 export interface Metric {

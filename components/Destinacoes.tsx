@@ -7,7 +7,9 @@ import { saidasService } from '../services/saidasService';
 const Destinacoes: React.FC = () => {
   // History View State
   const [animals, setAnimals] = useState<Animal[]>([]);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [chipFilter, setChipFilter] = useState('');
+  const [yearFilter, setYearFilter] = useState('');
+  const [statusFilter, setStatusFilter] = useState('');
   const [identifiedAnimal, setIdentifiedAnimal] = useState<Animal | null>(null);
 
   // Initial Load - from Supabase saidas table
@@ -24,7 +26,7 @@ const Destinacoes: React.FC = () => {
         id: saida.id,
         specie: saida.specie || 'Semovente',
         chip: saida.chip,
-        dateIn: formatDate(saida.dateIn),
+        dateIn: saida.dateIn, // Keep original date for sorting if needed, or rely on service sort
         exitDate: formatDate(saida.dateOut),
         origin: saida.origin || '-',
         gender: saida.gender || '-',
@@ -36,7 +38,9 @@ const Destinacoes: React.FC = () => {
         imageUrl: `https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop`,
         daysIn: calculateDays(saida.dateIn, saida.dateOut),
         observations: saida.observations || '',
-        organ: saida.organ || '-'
+        organ: saida.organ || '-',
+        receiverName: saida.receiverName || '-',
+        receiverCpf: saida.receiverCpf || '-'
       }));
 
       setAnimals(history);
@@ -54,11 +58,34 @@ const Destinacoes: React.FC = () => {
     // Reset page on filter change
     if (currentPage !== 1) setCurrentPage(1);
 
-    return animals.filter(a =>
-      a.chip.includes(searchTerm) ||
-      a.specie.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [animals, searchTerm]);
+    return animals.filter(a => {
+      const matchChip = a.chip.includes(chipFilter);
+      const matchStatus = !statusFilter || a.status === statusFilter;
+      const matchYear = !yearFilter || (a.exitDate && a.exitDate.includes(yearFilter));
+
+      return matchChip && matchStatus && matchYear;
+    });
+  }, [animals, chipFilter, statusFilter, yearFilter]);
+
+  // Status Badge Logic
+  const getStatusStyles = (status: string) => {
+    const s = status.toLowerCase();
+
+    if (s.includes('disponível')) return { bg: '#d4edbd', text: '#111814' };
+    if (s.includes('tratamento')) return { bg: '#ffcfc9', text: '#111814' };
+    if (s === 'hvet') return { bg: '#593287', text: '#ffffff' };
+    if (s.includes('restitu')) return { bg: '#0f734c', text: '#ffffff' };
+    if (s.includes('prazo vencido')) return { bg: '#b10709', text: '#ffffff' };
+    if (s.includes('sem exame')) return { bg: '#ffc8a8', text: '#111814' };
+    if (s === 'experimento') return { bg: '#f00aae', text: '#ffffff' };
+    if (s === 'escolhido') return { bg: '#753802', text: '#ffffff' };
+    if (s === 'hvet ex') return { bg: '#e8eaed', text: '#111814' };
+    if (s.includes('adotado') || s.includes('adoção')) return { bg: '#0f734c', text: '#ffffff' };
+
+    return { bg: '#f3f4f6', text: '#374151' };
+  };
+
+  const statusOptions = Array.from(new Set(animals.map(a => a.status))).sort();
 
   // Pagination Calculations
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -114,15 +141,39 @@ const Destinacoes: React.FC = () => {
         </div>
       </div>
 
-      {/* Search Bar */}
-      <div className="relative">
-        <input
-          className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
-          placeholder="Filtrar histórico por Chip, Espécie..."
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
-        <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">search</span>
+      {/* Filters Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="relative">
+          <input
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+            placeholder="Buscar por Chip..."
+            value={chipFilter}
+            onChange={(e) => setChipFilter(e.target.value)}
+          />
+          <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">search</span>
+        </div>
+
+        <select
+          value={yearFilter}
+          onChange={(e) => setYearFilter(e.target.value)}
+          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+        >
+          <option value="">Todos os Anos</option>
+          <option value="2024">2024</option>
+          <option value="2025">2025</option>
+          <option value="2026">2026</option>
+        </select>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+        >
+          <option value="">Todos os Status</option>
+          {statusOptions.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
       </div>
 
       {/* Table */}
@@ -160,10 +211,13 @@ const Destinacoes: React.FC = () => {
                   </td>
                   <td className="px-6 py-4 font-mono text-xs text-gray-500">{animal.seiProcess}</td>
                   <td className="px-6 py-4">
-                    <span className={`px-2 py-1 rounded-full text-[10px] font-bold uppercase border ${animal.status === 'Restituído' ? 'bg-green-50 text-green-700 border-green-200' :
-                      animal.status === 'Em Custódia' ? 'bg-amber-50 text-amber-700 border-amber-200' :
-                        'bg-gray-50 text-gray-600 border-gray-200'
-                      }`}>
+                    <span
+                      className="px-3 py-1.5 rounded-md text-[10px] font-black uppercase tracking-wider shadow-sm"
+                      style={{
+                        backgroundColor: getStatusStyles(animal.status).bg,
+                        color: getStatusStyles(animal.status).text
+                      }}
+                    >
                       {animal.status}
                     </span>
                   </td>
@@ -238,30 +292,39 @@ const Destinacoes: React.FC = () => {
             <button onClick={() => setViewingAnimal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><span className="material-symbols-outlined">close</span></button>
             <h3 className="text-2xl font-black text-slate-900 mb-6">Detalhes do Histórico</h3>
 
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-bold">Animal</p>
-                <p className="font-bold text-slate-800">{viewingAnimal.specie} - {viewingAnimal.breed}</p>
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6 text-left">
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Animal</p>
+                <p className="font-black text-slate-800 text-lg leading-tight">{viewingAnimal.specie} - {viewingAnimal.breed}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-bold">Identificação</p>
-                <p className="font-mono">{viewingAnimal.chip}</p>
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Identificação</p>
+                <p className="font-mono font-bold text-slate-700">{viewingAnimal.chip}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-bold">Entrada</p>
-                <p>{viewingAnimal.dateIn}</p>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Responsável</p>
+                <div className="flex flex-col">
+                  <span className="text-xs font-bold text-slate-800">Nome: <span className="font-normal text-slate-500">{viewingAnimal.receiverName}</span></span>
+                  <span className="text-xs font-bold text-slate-800">CPF: <span className="font-normal text-slate-500">{viewingAnimal.receiverCpf}</span></span>
+                </div>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-bold">Saída</p>
-                <p>{viewingAnimal.exitDate}</p>
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Saída</p>
+                <p className="font-bold text-slate-700">{viewingAnimal.exitDate}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-bold">Permanência</p>
-                <p>{viewingAnimal.daysIn} dias</p>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Processo SEI</p>
+                <p className="font-bold text-slate-700">{viewingAnimal.seiProcess}</p>
               </div>
-              <div>
-                <p className="text-xs text-gray-500 uppercase font-bold">Destino</p>
-                <p>{viewingAnimal.status} - {viewingAnimal.origin}</p>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Destino</p>
+                <p className="font-bold text-slate-800">{viewingAnimal.status}</p>
+                {viewingAnimal.observations && (
+                  <p className="text-xs text-slate-500 mt-1 italic">"{viewingAnimal.observations}"</p>
+                )}
               </div>
             </div>
           </div>
