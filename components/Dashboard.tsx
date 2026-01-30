@@ -62,16 +62,16 @@ const Dashboard: React.FC = () => {
           supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }),
           supabase.from('worklist_outros').select('*', { count: 'exact', head: true }),
 
-          // HVET (Filtragem por status/local contendo HVET nas worklists)
-          supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }).or('status.ilike.%HVET%,local.ilike.%HVET%'),
-          supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }).or('status.ilike.%HVET%,local.ilike.%HVET%'),
-          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).or('status.ilike.%HVET%,local.ilike.%HVET%'),
+          // HVET (Contagem exata do status "HVET" nas worklists)
+          supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }).eq('status', 'HVET'),
+          supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }).eq('status', 'HVET'),
+          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).eq('status', 'HVET'),
 
-          // Destinações (Histórico de Saídas - mapeamento por tipo_destinacao ou status)
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%adoção%,status.ilike.%adoção%'),
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%restituição%,status.ilike.%restituição%'),
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%eutanásia%,status.ilike.%eutanásia%,destination.ilike.%óbito%,status.ilike.%óbito%'),
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.ilike.%furto%,status.ilike.%furto%')
+          // Destinações (Histórico de Saídas - filtros exatos conforme feedback)
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Adoção,destination.eq.Adotado,destination.eq.Adotados'),
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Restituído,destination.eq.Restituição,destination.eq.Restituidos'),
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Eutanásia,destination.eq.Óbito'),
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).eq('destination', 'Furto')
         ]);
 
         const albergadosTotal = (activeAdocao || 0) + (activeRestituicao || 0) + (activeOutros || 0);
