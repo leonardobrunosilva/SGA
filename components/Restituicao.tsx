@@ -29,6 +29,7 @@ const DESTINATION_OPTIONS = [
 ];
 
 import { ORGAOS_LIST, RA_LIST, ESPECIES } from '../constants';
+import { useMemo } from 'react';
 
 const Restituicao: React.FC = () => {
   // --- STATE MANAGEMENT (BATCH FLOW) ---
@@ -63,6 +64,14 @@ const Restituicao: React.FC = () => {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // --- FILTERS STATE ---
+  const [filterChip, setFilterChip] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+  const [filterSpecies, setFilterSpecies] = useState('');
+  const [filterGender, setFilterGender] = useState('');
+  const [filterOrigin, setFilterOrigin] = useState('');
+  const [filterHistory, setFilterHistory] = useState('');
 
   // Footer state (Section 3 - Baixa)
   const [searchChipBaixa, setSearchChipBaixa] = useState('');
@@ -317,6 +326,57 @@ const Restituicao: React.FC = () => {
     }
   };
 
+  // Filtering logic
+  const filteredData = useMemo(() => {
+    // Reset page when filter changes
+    return animals.filter(item => {
+      const animal = item.animal || {};
+
+      const matchChip = !filterChip || (animal.chip && animal.chip.toLowerCase().includes(filterChip.toLowerCase()));
+
+      const matchYear = !filterYear || (animal.date_in && animal.date_in.startsWith(filterYear));
+
+      const matchSpecies = !filterSpecies || animal.specie === filterSpecies;
+
+      const matchGender = !filterGender || animal.gender === filterGender;
+
+      const matchOrigin = !filterOrigin || animal.origin === filterOrigin;
+
+      // History Filter mapping to contato_realizado
+      // Options: "Pendente" (false), "Realizado" (true)
+      let matchHistory = true;
+      if (filterHistory === 'Pendente') {
+        matchHistory = item.contato_realizado === false;
+      } else if (filterHistory === 'Realizado') {
+        matchHistory = item.contato_realizado === true;
+      }
+
+      return matchChip && matchYear && matchSpecies && matchGender && matchOrigin && matchHistory;
+    });
+  }, [animals, filterChip, filterYear, filterSpecies, filterGender, filterOrigin, filterHistory]);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Calculate index using filteredData instead of animals
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAnimals = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const handlePageChange = (page: number) => setCurrentPage(page);
+
+  // UI helpers
+  const clearFilters = () => {
+    setFilterChip('');
+    setFilterYear('');
+    setFilterSpecies('');
+    setFilterGender('');
+    setFilterOrigin('');
+    setFilterHistory('');
+    setCurrentPage(1);
+  };
+
   const formatCPF = (value: string) => {
     return value
       .replace(/\D/g, '')
@@ -325,15 +385,6 @@ const Restituicao: React.FC = () => {
       .replace(/(\d{3})(\d{1,2})/, '$1-$2')
       .replace(/(-\d{2})\d+?$/, '$1');
   };
-
-  // Pagination
-  const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
-  const indexOfLastItem = currentPage * itemsPerPage;
-  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentAnimals = animals.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(animals.length / itemsPerPage);
-  const handlePageChange = (page: number) => setCurrentPage(page);
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -614,6 +665,97 @@ const Restituicao: React.FC = () => {
         </div>
       </div>
 
+      {/* NEW: Filter Grid Section */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtro CHIP</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[18px]">memory</span>
+              <input
+                value={filterChip}
+                onChange={(e) => setFilterChip(e.target.value)}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 pl-9 pr-4 py-2 text-xs focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
+                placeholder="Digitar chip..."
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Ano</label>
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todos</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Espécie</label>
+            <select
+              value={filterSpecies}
+              onChange={(e) => setFilterSpecies(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todas</option>
+              {ESPECIES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Sexo</label>
+            <select
+              value={filterGender}
+              onChange={(e) => setFilterGender(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Ambos</option>
+              <option value="Macho">Macho</option>
+              <option value="Fêmea">Fêmea</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Origem (RA)</label>
+            <select
+              value={filterOrigin}
+              onChange={(e) => setFilterOrigin(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todas</option>
+              {[...RA_LIST].sort().map(ra => <option key={ra} value={ra}>{ra}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Contato/Histórico</label>
+            <div className="flex gap-1 items-center">
+              <select
+                value={filterHistory}
+                onChange={(e) => setFilterHistory(e.target.value)}
+                className="flex-1 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+              >
+                <option value="">Todos</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Realizado">Realizado</option>
+              </select>
+              <button
+                onClick={clearFilters}
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                title="Limpar Filtros"
+              >
+                <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Step 2: List (Table) */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
@@ -653,9 +795,26 @@ const Restituicao: React.FC = () => {
                       </div>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="px-2 py-1 rounded-md bg-gray-100 text-gray-600 text-xs font-bold border border-gray-200">
-                        {row.status}
-                      </span>
+                      {(() => {
+                        const colors: { [key: string]: { bg: string, text: string } } = {
+                          'Disponível': { bg: '#d4edbd', text: '#111814' },
+                          'Em tratamento': { bg: '#ffcfc9', text: '#111814' },
+                          'HVET': { bg: '#593287', text: '#ffffff' },
+                          'Restituído': { bg: '#0f734c', text: '#ffffff' },
+                          'Prazo Vencido': { bg: '#b10709', text: '#ffffff' },
+                          'Sem Exame': { bg: '#ffc8a8', text: '#111814' },
+                          'Experimento': { bg: '#f00aae', text: '#ffffff' },
+                        };
+                        const style = colors[row.status] || { bg: '#f3f4f6', text: '#4b5563' };
+                        return (
+                          <span
+                            className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border border-black/5 shadow-sm"
+                            style={{ backgroundColor: style.bg, color: style.text }}
+                          >
+                            {row.status}
+                          </span>
+                        );
+                      })()}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       {row.contato_realizado ? (
