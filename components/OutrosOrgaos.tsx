@@ -122,12 +122,13 @@ const OutrosOrgaos: React.FC = () => {
     }
 
     try {
-      const origin = entry.organ || entry.origin || entry['Região Administrativa'] || 'Não informado';
+      const organRaw = entry.organ || entry.origin || entry['Região Administrativa'] || 'Não informado';
+      const organClean = organRaw.split(' - ')[0]; // Garante apenas a sigla
       await outrosOrgaosService.add(
         entry.id,
         newStatus,
         entry.observations || entry['Observações'] || '',
-        origin // Saving origin/organ as destination/source context
+        organClean // Saving origin/organ as destination/source context
       );
 
       showNotification("Animal adicionado à lista!", "success");
@@ -499,7 +500,9 @@ const OutrosOrgaos: React.FC = () => {
 
                   return (
                     <tr key={row.id} className="group hover:bg-blue-50/50 transition-colors">
-                      <td className="px-4 py-3 text-sm font-bold text-slate-700">{animalData.organ || row.organ_destination || 'Não informado'}</td>
+                      <td className="px-4 py-3 text-sm font-bold text-slate-700">
+                        {(animalData.organ || row.organ_destination || 'Não informado').split(' - ')[0]}
+                      </td>
                       <td className="px-4 py-3">
                         <div className="flex flex-col">
                           <span className="text-sm font-bold text-slate-800">{animalData.specie}</span>

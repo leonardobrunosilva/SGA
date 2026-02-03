@@ -704,7 +704,7 @@ const Apreensoes: React.FC = () => {
               {currentAnimals.map((animal) => (
                 <tr key={animal.id} className="hover:bg-gray-50/50 transition-colors group">
                   <td className="p-4">
-                    <p className="text-xs font-bold text-slate-700 text-left">{animal.organ}</p>
+                    <p className="text-xs font-bold text-slate-700 text-left">{animal.organ.split(' - ')[0]}</p>
                     <p className="text-[10px] text-slate-400 uppercase mt-0.5 text-left">Solicitante</p>
                   </td>
                   <td className="p-4">
