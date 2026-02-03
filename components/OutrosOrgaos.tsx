@@ -670,7 +670,7 @@ const OutrosOrgaos: React.FC = () => {
       )}
 
       {/* Charts Section (Preserved) */}
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-10">
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6 pb-10 print:hidden">
         <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-6 shadow-sm">
           <div className="flex justify-between items-center">
             <div>
@@ -748,6 +748,72 @@ const OutrosOrgaos: React.FC = () => {
         onClose={() => setIsEditModalOpen(false)}
         onSave={handleSaveEdit}
       />
+
+      {/* --- TABELA EXCLUSIVA PARA IMPRESSÃO (MODO RELATÓRIO COMPLETO) --- */}
+      <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:z-[9999] print:bg-white p-8">
+        <div className="mb-8 border-b-2 border-slate-800 pb-4">
+          <h1 className="text-2xl font-black text-slate-800">Relatório de Animais - Outros Órgãos</h1>
+          <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mt-1">
+            Data de Geração: {new Date().toLocaleDateString('pt-BR')} | Total: {filteredAnimals.length} registros
+          </p>
+        </div>
+
+        <table className="w-full text-left border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-100 border-b-2 border-gray-300 text-[10px] uppercase font-black text-slate-700">
+              <th className="p-2 border border-gray-300">Órgão</th>
+              <th className="p-2 border border-gray-300">Animal (Espécie/Gênero)</th>
+              <th className="p-2 border border-gray-300">Identificação (CHIP)</th>
+              <th className="p-2 border border-gray-300">O.S.</th>
+              <th className="p-2 border border-gray-300">Entrada</th>
+              <th className="p-2 border border-gray-300">Estadia</th>
+              <th className="p-2 border border-gray-300">Status</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredAnimals.map((row: any) => {
+              const animalData = row.animal || {};
+              const dateInFormatted = formatDate(animalData.date_in);
+
+              const calculateDaysText = (dateStr: string) => {
+                try {
+                  const today = new Date();
+                  const parts = dateStr.split('/');
+                  if (parts.length === 3) {
+                    const entryDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    const diffTime = Math.abs(today.getTime() - entryDate.getTime());
+                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  }
+                } catch { return '-'; }
+                return '-';
+              };
+
+              return (
+                <tr key={row.id} className="border-b border-gray-200 text-[10px]">
+                  <td className="p-2 border border-gray-300 font-bold">
+                    {(animalData.organ || row.organ_destination || 'Não informado').split(' - ')[0]}
+                  </td>
+                  <td className="p-2 border border-gray-300">
+                    <div className="flex flex-col">
+                      <span className="font-bold">{animalData.specie}</span>
+                      <span className="text-gray-500">{animalData.gender} / {animalData.color}</span>
+                    </div>
+                  </td>
+                  <td className="p-2 border border-gray-300 font-mono font-bold text-gdf-blue">{animalData.chip}</td>
+                  <td className="p-2 border border-gray-300 font-mono">{animalData.os_number}</td>
+                  <td className="p-2 border border-gray-300">{dateInFormatted}</td>
+                  <td className="p-2 border border-gray-300 font-bold">{calculateDaysText(dateInFormatted)} dias</td>
+                  <td className="p-2 border border-gray-300 uppercase font-black">{row.status}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div className="mt-8 text-right text-[10px] text-gray-400 font-bold">
+          SGA - Sistema de Gestão Animal | Gerado em {new Date().toLocaleString('pt-BR')}
+        </div>
+      </div>
     </div>
   );
 };

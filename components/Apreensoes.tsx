@@ -569,7 +569,7 @@ const Apreensoes: React.FC = () => {
   return (
     <div className="flex flex-col gap-6 animate-fade-in">
       {/* Overview Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 print:hidden">
         {stats.map((stat, i) => (
           <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-gdf-blue/30 transition-colors print:hidden">
             <div className={`absolute right-0 top-0 h-16 w-16 ${stat.accentColor} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
@@ -738,7 +738,7 @@ const Apreensoes: React.FC = () => {
       </div>
 
       {/* Table */}
-      <div className="flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm mb-12 print:w-full print:absolute print:top-0 print:left-0">
+      <div className="flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm mb-12 print:hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
