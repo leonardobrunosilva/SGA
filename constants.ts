@@ -302,7 +302,8 @@ export const ORGAOS_LIST = [
   'IBRAM',
   'IBAMA',
   'SLU',
-  'NOVACAP'
+  'NOVACAP',
+  'TERRACAP'
 ];
 
 export const RA_LIST = [
