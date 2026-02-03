@@ -4,6 +4,7 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { apreensoesService } from '../services/apreensoesService';
 import { outrosOrgaosService } from '../services/worklistService';
 import { formatDate } from '../utils';
+import { ORGAOS_LIST, ESPECIES } from '../constants';
 import EditModal, { FieldConfig } from './EditModal';
 
 // Status Options
@@ -64,6 +65,13 @@ const OutrosOrgaos: React.FC = () => {
   const [newStatus, setNewStatus] = useState(STATUS_OPTIONS[0]);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [foundEntry, setFoundEntry] = useState<any>(null);
+
+  // --- FILTERS STATE ---
+  const [filterChip, setFilterChip] = useState('');
+  const [filterOrgan, setFilterOrgan] = useState('');
+  const [filterSpecies, setFilterSpecies] = useState('');
+  const [filterGender, setFilterGender] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   // Multi-entry modal
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
@@ -233,11 +241,35 @@ const OutrosOrgaos: React.FC = () => {
     return Object.entries(grouped).map(([name, val]) => ({ name, val }));
   }, [animals]);
 
+  // --- FILTERING LOGIC ---
+  const filteredAnimals = useMemo(() => {
+    return animals.filter(item => {
+      const animal = item.animal || {};
+
+      const matchChip = !filterChip || (animal.chip && animal.chip.toLowerCase().includes(filterChip.toLowerCase()));
+      const matchOrgan = !filterOrgan || (item.organ_destination === filterOrgan);
+      const matchSpecies = !filterSpecies || animal.specie === filterSpecies;
+      const matchGender = !filterGender || animal.gender === filterGender;
+      const matchStatus = !filterStatus || item.status === filterStatus;
+
+      return matchChip && matchOrgan && matchSpecies && matchGender && matchStatus;
+    });
+  }, [animals, filterChip, filterOrgan, filterSpecies, filterGender, filterStatus]);
+
   // --- PAGINATION ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentAnimals = animals.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(animals.length / itemsPerPage);
+  const currentAnimals = filteredAnimals.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredAnimals.length / itemsPerPage);
+
+  const clearFilters = () => {
+    setFilterChip('');
+    setFilterOrgan('');
+    setFilterSpecies('');
+    setFilterGender('');
+    setFilterStatus('');
+    setCurrentPage(1);
+  };
 
   const handlePageChange = (page: number) => {
     if (page >= 1 && page <= totalPages) {
@@ -357,6 +389,82 @@ const OutrosOrgaos: React.FC = () => {
         </div>
       </div>
 
+      {/* NEW: Filter Grid Section */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative z-20">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtro CHIP</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[18px]">memory</span>
+              <input
+                value={filterChip}
+                onChange={(e) => setFilterChip(e.target.value)}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 pl-9 pr-4 py-2 text-xs focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
+                placeholder="Digitar chip..."
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Órgão Solicitante</label>
+            <select
+              value={filterOrgan}
+              onChange={(e) => setFilterOrgan(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todos</option>
+              {ORGAOS_LIST.map(org => <option key={org} value={org}>{org}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Espécie</label>
+            <select
+              value={filterSpecies}
+              onChange={(e) => setFilterSpecies(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todas</option>
+              {ESPECIES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Sexo</label>
+            <select
+              value={filterGender}
+              onChange={(e) => setFilterGender(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Ambos</option>
+              <option value="Macho">Macho</option>
+              <option value="Fêmea">Fêmea</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Status</label>
+            <div className="flex gap-1 items-center">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="flex-1 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+              >
+                <option value="">Todos</option>
+                {STATUS_OPTIONS.map(opt => <option key={opt}>{opt}</option>)}
+              </select>
+              <button
+                onClick={clearFilters}
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                title="Limpar Filtros"
+              >
+                <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Table */}
       <div className="flex flex-col gap-4 bg-white border border-gray-200 rounded-xl p-4 lg:p-6 shadow-sm">
         <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center pb-4 border-b border-gray-100">
@@ -430,9 +538,9 @@ const OutrosOrgaos: React.FC = () => {
         </div>
 
         {/* Pagination */}
-        {animals.length > 0 && (
+        {filteredAnimals.length > 0 && (
           <div className="px-4 py-3 bg-gray-50/50 border-t border-gray-200 flex justify-between items-center text-xs text-slate-500">
-            <p>Exibindo <span className="font-bold text-slate-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, animals.length)}</span> de <span className="font-bold text-slate-900">{animals.length}</span></p>
+            <p>Exibindo <span className="font-bold text-slate-900">{indexOfFirstItem + 1}-{Math.min(indexOfLastItem, filteredAnimals.length)}</span> de <span className="font-bold text-slate-900">{filteredAnimals.length}</span></p>
             <div className="flex gap-1">
               <button onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}
                 className={`px-2 py-1 rounded border border-gray-200 bg-white transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}>
