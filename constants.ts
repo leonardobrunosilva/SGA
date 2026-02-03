@@ -295,13 +295,13 @@ export const DASHBOARD_METRICS: Metric[] = [
 ];
 
 export const ORGAOS_LIST = [
-  'SEAGRI - Secretaria de Agricultura',
-  'BPMA - Batalhão de Polícia Militar Ambiental',
-  'PCDF - Polícia Civil do DF',
-  'DER-DF - Depto. de Estradas de Rodagem',
-  'IBRAM - Instituto Brasília Ambiental',
+  'SEAGRI',
+  'BPMA',
+  'PCDF',
+  'DER-DF',
+  'IBRAM',
   'IBAMA',
-  'SLU - Serviço de Limpeza Urbana',
+  'SLU',
   'NOVACAP'
 ];
 
