@@ -1,5 +1,5 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Animal } from '../types';
 import { calculateDays, formatDate } from '../utils';
 import { supabase } from '../supabaseClient';
@@ -8,6 +8,8 @@ import { adocaoService } from '../services/worklistService';
 import { saidasService } from '../services/saidasService';
 import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
 import EditModal, { FieldConfig } from './EditModal';
+
+import { ESPECIES } from '../constants';
 
 const DATA_MONTHLY = [
   { label: 'Jan', val: 150 },
@@ -122,6 +124,12 @@ const Adocao: React.FC = () => {
     observations: ''
   });
   const [isSaving, setIsSaving] = useState(false);
+
+  // --- FILTERS STATE ---
+  const [filterChip, setFilterChip] = useState('');
+  const [filterSpecies, setFilterSpecies] = useState('');
+  const [filterGender, setFilterGender] = useState('');
+  const [filterStatus, setFilterStatus] = useState('');
 
   const [timeFilter, setTimeFilter] = useState<'Semanal' | 'Mensal' | 'Anual'>('Mensal');
 
@@ -344,6 +352,20 @@ const Adocao: React.FC = () => {
   const kpiAdopted = adoptedCount;
   const kpiAptos = animals.filter(a => a.status === 'Disponível').length;
 
+  // --- FILTERING LOGIC ---
+  const filteredAnimals = useMemo(() => {
+    return animals.filter(item => {
+      const animal = item.animal || {};
+
+      const matchChip = !filterChip || (animal.chip && animal.chip.toLowerCase().includes(filterChip.toLowerCase()));
+      const matchSpecies = !filterSpecies || animal.specie === filterSpecies;
+      const matchGender = !filterGender || animal.gender === filterGender;
+      const matchStatus = !filterStatus || item.status === filterStatus;
+
+      return matchChip && matchSpecies && matchGender && matchStatus;
+    });
+  }, [animals, filterChip, filterSpecies, filterGender, filterStatus]);
+
   const getStatusStyle = (status: string) => {
     switch (status) {
       case 'Disponível': return { backgroundColor: '#d4edbd', color: '#111814' };
@@ -361,9 +383,17 @@ const Adocao: React.FC = () => {
   // --- PAGINATION LOGIC ---
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
-  const currentAnimals = animals.slice(indexOfFirstItem, indexOfLastItem);
-  const totalPages = Math.ceil(animals.length / itemsPerPage);
+  const currentAnimals = filteredAnimals.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredAnimals.length / itemsPerPage);
   const handlePageChange = (page: number) => setCurrentPage(page);
+
+  const clearFilters = () => {
+    setFilterChip('');
+    setFilterSpecies('');
+    setFilterGender('');
+    setFilterStatus('');
+    setCurrentPage(1);
+  };
 
   return (
     <div className="flex flex-col gap-6 animate-fade-in pb-12">
@@ -482,6 +512,70 @@ const Adocao: React.FC = () => {
         )}
       </div>
 
+      {/* NEW: Filter Grid Section */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtro CHIP</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[18px]">memory</span>
+              <input
+                value={filterChip}
+                onChange={(e) => setFilterChip(e.target.value)}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 pl-9 pr-4 py-2 text-xs focus:border-primary focus:ring-2 focus:ring-primary/10 outline-none transition-all"
+                placeholder="Digitar chip..."
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Espécie</label>
+            <select
+              value={filterSpecies}
+              onChange={(e) => setFilterSpecies(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-primary outline-none"
+            >
+              <option value="">Todas</option>
+              {ESPECIES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Sexo</label>
+            <select
+              value={filterGender}
+              onChange={(e) => setFilterGender(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-primary outline-none"
+            >
+              <option value="">Ambos</option>
+              <option value="Macho">Macho</option>
+              <option value="Fêmea">Fêmea</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5 text-left">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Status</label>
+            <div className="flex gap-1 items-center">
+              <select
+                value={filterStatus}
+                onChange={(e) => setFilterStatus(e.target.value)}
+                className="flex-1 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-primary outline-none"
+              >
+                <option value="">Todos</option>
+                {ADOPTION_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+              </select>
+              <button
+                onClick={clearFilters}
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                title="Limpar Filtros"
+              >
+                <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
       {/* Table */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
         <div className="overflow-x-auto">
@@ -525,7 +619,7 @@ const Adocao: React.FC = () => {
                     </td>
                     <td className="px-6 py-4">
                       <span
-                        className="px-2 py-1 rounded-md text-[10px] font-bold uppercase transition-all"
+                        className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border border-black/5 shadow-sm transition-all"
                         style={getStatusStyle(row.status)}
                       >
                         {row.status}
