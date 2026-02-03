@@ -113,6 +113,39 @@ const OutrosOrgaos: React.FC = () => {
     return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
   };
 
+  // --- RELATÓRIOS ---
+  const handleExportCSV = () => {
+    const headers = ['Chip', 'Espécie', 'Status', 'Data Entrada', 'Permanência', 'Origem'];
+
+    const csvRows = [
+      headers.join(','),
+      ...filteredAnimals.map(item => {
+        const animal = item.animal || {};
+        const dateIn = animal.date_in || animal.dateIn || animal['Data de Entrada'];
+        const dateInStr = formatDate(dateIn);
+        return [
+          `"${animal.chip}"`,
+          `"${animal.specie}"`,
+          `"${item.status}"`,
+          `"${dateInStr}"`,
+          `"${calculateDaysIn(dateInStr)} dias"`,
+          `"${item.organ_destination || animal.origin}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Relatorio_OutrosOrgaos_${today}.csv`);
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => window.print();
+
   // --- ACTIONS ---
   const addAnimalToList = async (entry: any) => {
     // Check duplicate
@@ -282,7 +315,7 @@ const OutrosOrgaos: React.FC = () => {
     <div className="flex flex-col gap-8 animate-fade-in text-left">
       {/* Toast Notification */}
       {notification && (
-        <div className={`fixed top-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 animate-fade-in-up ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
+        <div className={`fixed top-8 right-8 z-[100] px-6 py-4 rounded-2xl shadow-2xl border flex items-center gap-3 animate-fade-in-up print:hidden ${notification.type === 'success' ? 'bg-emerald-50 border-emerald-200 text-emerald-800' :
           notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' :
             'bg-blue-50 border-blue-200 text-blue-800'
           }`}>
@@ -295,13 +328,13 @@ const OutrosOrgaos: React.FC = () => {
 
       {/* Header */}
       <div className="flex flex-col gap-4">
-        <div className="flex items-center gap-2 text-sm">
+        <div className="flex items-center gap-2 text-sm print:hidden">
           <a className="text-gray-500 hover:text-gdf-blue transition-colors" href="#">Home</a>
           <span className="text-gray-400">/</span>
           <span className="text-gdf-blue font-bold">Animais de Outros Órgãos</span>
         </div>
 
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-100 pb-6">
+        <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 border-b border-gray-100 pb-6 print:hidden">
           <div className="flex flex-col gap-2">
             <h2 className="text-3xl md:text-4xl font-black text-slate-800 tracking-tight">Animais de Outros Órgãos</h2>
             <p className="text-gray-500 text-base max-w-2xl">
@@ -312,7 +345,7 @@ const OutrosOrgaos: React.FC = () => {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4 lg:gap-6 print:hidden">
         <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-3 relative overflow-hidden shadow-sm hover:shadow-md transition-all group">
           <div className="flex justify-between items-start z-10">
             <div className="flex flex-col gap-1">
@@ -345,7 +378,7 @@ const OutrosOrgaos: React.FC = () => {
       </div>
 
       {/* Inclusion Section */}
-      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm">
+      <div className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm print:hidden">
         <h3 className="text-slate-800 font-bold text-lg mb-4">Nova Inclusão</h3>
         <div className="flex flex-col md:flex-row gap-4 items-end">
           <div className="flex-1 relative">
@@ -391,7 +424,7 @@ const OutrosOrgaos: React.FC = () => {
       </div>
 
       {/* NEW: Filter Grid Section */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative z-20">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm relative z-20 print:hidden">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtro CHIP</label>
@@ -466,8 +499,26 @@ const OutrosOrgaos: React.FC = () => {
         </div>
       </div>
 
+      {/* Action Bar (Export/Print) */}
+      <div className="flex justify-end gap-3 print:hidden">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Exportar CSV
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">print</span>
+          Imprimir
+        </button>
+      </div>
+
       {/* Table */}
-      <div className="flex flex-col gap-4 bg-white border border-gray-200 rounded-xl p-4 lg:p-6 shadow-sm">
+      <div className="flex flex-col gap-4 bg-white border border-gray-200 rounded-xl p-4 lg:p-6 shadow-sm print:w-full print:absolute print:top-0 print:left-0">
         <div className="flex flex-col lg:flex-row gap-4 justify-between items-start lg:items-center pb-4 border-b border-gray-100">
           <div>
             <h3 className="text-slate-800 font-bold text-lg">Lista de Trabalho</h3>
@@ -487,7 +538,7 @@ const OutrosOrgaos: React.FC = () => {
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Entrada</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Estadia</th>
                 <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Status</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider print:hidden">Ações</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-100">

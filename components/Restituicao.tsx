@@ -108,6 +108,37 @@ const Restituicao: React.FC = () => {
   ];
   const getImageUrl = (index: number) => ANIMAL_IMAGES[index % ANIMAL_IMAGES.length];
 
+  // --- RELATÓRIOS ---
+  const handleExportCSV = () => {
+    const headers = ['Chip', 'Espécie', 'Status', 'Data Entrada', 'Permanência', 'Origem (RA)'];
+
+    const csvRows = [
+      headers.join(','),
+      ...filteredData.map(item => {
+        const animal = item.animal || {};
+        const dateIn = animal.date_in || animal.dateIn || animal['Data de Entrada'];
+        return [
+          `"${animal.chip}"`,
+          `"${animal.specie}"`,
+          `"${item.status}"`,
+          `"${formatDate(dateIn)}"`,
+          `"${calculateDays(dateIn)} dias"`,
+          `"${animal.origin}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Relatorio_Restituicao_${today}.csv`);
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => window.print();
 
   // --- HANDLERS ---
 
@@ -566,24 +597,14 @@ const Restituicao: React.FC = () => {
               </div>
             </div>
           </div>
-
           <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex justify-between items-center">
+            <button onClick={() => setIsFormOpen(false)} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancelar</button>
             <button
-              type="button"
-              onClick={() => setIsFormOpen(false)}
-              className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors"
-            >
-              Cancelar
-            </button>
-            <button
-              type="button"
               onClick={handleSaveEdit}
               disabled={isSaving}
               className={`px-10 py-2.5 ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-gdf-blue hover:bg-gdf-blue-dark'} text-white text-sm font-black rounded-lg transition-all shadow-lg flex items-center gap-2`}
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {isSaving ? 'sync' : 'save'}
-              </span>
+              <span className="material-symbols-outlined text-[18px]">{isSaving ? 'sync' : 'save'}</span>
               {isSaving ? 'Salvando...' : 'Salvar Alterações'}
             </button>
           </div>
@@ -597,14 +618,14 @@ const Restituicao: React.FC = () => {
 
       {/* Toasts */}
       {notification && (
-        <div className={`fixed top-24 right-8 z-[100] p-4 rounded-xl shadow-2xl border flex items-center gap-3 animate-fade-in-up ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+        <div className={`fixed top-24 right-8 z-[100] p-4 rounded-xl shadow-2xl border flex items-center gap-3 animate-fade-in-up print:hidden ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
           <span className="material-symbols-outlined">{notification.type === 'success' ? 'check_circle' : notification.type === 'error' ? 'error' : 'info'}</span>
           <p className="text-sm font-bold">{notification.message}</p>
         </div>
       )}
 
       {/* Header + KPI */}
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2 print:hidden">
         <div className="flex flex-col text-left">
           <h2 className="text-[#111814] text-3xl font-black leading-tight tracking-[-0.033em]">Animais para Restituir</h2>
           <p className="text-gray-500 text-sm font-normal">Busque o animal, adicione à lista e registre a saída.</p>
@@ -623,7 +644,7 @@ const Restituicao: React.FC = () => {
       </div>
 
       {/* Step 1: Search & Add */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm print:hidden">
         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-gdf-blue">add_circle</span>
           1. Identificar Animal
@@ -666,7 +687,7 @@ const Restituicao: React.FC = () => {
       </div>
 
       {/* NEW: Filter Grid Section */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm print:hidden">
         <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
           <div className="flex flex-col gap-1.5">
             <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtro CHIP</label>
@@ -756,8 +777,26 @@ const Restituicao: React.FC = () => {
         </div>
       </div>
 
+      {/* Action Bar (Export/Print) */}
+      <div className="flex justify-end gap-3 print:hidden">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Exportar CSV
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">print</span>
+          Imprimir
+        </button>
+      </div>
+
       {/* Step 2: List (Table) */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col print:w-full print:absolute print:top-0 print:left-0">
         <div className="p-6 border-b border-gray-100 flex justify-between items-center">
           <h3 className="text-[#111814] text-lg font-bold">2. Lista de Saída (Preparação)</h3>
           {/* Internal table counter if needed, but redundant with top KPI now, maybe keep as simple badge */}
@@ -775,7 +814,7 @@ const Restituicao: React.FC = () => {
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Data Entrada</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Permanência</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Origem</th>
-                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider">Ações</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider print:hidden">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -848,7 +887,7 @@ const Restituicao: React.FC = () => {
                       })()}
                     </td>
                     <td className="px-6 py-4 text-slate-600">{animalData.origin || animalData.organ || 'Não informado'}</td>
-                    <td className="px-6 py-4 text-right">
+                    <td className="px-6 py-4 text-right print:hidden">
                       <div className="flex items-center justify-end gap-1">
                         <button onClick={() => showNotification(`Visualizar Detalhes: ${animalData.specie} (${animalData.chip}) - Em breve`, "info")} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Visualizar">
                           <span className="material-symbols-outlined text-[20px]">visibility</span>

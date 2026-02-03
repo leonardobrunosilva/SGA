@@ -170,6 +170,38 @@ const Adocao: React.FC = () => {
   ];
   const getImageUrl = (index: number) => ANIMAL_IMAGES[index % ANIMAL_IMAGES.length];
 
+  // --- RELATÓRIOS ---
+  const handleExportCSV = () => {
+    const headers = ['Chip', 'Espécie', 'Status', 'Data Entrada', 'Permanência', 'Origem (RA)'];
+
+    const csvRows = [
+      headers.join(','),
+      ...filteredAnimals.map(item => {
+        const animal = item.animal || {};
+        const dateIn = animal.date_in || animal.dateIn || animal['Data de Entrada'];
+        return [
+          `"${animal.chip}"`,
+          `"${animal.specie}"`,
+          `"${item.status}"`,
+          `"${formatDate(dateIn)}"`,
+          `"${calculateDays(dateIn)} dias"`,
+          `"${animal.origin}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Relatorio_Adocao_${today}.csv`);
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => window.print();
+
   // --- ACTIONS ---
 
   const handleSearchPreview = async () => {
@@ -399,19 +431,19 @@ const Adocao: React.FC = () => {
     <div className="flex flex-col gap-6 animate-fade-in pb-12">
       {/* Toast */}
       {notification && (
-        <div className={`fixed top-24 right-8 z-[100] p-4 rounded-xl shadow-2xl border flex items-center gap-3 animate-fade-in-up ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+        <div className={`fixed top-24 right-8 z-[100] p-4 rounded-xl shadow-2xl border flex items-center gap-3 animate-fade-in-up print:hidden ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
           <span className="material-symbols-outlined">{notification.type === 'success' ? 'check_circle' : notification.type === 'error' ? 'error' : 'info'}</span>
           <p className="text-sm font-bold">{notification.message}</p>
         </div>
       )}
 
-      <div className="flex flex-col text-left mb-2">
+      <div className="flex flex-col text-left mb-2 print:hidden">
         <h2 className="text-[#111814] text-3xl font-black leading-tight tracking-[-0.033em]">Gestão de Adoção</h2>
         <p className="text-gray-500 text-sm font-normal">Painel de controle manual para processo de adoção.</p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
         <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center gap-4">
           <div className="bg-orange-50 p-3 rounded-full text-orange-600">
             <span className="material-symbols-outlined text-2xl">gavel</span>
@@ -442,7 +474,7 @@ const Adocao: React.FC = () => {
       </div>
 
       {/* Insertion Card */}
-      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-visible">
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm relative overflow-visible print:hidden">
         <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4 flex items-center gap-2">
           <span className="material-symbols-outlined text-primary">add_circle</span>
           Nova Inclusão / Iniciar Processo
@@ -513,7 +545,7 @@ const Adocao: React.FC = () => {
       </div>
 
       {/* NEW: Filter Grid Section */}
-      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm print:hidden">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div className="flex flex-col gap-1.5 text-left">
             <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtro CHIP</label>
@@ -576,8 +608,26 @@ const Adocao: React.FC = () => {
         </div>
       </div>
 
+      {/* Action Bar (Export/Print) */}
+      <div className="flex justify-end gap-3 print:hidden">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Exportar CSV
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">print</span>
+          Imprimir
+        </button>
+      </div>
+
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col print:w-full print:absolute print:top-0 print:left-0">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -589,7 +639,7 @@ const Adocao: React.FC = () => {
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Entrada</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Estadia</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Status</th>
-                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs text-right">Ações</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs text-right print:hidden">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">

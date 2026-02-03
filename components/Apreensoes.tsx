@@ -224,6 +224,42 @@ const Apreensoes: React.FC = () => {
     }
   };
 
+  // --- RELATÓRIOS ---
+  const handleExportCSV = () => {
+    // Definir cabeçalhos
+    const headers = ['Chip', 'O.S', 'Espécie', 'Data Entrada', 'Status', 'Órgão', 'Origem (RA)'];
+
+    // Mapear dados filtrados
+    const csvRows = [
+      headers.join(','), // Cabeçalho
+      ...filteredAnimals.map(animal => [
+        `"${animal.chip}"`,
+        `"${animal.osNumber}"`,
+        `"${animal.specie}"`,
+        `"${formatDate(animal.dateIn)}"`,
+        `"${animal.status}"`,
+        `"${animal.organ.split(' - ')[0]}"`, // Sigla apenas
+        `"${animal.origin}"`
+      ].join(','))
+    ].join('\n');
+
+    // Criar download com BOM para suporte a acentos no Excel
+    const blob = new Blob(['\ufeff' + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Relatorio_Apreensoes_${today}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   if (isFormOpen) {
     return (
       <div className="flex flex-col gap-6 animate-fade-in max-w-4xl mx-auto pb-20">
@@ -535,7 +571,7 @@ const Apreensoes: React.FC = () => {
       {/* Overview Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         {stats.map((stat, i) => (
-          <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-gdf-blue/30 transition-colors">
+          <div key={i} className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex items-center justify-between relative overflow-hidden group hover:border-gdf-blue/30 transition-colors print:hidden">
             <div className={`absolute right-0 top-0 h-16 w-16 ${stat.accentColor} rounded-bl-full -mr-4 -mt-4 transition-transform group-hover:scale-110`}></div>
             <div className="text-left">
               <p className="text-xs font-semibold text-slate-500 uppercase tracking-wide">{stat.label}</p>
@@ -553,7 +589,7 @@ const Apreensoes: React.FC = () => {
       </div>
 
       {/* Page Title & Action */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mt-2 print:hidden">
         <div className="flex flex-col gap-1 text-left">
           <h2 className="text-3xl font-black tracking-tight text-slate-800">Entrada de Animais</h2>
           <p className="text-slate-500 text-sm">Gerencie o fluxo de entrada e apreensão de grandes animais (Semoventes).</p>
@@ -568,7 +604,7 @@ const Apreensoes: React.FC = () => {
       </div>
 
       {/* Filters */}
-      <div className="rounded-xl bg-white border border-gray-200 p-6 shadow-sm">
+      <div className="rounded-xl bg-white border border-gray-200 p-6 shadow-sm print:hidden">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-left">
           {/* Row 1: Ano, Espécie, Classificação */}
           <div className="flex flex-col gap-1.5">
@@ -683,8 +719,26 @@ const Apreensoes: React.FC = () => {
         </div>
       </div>
 
+      {/* Action Bar (Export/Print) */}
+      <div className="flex justify-end gap-3 print:hidden">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Exportar CSV
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">print</span>
+          Imprimir
+        </button>
+      </div>
+
       {/* Table */}
-      <div className="flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm mb-12">
+      <div className="flex flex-col rounded-xl border border-gray-200 bg-white overflow-hidden shadow-sm mb-12 print:w-full print:absolute print:top-0 print:left-0">
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
             <thead>
@@ -697,7 +751,7 @@ const Apreensoes: React.FC = () => {
                 <th className="p-4 font-semibold text-left">Data de Entrada</th>
                 <th className="p-4 font-semibold text-left">Localização</th>
                 <th className="p-4 font-semibold text-left">Histórico</th>
-                <th className="p-4 font-semibold text-right">Ações</th>
+                <th className="p-4 font-semibold text-right print:hidden">Ações</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-gray-100">
@@ -778,7 +832,7 @@ const Apreensoes: React.FC = () => {
                       return <span className="text-[10px] uppercase font-bold text-slate-400">Primário</span>;
                     })()}
                   </td>
-                  <td className="p-4 text-right">
+                  <td className="p-4 text-right print:hidden">
                     <div className="flex items-center justify-end gap-2">
                       <button
                         onClick={() => console.log('Visualizar', animal.id)}
@@ -807,7 +861,7 @@ const Apreensoes: React.FC = () => {
         </div>
 
         {/* Pagination Controls */}
-        <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200 flex justify-between items-center text-xs text-slate-500">
+        <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200 flex justify-between items-center text-xs text-slate-500 print:hidden">
           <p>Exibindo <span className="font-bold text-slate-900">{filteredAnimals.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, filteredAnimals.length)}</span> de <span className="font-bold text-slate-900">{filteredAnimals.length}</span> registros</p>
           <div className="flex gap-1">
             <button
@@ -847,7 +901,7 @@ const Apreensoes: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+    </div >
   );
 };
 
