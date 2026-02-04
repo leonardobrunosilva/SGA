@@ -682,16 +682,32 @@ const OutrosOrgaos: React.FC = () => {
           <div className="h-48 w-full">
             {chartDataOrgaos.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={chartDataOrgaos} margin={{ top: 0, right: 0, left: -40, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
-                  <XAxis dataKey="name" axisLine={false} tickLine={false} tick={{ fill: '#94a3b8', fontSize: 10 }} />
-                  <YAxis axisLine={false} tickLine={false} hide />
-                  <Tooltip cursor={{ fill: 'transparent' }} contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                  <Bar dataKey="val" radius={[4, 4, 0, 0]} barSize={40}>
-                    {chartDataOrgaos.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill="#0c3285" fillOpacity={0.4 + (index * 0.15)} />
-                    ))}
-                  </Bar>
+                <BarChart
+                  layout="vertical"
+                  data={chartDataOrgaos}
+                  margin={{ top: 5, right: 60, left: 10, bottom: 5 }}
+                >
+                  <CartesianGrid strokeDasharray="3 3" vertical={true} horizontal={false} stroke="#f1f5f9" />
+                  <XAxis type="number" hide />
+                  <YAxis
+                    dataKey="name"
+                    type="category"
+                    axisLine={false}
+                    tickLine={false}
+                    width={100}
+                    tick={{ fontSize: 12, fill: '#475569', fontWeight: 600 }}
+                  />
+                  <Tooltip
+                    cursor={{ fill: 'rgba(241, 245, 249, 0.5)' }}
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                  />
+                  <Bar
+                    dataKey="val"
+                    fill="#0f4c81"
+                    radius={[0, 4, 4, 0]}
+                    barSize={30}
+                    label={{ position: 'right', fill: '#1e3a8a', fontWeight: 'bold', fontSize: 12 }}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
