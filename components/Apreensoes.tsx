@@ -1,4 +1,5 @@
 import React, { useState, useRef, useMemo } from 'react';
+import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, Cell, LabelList } from 'recharts';
 import { MOCK_ANIMALS, ORGAOS_LIST, RA_LIST, ESPECIES } from '../constants';
 import { Animal } from '../types';
 import { formatDate } from '../utils';
@@ -120,6 +121,21 @@ const Apreensoes: React.FC = () => {
       return matchSpecies && matchChip && matchYear && matchRa && matchDate && matchClassification;
     });
   }, [animals, speciesFilter, chipSearch, yearFilter, raFilter, dateFilter, classificationFilter]);
+
+  // Dados do Gráfico por RA
+  const raChartData = useMemo(() => {
+    const counts: Record<string, number> = {};
+
+    filteredAnimals.forEach(animal => {
+      const ra = animal.origin || 'Não Informada';
+      counts[ra] = (counts[ra] || 0) + 1;
+    });
+
+    return Object.entries(counts)
+      .map(([name, value]) => ({ name, value }))
+      .filter(item => item.value > 0 && item.name !== '')
+      .sort((a, b) => b.value - a.value);
+  }, [filteredAnimals]);
 
   // Stats calculados dinamicamente
   const stats = [
@@ -901,6 +917,59 @@ const Apreensoes: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* RA Chart Section */}
+      {raChartData.length > 0 && (
+        <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm mb-6 animate-fade-in print:hidden">
+          <div className="flex items-center gap-2 mb-6 text-left">
+            <span className="material-symbols-outlined text-gdf-blue font-bold">bar_chart</span>
+            <h3 className="text-xl font-black text-gdf-blue">Apreensões por RA</h3>
+          </div>
+
+          <div style={{ width: '100%', height: Math.max(raChartData.length * 45, 300) }}>
+            <ResponsiveContainer>
+              <BarChart
+                layout="vertical"
+                data={raChartData}
+                margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
+              >
+                <XAxis type="number" hide />
+                <YAxis
+                  type="category"
+                  dataKey="name"
+                  width={150}
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fontSize: 12, fontWeight: 600, fill: '#334155' }}
+                />
+                <Tooltip
+                  cursor={{ fill: 'rgba(226, 232, 240, 0.4)' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgb(0 0 0 / 0.1)' }}
+                />
+                <Bar
+                  dataKey="value"
+                  fill="#0e4a9e"
+                  barSize={24}
+                  radius={[0, 4, 4, 0]}
+                  animationDuration={1500}
+                >
+                  <LabelList
+                    dataKey="value"
+                    position="insideRight"
+                    fill="white"
+                    fontWeight="bold"
+                    fontSize={12}
+                    offset={10}
+                  />
+                  {raChartData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill="#0e4a9e" fillOpacity={1 - (index * 0.02)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </div>
+      )}
     </div >
   );
 };
