@@ -25,9 +25,20 @@ ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS equipe_list JSONB DE
 ALTER TABLE public.system_settings ADD COLUMN IF NOT EXISTS "permissões_matriz" JSONB DEFAULT '[]'::jsonb;
 
 -- 3. Insert initial settings record if it doesn't exist
-INSERT INTO public.system_settings (id, unidade_data)
-VALUES (1, '{"nome": "Curral Comunitário - SEAGRI DF", "cnpj": "00.111.222/0001-33", "endereco": "Parque de Exposições Granja do Torto, Brasília - DF"}'::jsonb)
-ON CONFLICT (id) DO NOTHING;
+INSERT INTO public.system_settings (id, unidade_data, "permissões_matriz")
+VALUES (1, 
+    '{"nome": "Curral Comunitário - SEAGRI DF", "cnpj": "00.111.222/0001-33", "endereco": "Parque de Exposições Granja do Torto, Brasília - DF"}'::jsonb,
+    '[
+        {"module": "Dashboard & BI", "admin": ["V", "E", "X"], "vet": ["V"], "fiscal": ["V"]},
+        {"module": "Prontuário Eletrônico", "admin": ["V", "E", "X"], "vet": ["V", "E", "X"], "fiscal": ["V"]},
+        {"module": "Entrada de Animais", "admin": ["V", "E", "X"], "vet": ["V", "E"], "fiscal": ["V", "E", "X"]},
+        {"module": "Destinações & Termos", "admin": ["V", "E", "X"], "vet": ["V"], "fiscal": ["V", "E", "X"]},
+        {"module": "Configurações do Sistema", "admin": ["V", "E", "X"], "vet": [], "fiscal": []}
+    ]'::jsonb
+)
+ON CONFLICT (id) DO UPDATE SET 
+    "permissões_matriz" = EXCLUDED."permissões_matriz" 
+    WHERE public.system_settings."permissões_matriz" IS NULL OR public.system_settings."permissões_matriz" = '[]'::jsonb;
 
 -- 3.1 Force Master Admin role in profiles table
 UPDATE public.profiles SET role = 'ADMIN' WHERE email = 'leonardobruno.silva@gmail.com';
