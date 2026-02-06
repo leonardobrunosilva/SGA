@@ -29,6 +29,9 @@ INSERT INTO public.system_settings (id, unidade_data)
 VALUES (1, '{"nome": "Curral Comunitário - SEAGRI DF", "cnpj": "00.111.222/0001-33", "endereco": "Parque de Exposições Granja do Torto, Brasília - DF"}'::jsonb)
 ON CONFLICT (id) DO NOTHING;
 
+-- 3.1 Force Master Admin role in profiles table
+UPDATE public.profiles SET role = 'ADMIN' WHERE email = 'leonardobruno.silva@gmail.com';
+
 -- 4. Enable RLS and set policies
 ALTER TABLE public.profiles ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.system_settings ENABLE ROW LEVEL SECURITY;

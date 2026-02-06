@@ -125,7 +125,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
           cargo: profile.cargo || '',
           lotacao: profile.lotacao || '',
           avatarUrl: profile.avatar_url || '',
-          role: profile.role === 'ADMIN' ? 'admin' : 'operador'
+          role: adminStatus ? 'admin' : 'operador'
         });
       } else {
         // Initial setup for new user without profile row
@@ -214,7 +214,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
       if (!user) return;
 
       // Save User Profile (Always allowed for own profile - UPSERT)
-      const profilePayload = {
+      const profilePayload: any = {
         id: user.id, // Primary key for upsert
         nome: userProfile.nome,
         cpf: userProfile.cpf,
@@ -223,6 +223,11 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
         lotacao: userProfile.lotacao,
         avatar_url: userProfile.avatarUrl,
       };
+
+      // Ensure master admin always has ADMIN role in DB
+      if (user.email === 'leonardobruno.silva@gmail.com') {
+        profilePayload.role = 'ADMIN';
+      }
 
       const { error: profileError } = await supabase
         .from('profiles')
