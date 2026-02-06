@@ -127,6 +127,15 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
           avatarUrl: profile.avatar_url || '',
           role: profile.role === 'ADMIN' ? 'admin' : 'operador'
         });
+      } else {
+        // Initial setup for new user without profile row
+        const adminStatus = user.email === 'leonardobruno.silva@gmail.com';
+        setIsAdmin(adminStatus);
+        setUserProfile(prev => ({
+          ...prev,
+          email: user.email || '',
+          role: adminStatus ? 'admin' : 'operador'
+        }));
       }
 
       // Fetch Global Settings (ID 1)
@@ -204,20 +213,20 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) return;
 
-      // Save User Profile (Always allowed for own profile)
+      // Save User Profile (Always allowed for own profile - UPSERT)
       const profilePayload = {
+        id: user.id, // Primary key for upsert
         nome: userProfile.nome,
         cpf: userProfile.cpf,
+        email: userProfile.email,
         cargo: userProfile.cargo,
         lotacao: userProfile.lotacao,
         avatar_url: userProfile.avatarUrl,
-        // Role is usually not updated by the user themselves in common profile edit
       };
 
       const { error: profileError } = await supabase
         .from('profiles')
-        .update(profilePayload)
-        .eq('id', user.id);
+        .upsert(profilePayload);
 
       if (profileError) throw profileError;
 

@@ -38,6 +38,11 @@ DROP POLICY IF EXISTS "Public profiles are viewable by everyone" ON public.profi
 CREATE POLICY "Public profiles are viewable by everyone" ON public.profiles
 FOR SELECT USING (true);
 
+-- Allow users to insert/upsert their own profile
+DROP POLICY IF EXISTS "Users can insert own profile" ON public.profiles;
+CREATE POLICY "Users can insert own profile" ON public.profiles
+FOR INSERT WITH CHECK (auth.uid() = id);
+
 -- Allow users to update their own profile
 DROP POLICY IF EXISTS "Users can update own profile" ON public.profiles;
 CREATE POLICY "Users can update own profile" ON public.profiles
@@ -48,15 +53,15 @@ DROP POLICY IF EXISTS "Public settings are viewable by everyone" ON public.syste
 CREATE POLICY "Public settings are viewable by everyone" ON public.system_settings
 FOR SELECT USING (true);
 
--- Allow updates to settings for admins (we'll use a simple approach here, or you can refine it)
--- For now, allowing all authenticated users to update if they are marked as ADMIN in their profile
+-- Allow updates to settings for admins
 DROP POLICY IF EXISTS "Admins can update settings" ON public.system_settings;
 CREATE POLICY "Admins can update settings" ON public.system_settings
 FOR UPDATE USING (
-    EXISTS (
+    auth.jwt() ->> 'email' = 'leonardobruno.silva@gmail.com'
+    OR EXISTS (
         SELECT 1 FROM public.profiles 
         WHERE profiles.id = auth.uid() 
-        AND profiles.role = 'ADMIN'
+        AND (profiles.role = 'ADMIN' OR profiles.role = 'admin')
     )
 );
 
