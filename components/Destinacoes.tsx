@@ -3,6 +3,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { Animal } from '../types';
 import { calculateDays, formatDate } from '../utils';
 import { saidasService } from '../services/saidasService';
+import { apreensoesService } from '../services/apreensoesService';
 
 const Destinacoes: React.FC = () => {
   // History View State
@@ -11,6 +12,12 @@ const Destinacoes: React.FC = () => {
   const [yearFilter, setYearFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [identifiedAnimal, setIdentifiedAnimal] = useState<Animal | null>(null);
+
+  // Manual Entry State
+  const [newEntryChip, setNewEntryChip] = useState('');
+  const [newEntryStatus, setNewEntryStatus] = useState('Eutanásia');
+  const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
+  const [selectedAnimalForEntry, setSelectedAnimalForEntry] = useState<Animal | null>(null);
 
   // Initial Load - from Supabase saidas table
   useEffect(() => {
@@ -112,6 +119,75 @@ const Destinacoes: React.FC = () => {
     }
   };
 
+  const handleDirectInsert = async () => {
+    if (!newEntryChip.trim()) {
+      alert("Por favor, informe o número do chip.");
+      return;
+    }
+
+    try {
+      const animalsFound = await apreensoesService.getByChip(newEntryChip);
+      if (!animalsFound || animalsFound.length === 0) {
+        alert("Animal não encontrado na base de apreensões. Cadastre a entrada primeiro.");
+        return;
+      }
+
+      const animal = animalsFound[0];
+      setSelectedAnimalForEntry(animal);
+      setIsEntryModalOpen(true);
+    } catch (error) {
+      console.error('Erro ao buscar animal por chip:', error);
+      alert('Erro ao buscar animal. Tente novamente.');
+    }
+  };
+
+  const [entryData, setEntryData] = useState({
+    dateOut: new Date().toISOString().split('T')[0],
+    responsible: '',
+    cpf: '',
+    observations: ''
+  });
+
+  const handleConfirmExit = async () => {
+    if (!selectedAnimalForEntry) return;
+    if (!entryData.responsible || !entryData.cpf) {
+      alert("Por favor, preencha o responsável e o CPF.");
+      return;
+    }
+
+    try {
+      await saidasService.create({
+        chip: selectedAnimalForEntry.chip,
+        specie: selectedAnimalForEntry.specie,
+        gender: selectedAnimalForEntry.gender,
+        color: selectedAnimalForEntry.color,
+        history: selectedAnimalForEntry.observations || '',
+        observations: entryData.observations,
+        osNumber: selectedAnimalForEntry.osNumber,
+        dateOut: entryData.dateOut,
+        destination: newEntryStatus,
+        seiProcess: selectedAnimalForEntry.seiProcess || '',
+        receiverName: entryData.responsible,
+        receiverCpf: entryData.cpf
+      });
+
+      alert("Saída registrada com sucesso!");
+      setIsEntryModalOpen(false);
+      setNewEntryChip('');
+      setSelectedAnimalForEntry(null);
+      setEntryData({
+        dateOut: new Date().toISOString().split('T')[0],
+        responsible: '',
+        cpf: '',
+        observations: ''
+      });
+      loadHistory();
+    } catch (error) {
+      console.error('Erro ao registrar saída:', error);
+      alert('Erro ao registrar saída. Tente novamente.');
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8 animate-fade-in pb-12">
 
@@ -174,6 +250,53 @@ const Destinacoes: React.FC = () => {
             <option key={opt} value={opt}>{opt}</option>
           ))}
         </select>
+      </div>
+
+      {/* Manual Insertion Container */}
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm animate-fade-in">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <span className="material-symbols-outlined text-blue-600">add_circle</span>
+            <h3 className="text-blue-900 font-bold text-lg">Inserção Manual de Saída / Baixa Direta</h3>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="relative">
+              <input
+                className="w-full bg-white border border-blue-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-blue-400 outline-none transition-all text-sm"
+                placeholder="Busca por Chip..."
+                value={newEntryChip}
+                onChange={(e) => setNewEntryChip(e.target.value)}
+              />
+              <span className="material-symbols-outlined absolute left-4 top-3.5 text-blue-400">search</span>
+            </div>
+
+            <select
+              value={newEntryStatus}
+              onChange={(e) => setNewEntryStatus(e.target.value)}
+              className="bg-white border border-blue-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-blue-400 outline-none transition-all text-sm"
+            >
+              <option value="Adoção">Adoção</option>
+              <option value="Eutanásia">Eutanásia</option>
+              <option value="Restituição">Restituição</option>
+              <option value="Óbito">Óbito</option>
+              <option value="Transferência">Transferência</option>
+              <option value="Hvet">Hvet</option>
+              <option value="Projeto de Ensino">Projeto de Ensino</option>
+            </select>
+
+            <button
+              onClick={handleDirectInsert}
+              className="bg-green-600 hover:bg-green-700 text-white font-bold rounded-xl px-6 py-3 flex items-center justify-center gap-2 transition-all shadow-md active:scale-95"
+            >
+              <span className="material-symbols-outlined">add_circle</span>
+              Inserir na Lista
+            </button>
+          </div>
+          <p className="text-[10px] text-blue-400 font-medium">
+            Utilize para registrar saídas imediatas (ex: Eutanásia no resgate) sem passar pelas worklists.
+          </p>
+        </div>
       </div>
 
       {/* Table */}
@@ -326,6 +449,107 @@ const Destinacoes: React.FC = () => {
                   <p className="text-xs text-slate-500 mt-1 italic">"{viewingAnimal.observations}"</p>
                 )}
               </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Manual Entry Modal (Baixa Direta) */}
+      {isEntryModalOpen && selectedAnimalForEntry && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsEntryModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-gray-100 shadow-inner">
+                <img
+                  src={selectedAnimalForEntry.imageUrl}
+                  alt={selectedAnimalForEntry.specie}
+                  className="w-full h-full object-cover"
+                />
+              </div>
+              <div className="flex flex-col">
+                <h3 className="text-2xl font-black text-slate-900 leading-tight">Cadastrar Destinação</h3>
+                <p className="text-sm font-medium text-blue-600">Inserção Manual: {selectedAnimalForEntry.chip}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Data de Saída</label>
+                <input
+                  type="date"
+                  value={entryData.dateOut}
+                  onChange={(e) => setEntryData({ ...entryData, dateOut: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all font-medium text-slate-700"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Status de Destino</label>
+                <select
+                  disabled
+                  value={newEntryStatus}
+                  className="bg-gray-100 border border-gray-200 rounded-xl px-4 py-3 outline-none text-slate-500 font-bold"
+                >
+                  <option value={newEntryStatus}>{newEntryStatus}</option>
+                </select>
+                <p className="text-[10px] text-orange-400 font-medium pl-1 italic">* Alterável apenas na tela anterior</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Responsável / Requerente</label>
+                <input
+                  type="text"
+                  placeholder="Nome completo..."
+                  value={entryData.responsible}
+                  onChange={(e) => setEntryData({ ...entryData, responsible: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all font-medium text-slate-700 placeholder:text-gray-300"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">CPF</label>
+                <input
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={entryData.cpf}
+                  onChange={(e) => setEntryData({ ...entryData, cpf: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all font-medium text-slate-700 placeholder:text-gray-300"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Observações / Motivo</label>
+                <textarea
+                  rows={3}
+                  placeholder="Detalhes sobre a baixa direta..."
+                  value={entryData.observations}
+                  onChange={(e) => setEntryData({ ...entryData, observations: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all font-medium text-slate-700 placeholder:text-gray-300 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setIsEntryModalOpen(false)}
+                className="flex-1 px-6 py-4 rounded-xl border border-gray-200 text-gray-500 font-bold hover:bg-gray-50 transition-all active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleConfirmExit}
+                className="flex-[2] bg-green-600 hover:bg-green-700 text-white font-black rounded-xl px-6 py-4 flex items-center justify-center gap-2 transition-all shadow-lg shadow-green-200 active:scale-95"
+              >
+                <span className="material-symbols-outlined">verified</span>
+                Confirmar Saída
+              </button>
             </div>
           </div>
         </div>
