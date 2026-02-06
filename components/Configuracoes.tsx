@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { PageType } from '../types';
+import { supabase } from '../supabaseClient';
 
 interface ConfiguracoesProps {
   setCurrentPage: (page: PageType) => void;
@@ -65,76 +66,110 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
   const [isAddUserModalOpen, setIsAddUserModalOpen] = useState(false);
   const [viewingMembro, setViewingMembro] = useState<EquipeMembro | null>(null);
   const [editingMembro, setEditingMembro] = useState<EquipeMembro | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  // System Users State with Persistence
-  const [systemUsers, setSystemUsers] = useState<SystemUser[]>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('system_users_list');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return [];
-  });
+  // System Users State
+  const [systemUsers, setSystemUsers] = useState<SystemUser[]>([]);
   const [newSystemUser, setNewSystemUser] = useState<Omit<SystemUser, 'id'>>({ nome: '', email: '', perfil: 'operador' });
 
-  // User Profile State with Persistence
-  const [userProfile, setUserProfile] = useState<UserProfile>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('user_profile_settings');
-      if (saved) {
-        try {
-          const parsed = JSON.parse(saved);
-          // Migration: add role if missing (for existing users)
-          if (!parsed.role) {
-            parsed.role = 'admin';
-          }
-          return parsed;
-        } catch (e) { console.error(e); }
-      }
-    }
-    return DEFAULT_PROFILE;
+  // User Profile State
+  const [userProfile, setUserProfile] = useState<UserProfile>(DEFAULT_PROFILE);
+
+  // States para Preferências
+  const [prefs, setPrefs] = useState({
+    alertasRestituicao: true,
+    relatoriosObitos: true,
+    vencimentoCustodia: false,
+    darkMode: false,
+    compactInterface: false
   });
 
-  // States para Preferências with Persistence
-  const [prefs, setPrefs] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('user_prefs_settings');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
-      }
-    }
-    return {
-      alertasRestituicao: true,
-      relatoriosObitos: true,
-      vencimentoCustodia: false,
-      darkMode: false,
-      compactInterface: false
-    };
+  // States para Dados da Unidade
+  const [unidadeData, setUnidadeData] = useState({
+    nome: 'Curral Comunitário - SEAGRI DF',
+    cnpj: '00.111.222/0001-33',
+    endereco: 'Parque de Exposições Granja do Torto, Brasília - DF',
+    logoUrl: ''
   });
 
-  // States para Dados da Unidade with Persistence
-  const [unidadeData, setUnidadeData] = useState(() => {
-    if (typeof window !== 'undefined') {
-      const saved = localStorage.getItem('unidade_data_settings');
-      if (saved) {
-        try { return JSON.parse(saved); } catch (e) { console.error(e); }
+  // Initial Data Load from Supabase
+  useEffect(() => {
+    fetchInitialData();
+  }, []);
+
+  const fetchInitialData = async () => {
+    setLoading(true);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        setLoading(false);
+        return;
       }
+
+      // Fetch Profile
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (profile) {
+        const adminStatus = user.email === 'leonardobruno.silva@gmail.com' || profile.role === 'ADMIN';
+        setIsAdmin(adminStatus);
+
+        setUserProfile({
+          nome: profile.nome || '',
+          cpf: profile.cpf || '',
+          email: profile.email || user.email || '',
+          cargo: profile.cargo || '',
+          lotacao: profile.lotacao || '',
+          avatarUrl: profile.avatar_url || '',
+          role: profile.role === 'ADMIN' ? 'admin' : 'operador'
+        });
+      }
+
+      // Fetch Global Settings (ID 1)
+      const { data: settings } = await supabase
+        .from('system_settings')
+        .select('*')
+        .eq('id', 1)
+        .single();
+
+      if (settings) {
+        if (settings.unidade_data) setUnidadeData(settings.unidade_data);
+        if (settings.preferencias) setPrefs(settings.preferencias);
+        if (settings.equipe_list) setEquipeList(settings.equipe_list);
+        if (settings.permissões_matriz) setPermissions(settings.permissões_matriz);
+      }
+
+      // Fetch All Users if Admin
+      if (user.email === 'leonardobruno.silva@gmail.com' || (profile && profile.role === 'ADMIN')) {
+        const { data: allUsers } = await supabase
+          .from('profiles')
+          .select('*')
+          .order('nome');
+
+        if (allUsers) {
+          setSystemUsers(allUsers.map(u => ({
+            id: u.id,
+            nome: u.nome || 'Usuário sem nome',
+            email: u.email || '',
+            perfil: u.role === 'ADMIN' ? 'admin' : 'operador'
+          })));
+        }
+      }
+
+    } catch (error) {
+      console.error('Erro ao buscar dados iniciais:', error);
+    } finally {
+      setLoading(false);
     }
-    return {
-      nome: 'Curral Comunitário - SEAGRI DF',
-      cnpj: '00.111.222/0001-33',
-      endereco: 'Parque de Exposições Granja do Torto, Brasília - DF',
-      logoUrl: ''
-    };
-  });
+  };
+
 
   // State para Matriz de Permissões
   const [permissions, setPermissions] = useState<PermissionRow[]>([
-    { module: 'Dashboard & BI', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V'] },
-    { module: 'Prontuário Eletrônico', admin: ['V', 'E', 'X'], vet: ['V', 'E', 'X'], fiscal: ['V'] },
-    { module: 'Entrada de Animais', admin: ['V', 'E', 'X'], vet: ['V', 'E'], fiscal: ['V', 'E', 'X'] },
-    { module: 'Destinações & Termos', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V', 'E', 'X'] },
     { module: 'Configurações do Sistema', admin: ['V', 'E', 'X'], vet: [], fiscal: [] },
   ]);
 
@@ -164,12 +199,72 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
     setTimeout(() => setNotification(null), 3000);
   };
 
-  const handleSave = () => {
-    localStorage.setItem('user_profile_settings', JSON.stringify(userProfile));
-    localStorage.setItem('user_prefs_settings', JSON.stringify(prefs));
-    localStorage.setItem('unidade_data_settings', JSON.stringify(unidadeData));
-    localStorage.setItem('system_users_list', JSON.stringify(systemUsers));
-    showNotification("Configurações salvas com sucesso!");
+  const handleSave = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      // Save User Profile (Always allowed for own profile)
+      const profilePayload = {
+        nome: userProfile.nome,
+        cpf: userProfile.cpf,
+        cargo: userProfile.cargo,
+        lotacao: userProfile.lotacao,
+        avatar_url: userProfile.avatarUrl,
+        // Role is usually not updated by the user themselves in common profile edit
+      };
+
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .update(profilePayload)
+        .eq('id', user.id);
+
+      if (profileError) throw profileError;
+
+      // Save Global Settings (Only if Admin)
+      if (isAdmin) {
+        const settingsPayload = {
+          unidade_data: unidadeData,
+          preferencias: prefs,
+          equipe_list: equipeList,
+          permissões_matriz: permissions
+        };
+
+        const { error: settingsError } = await supabase
+          .from('system_settings')
+          .update(settingsPayload)
+          .eq('id', 1);
+
+        if (settingsError) throw settingsError;
+      }
+
+      showNotification("Configurações salvas no servidor com sucesso!");
+    } catch (error: any) {
+      console.error('Erro ao salvar configurações:', error);
+      showNotification("Erro ao salvar: " + (error.message || "Tente novamente"), "info");
+    }
+  };
+
+  const handleUpdateUserRole = async (userId: string, newRole: 'admin' | 'operador') => {
+    if (!isAdmin) {
+      showNotification("Apenas administradores podem alterar permissões.", "info");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ role: newRole === 'admin' ? 'ADMIN' : 'USER' })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      showNotification("Perfil de acesso atualizado!");
+      fetchInitialData(); // Refresh list
+    } catch (error: any) {
+      console.error('Erro ao atualizar cargo:', error);
+      showNotification("Erro ao atualizar cargo.", "info");
+    }
   };
 
   const handleAddSystemUser = () => {
@@ -186,27 +281,62 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
     showNotification(`Usuário ${newSystemUser.nome} cadastrado com sucesso!`, "success");
   };
 
-  const handleProfileAvatarChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUserProfile(prev => ({ ...prev, avatarUrl: reader.result as string }));
-        showNotification("Foto de perfil carregada. Clique em 'Salvar Alterações' para confirmar.", "info");
-      };
-      reader.readAsDataURL(file);
+  const uploadImage = async (file: File, bucket: string, path: string) => {
+    try {
+      const { data, error } = await supabase.storage
+        .from(bucket)
+        .upload(path, file, {
+          cacheControl: '3600',
+          upsert: true
+        });
+
+      if (error) throw error;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from(bucket)
+        .getPublicUrl(path);
+
+      return publicUrl;
+    } catch (error) {
+      console.error('Erro no upload:', error);
+      throw error;
     }
   };
 
-  const handleLogoChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleProfileAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setUnidadeData(prev => ({ ...prev, logoUrl: reader.result as string }));
-        showNotification("Logotipo carregado temporariamente. Clique em salvar para confirmar.", "info");
-      };
-      reader.readAsDataURL(file);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+
+      try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `avatars/${user.id}.${fileExt}`;
+        const publicUrl = await uploadImage(file, 'sga-assets', filePath);
+
+        setUserProfile(prev => ({ ...prev, avatarUrl: publicUrl }));
+        showNotification("Foto de perfil carregada com sucesso!", "success");
+      } catch (error: any) {
+        showNotification("Erro ao carregar foto: " + (error.message || "Tente novamente"), "info");
+      }
+    }
+  };
+
+  const handleLogoChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!isAdmin) return;
+
+      try {
+        const fileExt = file.name.split('.').pop();
+        const filePath = `system/logo.${fileExt}`;
+        const publicUrl = await uploadImage(file, 'sga-assets', filePath);
+
+        setUnidadeData(prev => ({ ...prev, logoUrl: publicUrl }));
+        showNotification("Logotipo atualizado com sucesso!", "success");
+      } catch (error: any) {
+        showNotification("Erro ao carregar logotipo: " + (error.message || "Tente novamente"), "info");
+      }
     }
   };
 
@@ -408,12 +538,14 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                       className="hidden"
                       accept="image/*"
                     />
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="text-xs font-black text-primary uppercase bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm hover:bg-slate-50 transition-all"
-                    >
-                      Alterar Imagem
-                    </button>
+                    {isAdmin && (
+                      <button
+                        onClick={() => fileInputRef.current?.click()}
+                        className="text-xs font-black text-primary uppercase bg-white border border-slate-200 px-4 py-2 rounded-lg shadow-sm hover:bg-slate-50 transition-all"
+                      >
+                        Alterar Imagem
+                      </button>
+                    )}
                   </div>
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -421,8 +553,9 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                   <input
                     type="text"
                     value={unidadeData.nome}
+                    readOnly={!isAdmin}
                     onChange={(e) => setUnidadeData({ ...unidadeData, nome: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${!isAdmin ? 'bg-slate-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5">
@@ -430,8 +563,9 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                   <input
                     type="text"
                     value={unidadeData.cnpj}
+                    readOnly={!isAdmin}
                     onChange={(e) => setUnidadeData({ ...unidadeData, cnpj: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${!isAdmin ? 'bg-slate-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
                 <div className="flex flex-col gap-1.5 md:col-span-2">
@@ -439,8 +573,9 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                   <input
                     type="text"
                     value={unidadeData.endereco}
+                    readOnly={!isAdmin}
                     onChange={(e) => setUnidadeData({ ...unidadeData, endereco: e.target.value })}
-                    className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all"
+                    className={`w-full bg-white border border-slate-200 rounded-xl px-4 py-2.5 text-sm font-bold text-slate-700 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all ${!isAdmin ? 'bg-slate-50 cursor-not-allowed' : ''}`}
                   />
                 </div>
               </div>
@@ -474,8 +609,9 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                             {['V', 'E', 'X'].map(act => (
                               <button
                                 key={act}
+                                disabled={!isAdmin}
                                 onClick={() => togglePermission(p.module, 'admin', act)}
-                                className={`size-6 rounded flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-95 ${p.admin.includes(act) ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-slate-100 text-slate-300 border border-slate-200'}`}
+                                className={`size-6 rounded flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-95 ${p.admin.includes(act) ? 'bg-primary/20 text-primary border border-primary/30' : 'bg-slate-100 text-slate-300 border border-slate-200'} ${!isAdmin ? 'opacity-70 cursor-not-allowed scale-100' : ''}`}
                               >
                                 {act}
                               </button>
@@ -487,8 +623,9 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                             {['V', 'E', 'X'].map(act => (
                               <button
                                 key={act}
+                                disabled={!isAdmin}
                                 onClick={() => togglePermission(p.module, 'vet', act)}
-                                className={`size-6 rounded flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-95 ${p.vet.includes(act) ? 'bg-blue-100 text-blue-600 border border-blue-200' : 'bg-slate-100 text-slate-300 border border-slate-200'}`}
+                                className={`size-6 rounded flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-95 ${p.vet.includes(act) ? 'bg-blue-100 text-blue-600 border border-blue-200' : 'bg-slate-100 text-slate-300 border border-slate-200'} ${!isAdmin ? 'opacity-70 cursor-not-allowed scale-100' : ''}`}
                               >
                                 {act}
                               </button>
@@ -500,8 +637,9 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                             {['V', 'E', 'X'].map(act => (
                               <button
                                 key={act}
+                                disabled={!isAdmin}
                                 onClick={() => togglePermission(p.module, 'fiscal', act)}
-                                className={`size-6 rounded flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-95 ${p.fiscal.includes(act) ? 'bg-orange-100 text-orange-600 border border-orange-200' : 'bg-slate-100 text-slate-300 border border-slate-200'}`}
+                                className={`size-6 rounded flex items-center justify-center text-[10px] font-black transition-all hover:scale-110 active:scale-95 ${p.fiscal.includes(act) ? 'bg-orange-100 text-orange-600 border border-orange-200' : 'bg-slate-100 text-slate-300 border border-slate-200'} ${!isAdmin ? 'opacity-70 cursor-not-allowed scale-100' : ''}`}
                               >
                                 {act}
                               </button>
@@ -533,13 +671,15 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
             <div className="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
               <div className="p-6 border-b border-slate-100 flex justify-between items-center">
                 <h3 className="text-lg font-black text-slate-800">Corpo Técnico Ativo</h3>
-                <button
-                  onClick={() => setIsInviteModalOpen(true)}
-                  className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-primary/20 transition-all flex items-center gap-2 active:scale-95"
-                >
-                  <span className="material-symbols-outlined text-[18px]">add</span>
-                  Convidar Membro
-                </button>
+                {isAdmin && (
+                  <button
+                    onClick={() => setIsInviteModalOpen(true)}
+                    className="px-4 py-2 bg-primary/10 text-primary border border-primary/20 rounded-lg text-xs font-black uppercase tracking-wider hover:bg-primary/20 transition-all flex items-center gap-2 active:scale-95"
+                  >
+                    <span className="material-symbols-outlined text-[18px]">add</span>
+                    Convidar Membro
+                  </button>
+                )}
               </div>
               <div className="overflow-x-auto">
                 <table className="w-full text-left border-collapse">
@@ -583,13 +723,15 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                             >
                               <span className="material-symbols-outlined text-[20px]">visibility</span>
                             </button>
-                            <button
-                              onClick={() => setEditingMembro(m)}
-                              className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
-                              title="Editar Cadastro"
-                            >
-                              <span className="material-symbols-outlined text-[20px]">edit_square</span>
-                            </button>
+                            {isAdmin && (
+                              <button
+                                onClick={() => setEditingMembro(m)}
+                                className="p-1.5 text-slate-400 hover:text-primary hover:bg-primary/10 rounded-lg transition-all"
+                                title="Editar Cadastro"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">edit_square</span>
+                              </button>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -620,9 +762,10 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                         <p className="text-sm font-bold text-slate-800">{notif.label}</p>
                         <p className="text-xs text-slate-500 mt-0.5">{notif.desc}</p>
                       </div>
-                      <label className="relative inline-flex items-center cursor-pointer">
+                      <label className={`relative inline-flex items-center ${!isAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                         <input
                           type="checkbox"
+                          disabled={!isAdmin}
                           checked={prefs[notif.id as keyof typeof prefs]}
                           onChange={() => handleTogglePref(notif.id as keyof typeof prefs)}
                           className="sr-only peer"
@@ -660,9 +803,10 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                       <span className="material-symbols-outlined text-slate-400">text_fields</span>
                       <p className="text-sm font-bold text-slate-800">Interface Compacta</p>
                     </div>
-                    <label className="relative inline-flex items-center cursor-pointer">
+                    <label className={`relative inline-flex items-center ${!isAdmin ? 'cursor-not-allowed opacity-60' : 'cursor-pointer'}`}>
                       <input
                         type="checkbox"
+                        disabled={!isAdmin}
                         checked={prefs.compactInterface}
                         onChange={() => handleTogglePref('compactInterface')}
                         className="sr-only peer"
@@ -732,9 +876,15 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600 font-medium">{u.email}</td>
                         <td className="px-6 py-4">
-                          <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight ${u.perfil === 'admin' ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-blue-100 text-blue-700 border border-blue-200'}`}>
-                            {u.perfil === 'admin' ? 'Administrador' : 'Operador'}
-                          </span>
+                          <select
+                            value={u.perfil}
+                            onChange={(e) => handleUpdateUserRole(u.id, e.target.value as 'admin' | 'operador')}
+                            disabled={!isAdmin}
+                            className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight border outline-none transition-all ${u.perfil === 'admin' ? 'bg-amber-100 text-amber-700 border-amber-200' : 'bg-blue-100 text-blue-700 border-blue-200'} ${!isAdmin ? 'appearance-none' : 'cursor-pointer hover:bg-white'}`}
+                          >
+                            <option value="operador">Operador</option>
+                            <option value="admin">Administrador</option>
+                          </select>
                         </td>
                       </tr>
                     ))}
