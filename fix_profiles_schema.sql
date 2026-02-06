@@ -65,5 +65,28 @@ FOR UPDATE USING (
     )
 );
 
--- 5. Reload schema cache
+-- 5. SETUP STORAGE BUCKET (sga-assets)
+-- This creates the bucket if it doesn't exist
+INSERT INTO storage.buckets (id, name, public)
+VALUES ('sga-assets', 'sga-assets', true)
+ON CONFLICT (id) DO NOTHING;
+
+-- Storage Policies: Allow anyone to view images
+DROP POLICY IF EXISTS "Public Access" ON storage.objects;
+CREATE POLICY "Public Access" ON storage.objects
+FOR SELECT USING (bucket_id = 'sga-assets');
+
+-- Storage Policies: Allow authenticated users to upload to their own folders
+DROP POLICY IF EXISTS "Authenticated users can upload images" ON storage.objects;
+CREATE POLICY "Authenticated users can upload images" ON storage.objects
+FOR INSERT TO authenticated
+WITH CHECK (bucket_id = 'sga-assets');
+
+-- Allow users to update/delete their own uploads (optional but good practice)
+DROP POLICY IF EXISTS "Users can update their own images" ON storage.objects;
+CREATE POLICY "Users can update their own images" ON storage.objects
+FOR UPDATE TO authenticated
+USING (bucket_id = 'sga-assets');
+
+-- 6. Reload schema cache
 NOTIFY pgrst, 'reload schema';
