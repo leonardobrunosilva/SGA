@@ -6,42 +6,11 @@ import { supabase } from '../supabaseClient';
 import { apreensoesService } from '../services/apreensoesService';
 import { adocaoService } from '../services/worklistService';
 import { saidasService } from '../services/saidasService';
-import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
 import EditModal, { FieldConfig } from './EditModal';
 
 import { ESPECIES } from '../constants';
 
-const DATA_MONTHLY = [
-  { label: 'Jan', val: 150 },
-  { label: 'Mar', val: 90 },
-  { label: 'Mai', val: 80 },
-  { label: 'Jul', val: 40 },
-  { label: 'Set', val: 45 },
-  { label: 'Nov', val: 15 },
-];
-
-const DATA_WEEKLY = [
-  { label: 'Seg', val: 12 },
-  { label: 'Ter', val: 18 },
-  { label: 'Qua', val: 15 },
-  { label: 'Qui', val: 22 },
-  { label: 'Sex', val: 30 },
-  { label: 'Sáb', val: 25 },
-  { label: 'Dom', val: 10 },
-];
-
-const DATA_YEARLY = [
-  { label: '2020', val: 450 },
-  { label: '2021', val: 580 },
-  { label: '2022', val: 720 },
-  { label: '2023', val: 890 },
-  { label: '2024', val: 324 },
-];
-
-const DATA_GENDER = [
-  { name: 'Macho', value: 121 },
-  { name: 'Fêmea', value: 165 },
-];
 
 const ADOPTION_STATUS_OPTIONS = [
   'Disponível',
@@ -89,6 +58,7 @@ const Adocao: React.FC = () => {
   const [newStatus, setNewStatus] = useState(ADOPTION_STATUS_OPTIONS[0]);
   const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
   const [adoptedCount, setAdoptedCount] = useState(0);
+  const [adoptionData, setAdoptionData] = useState<any[]>([]);
 
   // Multi-entry handling
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
@@ -133,26 +103,95 @@ const Adocao: React.FC = () => {
 
   const [timeFilter, setTimeFilter] = useState<'Semanal' | 'Mensal' | 'Anual'>('Mensal');
 
-  const getCurrentChartData = () => {
-    switch (timeFilter) {
-      case 'Semanal': return DATA_WEEKLY;
-      case 'Anual': return DATA_YEARLY;
-      default: return DATA_MONTHLY;
+  const timeData = useMemo(() => {
+    if (!adoptionData.length) {
+      if (timeFilter === 'Semanal') return Array(7).fill(0).map((_, i) => ({ label: ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom'][i], val: 0 }));
+      if (timeFilter === 'Anual') return Array(12).fill(0).map((_, i) => ({ label: ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'][i], val: 0 }));
+      return Array(31).fill(0).map((_, i) => ({ label: String(i + 1), val: 0 }));
     }
-  };
+
+    const today = new Date();
+
+    if (timeFilter === 'Semanal') {
+      const days = ['Dom', 'Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb'];
+      const last7Days = Array(7).fill(0).map((_, i) => {
+        const d = new Date();
+        d.setDate(today.getDate() - (6 - i));
+        return {
+          fullDate: d.toISOString().split('T')[0],
+          label: days[d.getDay()],
+          val: 0
+        };
+      });
+
+      adoptionData.forEach(item => {
+        const itemDate = item.dateOut || item.saida;
+        const match = last7Days.find(d => d.fullDate === itemDate);
+        if (match) match.val++;
+      });
+      return last7Days;
+    }
+
+    if (timeFilter === 'Anual') {
+      const months = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+      const yearData = months.map((m, i) => ({ label: m, val: 0, monthIdx: i }));
+      const currentYear = today.getFullYear();
+
+      adoptionData.forEach(item => {
+        const date = new Date(item.dateOut || item.saida);
+        if (date.getFullYear() === currentYear) {
+          const mIdx = date.getMonth();
+          if (yearData[mIdx]) yearData[mIdx].val++;
+        }
+      });
+      return yearData;
+    }
+
+    // Default: Mensal
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
+    const monthData = Array(daysInMonth).fill(0).map((_, i) => ({
+      label: String(i + 1),
+      fullDate: `${currentYear}-${String(currentMonth + 1).padStart(2, '0')}-${String(i + 1).padStart(2, '0')}`,
+      val: 0
+    }));
+
+    adoptionData.forEach(item => {
+      const itemDate = item.dateOut || item.saida;
+      const match = monthData.find(d => d.fullDate === itemDate);
+      if (match) match.val++;
+    });
+    return monthData;
+  }, [adoptionData, timeFilter]);
+
+  const genderData = useMemo(() => {
+    const counts = { Macho: 0, Fêmea: 0 };
+    adoptionData.forEach(item => {
+      if (item.gender === 'Macho') counts.Macho++;
+      else if (item.gender === 'Fêmea') counts.Fêmea++;
+    });
+    return [
+      { name: 'Macho', value: counts.Macho },
+      { name: 'Fêmea', value: counts.Fêmea }
+    ];
+  }, [adoptionData]);
 
   // Load Total Adoptions from Saidas
   useEffect(() => {
-    const fetchAdoptedCount = async () => {
+    const fetchAdoptionData = async () => {
       try {
         const allSaidas = await saidasService.getAll();
-        const adoptionTotal = allSaidas.filter(s => s.destination === 'Adoção').length;
-        setAdoptedCount(adoptionTotal);
+        const filtered = allSaidas.filter(s =>
+          s.destination && (s.destination.includes('Ado') || s.destination.includes('Adotado'))
+        );
+        setAdoptionData(filtered);
+        setAdoptedCount(filtered.length);
       } catch (e) {
-        console.error('Erro ao buscar total de doações:', e);
+        console.error('Erro ao buscar dados de adoção:', e);
       }
     };
-    fetchAdoptedCount();
+    fetchAdoptionData();
   }, []);
 
   // --- HELPERS ---
@@ -763,18 +802,18 @@ const Adocao: React.FC = () => {
 
             <div className="flex items-baseline gap-2 hidden md:flex">
               <span className="text-4xl font-black text-slate-900 tracking-tight">
-                {timeFilter === 'Anual' ? '324' : timeFilter === 'Semanal' ? '12' : '42'}
+                {timeData.reduce((acc, curr) => acc + curr.val, 0)}
               </span>
               <span className="text-xs font-black text-primary flex items-center gap-0.5">
                 <span className="material-symbols-outlined text-[16px]">trending_up</span>
-                +5.2%
+                Real
               </span>
             </div>
           </div>
 
           <div className="h-64 w-full mt-auto">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={getCurrentChartData()}>
+              <AreaChart data={timeData}>
                 <defs>
                   <linearGradient id="chartGradient" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor="#13ec80" stopOpacity={0.3} />
@@ -810,40 +849,36 @@ const Adocao: React.FC = () => {
 
           <div className="flex-1 h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={DATA_GENDER} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
-                <XAxis
-                  dataKey="name"
-                  axisLine={false}
-                  tickLine={false}
-                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
-                />
-                <YAxis hide />
-                <Tooltip
-                  cursor={{ fill: 'transparent' }}
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                />
-                <Bar
+              <PieChart>
+                <Pie
+                  data={genderData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={60}
+                  outerRadius={80}
+                  paddingAngle={5}
                   dataKey="value"
-                  radius={[8, 8, 0, 0]}
-                  barSize={60}
                   animationDuration={1200}
                 >
-                  {DATA_GENDER.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={entry.name === 'Macho' ? '#13ec80' : '#13ec80'} fillOpacity={entry.name === 'Macho' ? 0.8 : 1} />
+                  {genderData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.name === 'Macho' ? '#0c3b88' : '#13ec80'} />
                   ))}
-                </Bar>
-              </BarChart>
+                </Pie>
+                <Tooltip
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+              </PieChart>
             </ResponsiveContainer>
           </div>
 
           <div className="grid grid-cols-2 gap-4 mt-8">
             <div className="flex flex-col gap-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-black uppercase tracking-tight">Machos</span>
-              <span className="text-2xl font-black text-slate-900">121</span>
+              <span className="text-2xl font-black text-slate-900">{genderData.find(g => g.name === 'Macho')?.value || 0}</span>
             </div>
             <div className="flex flex-col gap-1 p-4 bg-slate-50 rounded-xl border border-slate-100">
               <span className="text-[10px] text-slate-400 font-black uppercase tracking-tight">Fêmeas</span>
-              <span className="text-2xl font-black text-primary">165</span>
+              <span className="text-2xl font-black text-primary">{genderData.find(g => g.name === 'Fêmea')?.value || 0}</span>
             </div>
           </div>
         </div>
