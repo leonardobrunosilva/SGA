@@ -12,7 +12,8 @@ interface TimelineEvent {
   title: string;
   subtitle?: string;
   content?: string;
-  result?: 'Positivo' | 'Negativo';
+  result?: string;
+  exam_results?: { exam: string; result: string }[];
   badge?: string;
   icon: string;
 }
@@ -199,11 +200,16 @@ const Prontuario: React.FC = () => {
 
   const handleEditHistoryItem = (item: TimelineEvent) => {
     setEditingId(item.id);
-    setMotivo(item.title);
     setDescricao(item.content || '');
     setDataExame(item.date);
-    // Para simplificar, não estamos populando exameResults aqui pois o mockHistory não tinha estrutura complexa de exames
-    // Mas em um cenário real, faríamos isso.
+    setDestinacao(item.subtitle || ''); // Restaura Destinação
+
+    // Restaura Resultados de Exames se existirem
+    if (item.exam_results && item.exam_results.length > 0) {
+      setExamResults(item.exam_results);
+    } else {
+      setExamResults([{ exam: '', result: '' }]);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -220,13 +226,15 @@ const Prontuario: React.FC = () => {
         // UPDATE REAL
         await prontuarioService.update(editingId, {
           title: defaultTitle,
+          subtitle: destinacao,
           content: descricao,
-          date: dataExame
+          date: dataExame,
+          exam_results: examResults
         });
 
         setHistoryList(prev => prev.map(item =>
           item.id === editingId
-            ? { ...item, title: defaultTitle, content: descricao, date: dataExame }
+            ? { ...item, title: defaultTitle, subtitle: destinacao, content: descricao, date: dataExame, exam_results: examResults }
             : item
         ));
         alert("Atendimento atualizado com sucesso!");
@@ -237,7 +245,9 @@ const Prontuario: React.FC = () => {
           type: 'OCCURRENCE',
           date: dataExame,
           title: defaultTitle,
+          subtitle: destinacao,
           content: descricao,
+          exam_results: examResults,
           icon: 'history_edu'
         };
 
@@ -248,7 +258,9 @@ const Prontuario: React.FC = () => {
           type: saved.type,
           date: saved.date,
           title: saved.title,
+          subtitle: saved.subtitle,
           content: saved.content,
+          exam_results: saved.exam_results,
           icon: saved.icon
         }, ...prev]);
 
@@ -265,7 +277,7 @@ const Prontuario: React.FC = () => {
       }
     } catch (err: any) {
       console.error(err);
-      alert(`Erro ao salvar ocorrência: ${err.message || 'Erro desconhecido'}. (Certifique-se de que a tabela 'prontuarios' existe no Supabase)`);
+      alert(`Erro ao salvar ocorrência: ${err.message || 'Erro desconhecido'}`);
     }
   };
 
@@ -550,7 +562,7 @@ const Prontuario: React.FC = () => {
                   {/* Coluna da Esquerda: Data */}
                   <div className="w-full md:w-20 pt-2 flex md:justify-end shrink-0 pl-10 md:pl-0">
                     <time className="text-[11px] font-black text-slate-400 uppercase leading-none tracking-tighter">
-                      {new Date(event.date).toLocaleDateString('pt-BR', { day: '2-digit', month: 'short', year: 'numeric' }).replace('.', '')}
+                      {formatDate(event.date)}
                     </time>
                   </div>
 
