@@ -208,33 +208,35 @@ const Prontuario: React.FC = () => {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!motivo.trim()) {
-      alert("Por favor, preencha o campo obrigatório: Motivo da Apreensão.");
+    if (!dataExame) {
+      alert("Por favor, informe a Data do Atendimento.");
       return;
     }
+
+    const defaultTitle = "Atendimento Clínico";
 
     try {
       if (editingId) {
         // UPDATE REAL
         await prontuarioService.update(editingId, {
-          title: motivo,
+          title: defaultTitle,
           content: descricao,
-          date: dataExame || new Date().toISOString().split('T')[0]
+          date: dataExame
         });
 
         setHistoryList(prev => prev.map(item =>
           item.id === editingId
-            ? { ...item, title: motivo, content: descricao, date: dataExame || new Date().toISOString().split('T')[0] }
+            ? { ...item, title: defaultTitle, content: descricao, date: dataExame }
             : item
         ));
-        alert("Ocorrência atualizada com sucesso!");
+        alert("Atendimento atualizado com sucesso!");
       } else {
         // INSERT REAL
         const newRecord: Omit<ProntuarioRecord, 'id'> = {
           animal_chip: animal.chip,
           type: 'OCCURRENCE',
-          date: dataExame || new Date().toISOString().split('T')[0],
-          title: motivo,
+          date: dataExame,
+          title: defaultTitle,
           content: descricao,
           icon: 'history_edu'
         };
@@ -250,7 +252,7 @@ const Prontuario: React.FC = () => {
           icon: saved.icon
         }, ...prev]);
 
-        alert("Sucesso! Ocorrência registrada no prontuário.");
+        alert("Sucesso! Atendimento registrado no prontuário.");
       }
 
       const closeAttendance = window.confirm("Operação realizada com sucesso!\n\nDeseja ENCERRAR o atendimento deste animal e limpar a tela?");
@@ -403,14 +405,14 @@ const Prontuario: React.FC = () => {
                 </div>
               </div>
 
-              {/* Motivo da Apreensão */}
+              {/* Data do Atendimento */}
               <div className="flex flex-col gap-2">
-                <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Motivo da Apreensão / Natureza</label>
+                <label className="text-gray-700 text-xs font-black uppercase tracking-wide cursor-help" title="Esta data será usada como referência no histórico clínico">Data do atendimento</label>
                 <input
-                  value={motivo}
-                  onChange={(e) => setMotivo(e.target.value)}
-                  className="w-full rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent px-4 py-3 outline-none transition-all text-sm"
-                  placeholder="Descreva o motivo (ex: Animal solto na via, Denúncia de maus tratos)..."
+                  type="date"
+                  value={dataExame}
+                  onChange={(e) => setDataExame(e.target.value)}
+                  className="w-full rounded-lg bg-white border border-gray-300 text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent px-4 py-3 outline-none transition-all text-sm font-bold"
                 />
               </div>
 
@@ -436,18 +438,9 @@ const Prontuario: React.FC = () => {
                 </div>
               </div>
 
-              {/* Data e Resultados dos Exames */}
-              <div className="flex flex-col md:flex-row gap-6">
-                <div className="flex flex-col gap-2 w-full md:w-1/3">
-                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Data do Exame</label>
-                  <input
-                    value={dataExame}
-                    onChange={(e) => setDataExame(e.target.value)}
-                    className="w-full rounded-lg bg-white border border-gray-300 text-gray-900 focus:ring-2 focus:ring-primary focus:border-transparent px-4 py-3 outline-none transition-all text-sm"
-                    type="date"
-                  />
-                </div>
-                <div className="flex flex-col gap-2 w-full md:w-2/3">
+              {/* Resultados dos Exames */}
+              <div className="flex flex-col gap-6">
+                <div className="flex flex-col gap-2 w-full">
                   <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Resultado Exames:</label>
                   <div className="flex flex-col gap-3">
                     {examResults.map((result, index) => (
