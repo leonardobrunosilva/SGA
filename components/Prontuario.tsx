@@ -1,6 +1,7 @@
 
 import React, { useState, useRef } from 'react';
 import { apreensoesService } from '../services/apreensoesService';
+import { prontuarioService, ProntuarioRecord } from '../services/prontuarioService';
 import { Animal } from '../types';
 import { formatDate } from '../utils';
 
@@ -103,17 +104,24 @@ const Prontuario: React.FC = () => {
         setColorForm(found.color);
         setSearchQuery('');
 
-        // Simulação de carregamento de histórico para o animal encontrado
-        setHistoryList([
-          {
-            id: 'h1',
-            type: 'OCCURRENCE',
-            date: new Date().toISOString().split('T')[0],
-            title: 'Histórico Carregado',
-            content: `Iniciando consulta para o animal ${found.chip}.`,
-            icon: 'history_edu'
-          }
-        ]);
+        // Carregamento de histórico real do banco de dados
+        try {
+          const history = await prontuarioService.getByChip(found.chip);
+          setHistoryList(history.map(h => ({
+            id: h.id,
+            type: h.type,
+            date: h.date,
+            title: h.title,
+            subtitle: h.subtitle,
+            content: h.content,
+            result: h.result,
+            icon: h.icon
+          })));
+        } catch (err) {
+          console.error('Erro ao carregar histórico:', err);
+          // Se falhar a busca de histórico, mantém a lista vazia ou mostra erro
+          setHistoryList([]);
+        }
       } else {
         alert("Animal não encontrado. Iniciando primeiro atendimento.");
         // Reseta para um estado de novo animal
@@ -198,42 +206,64 @@ const Prontuario: React.FC = () => {
     // Mas em um cenário real, faríamos isso.
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!motivo.trim()) {
       alert("Por favor, preencha o campo obrigatório: Motivo da Apreensão.");
       return;
     }
 
-    if (editingId) {
-      // Lógica de UPDATE (simulada)
-      setHistoryList(prev => prev.map(item =>
-        item.id === editingId
-          ? { ...item, title: motivo, content: descricao, date: dataExame }
-          : item
-      ));
-      alert("Ocorrência atualizada com sucesso!");
-    } else {
-      // Lógica de INSERT (simulada)
-      const newEvent: TimelineEvent = {
-        id: Date.now().toString(),
-        type: 'OCCURRENCE',
-        date: dataExame || new Date().toISOString().split('T')[0],
-        title: motivo,
-        content: descricao,
-        icon: 'history_edu'
-      };
-      setHistoryList([newEvent, ...historyList]);
-      alert("Sucesso! Ocorrência registrada no prontuário.");
-    }
+    try {
+      if (editingId) {
+        // UPDATE REAL
+        await prontuarioService.update(editingId, {
+          title: motivo,
+          content: descricao,
+          date: dataExame || new Date().toISOString().split('T')[0]
+        });
 
-    const closeAttendance = window.confirm("Operação realizada com sucesso!\n\nDeseja ENCERRAR o atendimento deste animal e limpar a tela?");
+        setHistoryList(prev => prev.map(item =>
+          item.id === editingId
+            ? { ...item, title: motivo, content: descricao, date: dataExame || new Date().toISOString().split('T')[0] }
+            : item
+        ));
+        alert("Ocorrência atualizada com sucesso!");
+      } else {
+        // INSERT REAL
+        const newRecord: Omit<ProntuarioRecord, 'id'> = {
+          animal_chip: animal.chip,
+          type: 'OCCURRENCE',
+          date: dataExame || new Date().toISOString().split('T')[0],
+          title: motivo,
+          content: descricao,
+          icon: 'history_edu'
+        };
 
-    if (closeAttendance) {
-      handleClearScreen();
-    } else {
-      resetForm();
-      setEditingId(null);
+        const saved = await prontuarioService.create(newRecord);
+
+        setHistoryList(prev => [{
+          id: saved.id,
+          type: saved.type,
+          date: saved.date,
+          title: saved.title,
+          content: saved.content,
+          icon: saved.icon
+        }, ...prev]);
+
+        alert("Sucesso! Ocorrência registrada no prontuário.");
+      }
+
+      const closeAttendance = window.confirm("Operação realizada com sucesso!\n\nDeseja ENCERRAR o atendimento deste animal e limpar a tela?");
+
+      if (closeAttendance) {
+        handleClearScreen();
+      } else {
+        resetForm();
+        setEditingId(null);
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Erro ao salvar ocorrência: ${err.message || 'Erro desconhecido'}. (Certifique-se de que a tabela 'prontuarios' existe no Supabase)`);
     }
   };
 
