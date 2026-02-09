@@ -6,7 +6,7 @@ import { supabase } from '../supabaseClient';
 import { apreensoesService } from '../services/apreensoesService';
 import { adocaoService } from '../services/worklistService';
 import { saidasService } from '../services/saidasService';
-import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell, PieChart, Pie } from 'recharts';
+import { AreaChart, Area, BarChart, Bar, ResponsiveContainer, CartesianGrid, XAxis, YAxis, Tooltip, Cell, PieChart, Pie, LabelList } from 'recharts';
 import EditModal, { FieldConfig } from './EditModal';
 
 import { ESPECIES } from '../constants';
@@ -849,25 +849,37 @@ const Adocao: React.FC = () => {
 
           <div className="flex-1 h-64 w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={genderData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
+              <BarChart data={genderData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <XAxis
+                  dataKey="name"
+                  axisLine={false}
+                  tickLine={false}
+                  tick={{ fill: '#94a3b8', fontSize: 12, fontWeight: 700 }}
+                />
+                <YAxis hide domain={[0, (dataMax: number) => dataMax * 1.2]} />
+                <Tooltip
+                  cursor={{ fill: 'transparent' }}
+                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
+                />
+                <Bar
                   dataKey="value"
+                  radius={[8, 8, 0, 0]}
+                  barSize={60}
                   animationDuration={1200}
                 >
                   {genderData.map((entry, index) => (
                     <Cell key={`cell-${index}`} fill={entry.name === 'Macho' ? '#0c3b88' : '#13ec80'} />
                   ))}
-                </Pie>
-                <Tooltip
-                  contentStyle={{ borderRadius: '12px', border: 'none', boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)' }}
-                />
-              </PieChart>
+                  <LabelList
+                    dataKey="value"
+                    position="top"
+                    fill="#475569"
+                    fontSize={14}
+                    fontWeight={800}
+                    offset={10}
+                  />
+                </Bar>
+              </BarChart>
             </ResponsiveContainer>
           </div>
 
