@@ -241,9 +241,9 @@ const Dashboard: React.FC = () => {
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         {metrics.map((m) => (
-          <div key={m.label} className="bg-white rounded-xl p-5 border border-gray-200 shadow-sm hover:shadow-md transition-all group">
-            <div className="flex justify-between items-start mb-4">
-              <div className={`p-2 rounded-lg ${m.color === 'blue' ? 'bg-blue-50 text-blue-600' :
+          <div key={m.label} className="bg-white rounded-2xl p-6 border border-gray-200 shadow-sm hover:shadow-lg hover:scale-[1.02] transition-all duration-300 group cursor-default">
+            <div className="flex items-center gap-3 mb-4">
+              <div className={`p-2 rounded-xl flex items-center justify-center ${m.color === 'blue' ? 'bg-blue-50 text-blue-600' :
                 m.color === 'green' ? 'bg-green-50 text-green-600' :
                   m.color === 'purple' ? 'bg-purple-50 text-purple-600' :
                     m.color === 'red' ? 'bg-red-50 text-red-600' :
@@ -252,18 +252,23 @@ const Dashboard: React.FC = () => {
                           m.color === 'indigo' ? 'bg-indigo-50 text-indigo-600' :
                             'bg-gray-100 text-gray-600'
                 }`}>
-                <span className="material-symbols-outlined">{m.icon}</span>
+                <span className="material-symbols-outlined text-[20px]">{m.icon}</span>
               </div>
-              <span className={`flex items-center text-xs font-bold px-2 py-1 rounded ${m.change.startsWith('+') ? 'text-green-700 bg-green-50' : m.change === '0%' ? 'text-gray-500 bg-gray-50' : 'text-red-600 bg-red-50'
-                }`}>
-                {m.change}
-              </span>
+              <p className="text-gray-500 text-sm font-bold tracking-tight">{m.label}</p>
             </div>
-            <p className="text-gray-500 text-sm font-medium">{m.label}</p>
-            <h3 className="text-3xl font-bold text-gray-900 mt-1 group-hover:text-blue-600 transition-colors">{m.value}</h3>
-            {m.subLabel && (
-              <p className="text-[11px] font-bold text-gray-400 mt-1 uppercase tracking-tight">{m.subLabel}</p>
-            )}
+            <div className="flex flex-col gap-1">
+              <h3 className="text-3xl font-black text-slate-800 group-hover:text-gdf-blue transition-colors">{m.value}</h3>
+              {m.subLabel && (
+                <p className={`text-sm font-bold mt-1 uppercase tracking-tight ${m.color === 'blue' ? 'text-blue-700/80' :
+                  m.color === 'green' ? 'text-green-700/80' :
+                    m.color === 'purple' ? 'text-purple-700/80' :
+                      m.color === 'red' ? 'text-red-700/80' :
+                        'text-slate-600'
+                  }`}>
+                  {m.subLabel}
+                </p>
+              )}
+            </div>
           </div>
         ))}
       </div>
