@@ -540,396 +540,334 @@ const Prontuario: React.FC = () => {
                   ></textarea>
                 </div>
               </div>
-
-              {/* Resenha Gráfica (Identificação Visual) */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[18px]">brush</span>
-                    Resenha Gráfica (Identificação Visual)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setResenhaMarks([])}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-red-600 text-[10px] font-black uppercase tracking-widest rounded-md transition-all border border-gray-200 shadow-sm"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">backspace</span>
-                    Limpar / Borracha
-                  </button>
-                </div>
-
-                <div className="relative w-full rounded-xl overflow-hidden border border-gray-200 bg-white select-none shadow-inner group">
-                  {/* Imagem Importada */}
-                  <img
-                    src={resenhaBg}
-                    alt="Esquema Corporal"
-                    className="w-full h-auto object-contain pointer-events-none"
-                  />
-                  {/* Overlay de Clique */}
-                  <div
-                    className="absolute inset-0 cursor-crosshair z-10"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const x = ((e.clientX - rect.left) / rect.width) * 100;
-                      const y = ((e.clientY - rect.top) / rect.height) * 100;
-                      setResenhaMarks([...resenhaMarks, { id: Date.now(), x, y }]);
-                    }}
-                  >
-                    {/* Renderização das Marcas */}
-                    {resenhaMarks.map((mark) => (
-                      <div
-                        key={mark.id}
-                        className="absolute size-4 bg-red-600 rounded-full border-2 border-white shadow-sm z-20 transform -translate-x-1/2 -translate-y-1/2 animate-scale-in"
-                        style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
-                        title="Marca Identificada"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setResenhaMarks(resenhaMarks.filter(m => m.id !== mark.id));
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Hover Info Overlay */}
-                  <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
-                    <div className="bg-black/60 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20 shadow-xl flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[14px] text-primary">touch_app</span>
-                      Clique para marcar / Clique no ponto para remover
-                    </div>
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-400 flex items-center gap-1 font-medium italic">
-                  <span className="material-symbols-outlined text-[14px]">info</span>
-                  Clique sobre a imagem para adicionar pontos de identificação (cicatrizes, marcas, ferimentos). Clique em um ponto para removê-lo individualmente.
-                </p>
-              </div>
-
-              {/* Resultados dos Exames */}
-              <div className="flex flex-col gap-6">
-                <div className="flex flex-col gap-2 w-full">
-                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Resultado Exames:</label>
-                  <div className="flex flex-col gap-3">
-                    {examResults.map((result, index) => (
-                      <div key={index} className="flex items-center gap-2 animate-fade-in">
-                        <select
-                          value={result.exam}
-                          onChange={(e) => updateExamRow(index, 'exam', e.target.value)}
-                          className="flex-1 rounded-lg bg-white border border-gray-300 px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none transition-all"
-                        >
-                          <option value="">Tipo de Exame...</option>
-                          <option value="AIE + (Anemia Infecciosa)">AIE + (Anemia Infecciosa)</option>
-                          <option value="Mormo">Mormo</option>
-                          <option value="Tuberculose">Tuberculose</option>
-                          <option value="Brucelose">Brucelose</option>
-                          <option value="Raiva">Raiva</option>
-                        </select>
-                        <select
-                          value={result.result}
-                          onChange={(e) => updateExamRow(index, 'result', e.target.value)}
-                          className={`w-32 rounded-lg border px-3 py-2 text-sm font-bold focus:ring-1 focus:ring-primary outline-none transition-all ${result.result === 'Positivo'
-                            ? 'bg-red-400 border-red-500 text-white'
-                            : result.result === 'Negativo'
-                              ? 'bg-green-100 border-green-200 text-green-800'
-                              : 'bg-white border-gray-300 text-gray-700'
-                            }`}
-                        >
-                          <option value="">Resultado...</option>
-                          <option value="Positivo">Positivo</option>
-                          <option value="Negativo">Negativo</option>
-                        </select>
-                        {examResults.length > 1 && (
-                          <button
-                            type="button"
-                            onClick={() => removeExamRow(index)}
-                            className="p-2 text-gray-400 hover:text-red-500 transition-colors"
-                          >
-                            <span className="material-symbols-outlined text-[20px]">delete</span>
-                          </button>
-                        )}
-                      </div>
-                    ))}
-                    <button
-                      type="button"
-                      onClick={addExamRow}
-                      className="text-primary text-[11px] font-black uppercase tracking-widest flex items-center gap-1 self-start hover:underline"
+          {/* Resultados dos Exames */}
+          <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-2 w-full">
+              <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Resultado Exames:</label>
+              <div className="flex flex-col gap-3">
+                {examResults.map((result, index) => (
+                  <div key={index} className="flex items-center gap-2 animate-fade-in">
+                    <select
+                      value={result.exam}
+                      onChange={(e) => updateExamRow(index, 'exam', e.target.value)}
+                      className="flex-1 rounded-lg bg-white border border-gray-300 px-3 py-2 text-sm focus:ring-1 focus:ring-primary outline-none transition-all"
                     >
-                      <span className="material-symbols-outlined text-[16px]">add</span>
-                      + Inserir novo resultado
-                    </button>
+                      <option value="">Tipo de Exame...</option>
+                      <option value="AIE + (Anemia Infecciosa)">AIE + (Anemia Infecciosa)</option>
+                      <option value="Mormo">Mormo</option>
+                      <option value="Tuberculose">Tuberculose</option>
+                      <option value="Brucelose">Brucelose</option>
+                      <option value="Raiva">Raiva</option>
+                    </select>
+                    <select
+                      value={result.result}
+                      onChange={(e) => updateExamRow(index, 'result', e.target.value)}
+                      className={`w-32 rounded-lg border px-3 py-2 text-sm font-bold focus:ring-1 focus:ring-primary outline-none transition-all ${result.result === 'Positivo'
+                        ? 'bg-red-400 border-red-500 text-white'
+                        : result.result === 'Negativo'
+                          ? 'bg-green-100 border-green-200 text-green-800'
+                          : 'bg-white border-gray-300 text-gray-700'
+                        }`}
+                    >
+                      <option value="">Resultado...</option>
+                      <option value="Positivo">Positivo</option>
+                      <option value="Negativo">Negativo</option>
+                    </select>
+                    {examResults.length > 1 && (
+                      <button
+                        type="button"
+                        onClick={() => removeExamRow(index)}
+                        className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                      >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                      </button>
+                    )}
                   </div>
-                </div>
-              </div>
-
-              <div className="pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
-                {/* Upload Relocado para o Rodapé */}
-                <div className="flex-1 w-full md:w-auto">
-                  <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} />
-                  <div
-                    onClick={handleFileButtonClick}
-                    className="flex items-center gap-3 cursor-pointer group hover:bg-gray-50 p-2 rounded-lg border border-dashed border-gray-200 transition-all w-fit"
-                  >
-                    <div className="size-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/20">
-                      <span className="material-symbols-outlined text-gray-400 group-hover:text-primary text-[18px]">cloud_upload</span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-[11px] text-gray-700 font-bold uppercase tracking-tight">
-                        {selectedFiles && selectedFiles.length > 0 ? `${selectedFiles.length} arquivo(s)` : "Anexar Arquivos (PDF/JPG)"}
-                      </span>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="flex gap-3 w-full md:w-auto justify-end">
-                  <button type="button" onClick={handleCancel} className="px-6 py-2.5 rounded-lg text-gray-500 font-black text-xs uppercase hover:bg-gray-100 transition-colors tracking-widest">Cancelar</button>
-                  <button type="submit" className={`px-6 py-2.5 rounded-lg font-black text-xs uppercase transition-colors shadow-lg flex items-center gap-2 tracking-widest ${editingId ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/20' : 'bg-primary text-green-900 hover:bg-primary/90 shadow-primary/20'}`}>
-                    <span className="material-symbols-outlined text-[18px]">{editingId ? 'edit' : 'save'}</span>
-                    {editingId ? 'Atualizar Ocorrência' : 'Registrar Ocorrência'}
-                  </button>
-                </div>
-              </div>
-            </div>
-          </form>
-        </section>
-      )}
-
-      <section className="flex flex-col gap-6">
-        <div className="flex items-center justify-between px-2">
-          <h3 className="text-gray-900 text-xl font-black uppercase tracking-tight">Histórico Clínico</h3>
-          {historyList.length > 0 && (
-            <span className="text-[10px] font-black text-primary bg-green-50 px-3 py-1 rounded border border-green-100 uppercase tracking-wider">
-              {historyList.length} Registros
-            </span>
-          )}
-        </div>
-
-        <div className="relative min-h-[100px]">
-          {/* Linha Vertical da Timeline */}
-          {historyList.length > 0 && (
-            <div className="absolute left-[20px] md:left-[110px] top-0 bottom-0 w-px bg-gray-200 z-0 no-print"></div>
-          )}
-
-          <div className="flex flex-col gap-8">
-            {historyList.length > 0 ? (
-              historyList.map((event) => (
-                <div key={event.id} className="relative flex flex-col md:flex-row gap-4 md:gap-12 group">
-
-                  {/* Coluna da Esquerda: Data */}
-                  <div className="w-full md:w-20 pt-2 flex md:justify-end shrink-0 pl-10 md:pl-0">
-                    <time className="text-[11px] font-black text-slate-400 uppercase leading-none tracking-tighter">
-                      {formatDate(event.date)}
-                    </time>
-                  </div>
-
-                  {/* Marcador na Timeline */}
-                  <div className="absolute left-4 md:left-[103px] top-2 z-10 no-print">
-                    <div className={`size-4 rounded-full border-4 border-white shadow-sm ${event.type === 'EXAM' ? 'bg-primary' :
-                      event.type === 'DESTINATION' ? 'bg-slate-900' :
-                        'bg-slate-400'
-                      }`}></div>
-                  </div>
-
-                  {/* Card de Conteúdo */}
-                  <div className={`flex-1 bg-white border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${event.type === 'DESTINATION'
-                    ? 'border-slate-900/20 bg-slate-50/30'
-                    : 'border-gray-200'
-                    }`}>
-                    <div className="flex items-start gap-4">
-                      <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${event.type === 'EXAM' ? 'bg-primary/10 text-primary' :
-                        event.type === 'DESTINATION' ? 'bg-slate-900 text-white' :
-                          'bg-gray-100 text-gray-500'
-                        }`}>
-                        <span className="material-symbols-outlined text-[24px]">{event.icon}</span>
-                      </div>
-
-                      <div className="flex-1">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-1">
-                          <h4 className={`text-sm md:text-base font-black tracking-tight uppercase ${event.type === 'DESTINATION' ? 'text-slate-900' : 'text-gray-900'
-                            }`}>
-                            {event.title}
-                          </h4>
-
-                          <div className="flex items-center gap-2">
-                            {event.type === 'EXAM' && event.result && (
-                              <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight border ${event.result === 'Negativo'
-                                ? 'bg-green-50 text-green-700 border-green-100'
-                                : 'bg-red-50 text-red-700 border-red-100'
-                                }`}>
-                                {event.result}
-                              </span>
-                            )}
-
-                            {event.type === 'OCCURRENCE' && (
-                              <button
-                                onClick={() => handleEditHistoryItem(event)}
-                                className="size-8 rounded-lg bg-gray-50 text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center group/edit"
-                                title="Editar Ocorrência"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">edit</span>
-                              </button>
-                            )}
-                          </div>
-                        </div>
-
-                        {event.subtitle && (
-                          <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">
-                            {event.subtitle}
-                          </p>
-                        )}
-
-                        {event.content && (
-                          <p className={`text-sm leading-relaxed ${event.type === 'DESTINATION' ? 'text-slate-700' : 'text-gray-600'
-                            }`}>
-                            {event.content}
-                          </p>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            ) : (
-              <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400">
-                <span className="material-symbols-outlined text-[48px] mb-2">history</span>
-                <p className="font-bold text-sm">{animal.id !== '' ? 'Nenhum histórico registrado para este animal.' : 'Pesquise um prontuário para visualizar o histórico.'}</p>
-              </div>
-            )}
-          </div>
-        </div>
-      </section>
-
-      {/* Modal de Edição de Cadastro (Básico) */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in no-print">
-          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col relative text-left">
-            <div className="p-6 border-b border-gray-100 flex justify-between items-center">
-              <div className="flex items-center gap-3">
-                <div className="size-10 rounded-lg bg-primary/10 text-green-700 flex items-center justify-center">
-                  <span className="material-symbols-outlined">edit_square</span>
-                </div>
-                <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">Editar Cadastro do Animal</h3>
-              </div>
-              <button onClick={() => setIsEditModalOpen(false)} className="size-8 text-slate-400 hover:text-slate-600 transition-colors">
-                <span className="material-symbols-outlined">close</span>
-              </button>
-            </div>
-
-            <form onSubmit={handleSaveEdit} className="p-8 space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Nome do Semovente Removed */}
-                {/* Espécie (Dropdown) */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Espécie</label>
-                  <select
-                    required
-                    value={editFormData.specie || ''}
-                    onChange={e => setEditFormData({ ...editFormData, specie: e.target.value })}
-                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                  >
-                    <option value="">Selecione...</option>
-                    <option value="Equino">Equino</option>
-                    <option value="Bovino">Bovino</option>
-                    <option value="Asinino">Asinino</option>
-                    <option value="Muar">Muar</option>
-                    <option value="Bubalino">Bubalino</option>
-                    <option value="Caprino/Ovino">Caprino/Ovino</option>
-                  </select>
-                </div>
-
-                {/* Idade (Texto Livre) */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Idade</label>
-                  <input
-                    value={editFormData.age || ''}
-                    onChange={e => setEditFormData({ ...editFormData, age: e.target.value })}
-                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                    placeholder="Ex: 5 anos"
-                  />
-                </div>
-
-                {/* Sexo (Dropdown) */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Sexo</label>
-                  <select
-                    required
-                    value={editFormData.gender || 'Macho'}
-                    onChange={e => setEditFormData({ ...editFormData, gender: e.target.value as any })}
-                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                  >
-                    <option value="Macho">Macho</option>
-                    <option value="Fêmea">Fêmea</option>
-                  </select>
-                </div>
-
-                {/* Pelagem / Cor (Texto Livre) */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pelagem / Cor</label>
-                  <input
-                    value={editFormData.color || ''}
-                    onChange={e => setEditFormData({ ...editFormData, color: e.target.value })}
-                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                    placeholder="Ex: Tordilho"
-                  />
-                </div>
-
-                {/* Nº do CHIP (Visualização/Edição) */}
-                <div className="flex flex-col gap-1.5">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Nº do CHIP / Brinco</label>
-                  <input
-                    required
-                    value={editFormData.chip || ''}
-                    onChange={e => setEditFormData({ ...editFormData, chip: e.target.value })}
-                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-primary outline-none transition-all"
-                    placeholder="Número do Chip"
-                  />
-                </div>
-
-                {/* Status do Semovente (Mantendo a lista anterior) */}
-                <div className="flex flex-col gap-1.5 md:col-span-2">
-                  <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Status do Semovente</label>
-                  <select
-                    value={editFormData.status || ''}
-                    onChange={e => setEditFormData({ ...editFormData, status: e.target.value })}
-                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
-                  >
-                    <option value="Em Tratamento">Em Tratamento</option>
-                    <option value="HVET">HVET</option>
-                    <option value="Albergado">Albergado</option>
-                    <option value="Adoção">Adoção</option>
-                    <option value="Eutanásia">Eutanásia</option>
-                    <option value="Restituição">Restituição</option>
-                    <option value="Restituição para outros Órgãos">Restituição para outros Órgãos</option>
-                    <option value="Furto">Furto</option>
-                    <option value="Óbito">Óbito</option>
-                    <option value="AIE+">AIE+</option>
-                    <option value="Mormo">Mormo</option>
-                    <option value="Raiva">Raiva</option>
-                    <option value="Outros">Outros</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Footer do Modal */}
-              <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
+                ))}
                 <button
                   type="button"
-                  onClick={() => setIsEditModalOpen(false)}
-                  className="px-6 py-2.5 rounded-lg text-gray-500 font-black text-xs uppercase hover:bg-gray-100 transition-colors tracking-widest"
+                  onClick={addExamRow}
+                  className="text-primary text-[11px] font-black uppercase tracking-widest flex items-center gap-1 self-start hover:underline"
                 >
-                  Cancelar
-                </button>
-                <button
-                  type="submit"
-                  className="px-8 py-2.5 rounded-lg bg-primary text-green-900 font-black text-xs uppercase shadow-lg shadow-primary/20 flex items-center gap-2 tracking-widest hover:bg-primary/90 transition-all"
-                >
-                  <span className="material-symbols-outlined text-[18px]">save</span>
-                  Salvar Alterações
+                  <span className="material-symbols-outlined text-[16px]">add</span>
+                  + Inserir novo resultado
                 </button>
               </div>
-            </form>
+            </div>
           </div>
+
+          <div className="pt-6 border-t border-gray-100 flex flex-col md:flex-row justify-between items-center gap-4">
+            {/* Upload Relocado para o Rodapé */}
+            <div className="flex-1 w-full md:w-auto">
+              <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileChange} />
+              <div
+                onClick={handleFileButtonClick}
+                className="flex items-center gap-3 cursor-pointer group hover:bg-gray-50 p-2 rounded-lg border border-dashed border-gray-200 transition-all w-fit"
+              >
+                <div className="size-8 rounded-full bg-gray-100 flex items-center justify-center group-hover:bg-primary/20">
+                  <span className="material-symbols-outlined text-gray-400 group-hover:text-primary text-[18px]">cloud_upload</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[11px] text-gray-700 font-bold uppercase tracking-tight">
+                    {selectedFiles && selectedFiles.length > 0 ? `${selectedFiles.length} arquivo(s)` : "Anexar Arquivos (PDF/JPG)"}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            <div className="flex gap-3 w-full md:w-auto justify-end">
+              <button type="button" onClick={handleCancel} className="px-6 py-2.5 rounded-lg text-gray-500 font-black text-xs uppercase hover:bg-gray-100 transition-colors tracking-widest">Cancelar</button>
+              <button type="submit" className={`px-6 py-2.5 rounded-lg font-black text-xs uppercase transition-colors shadow-lg flex items-center gap-2 tracking-widest ${editingId ? 'bg-orange-500 text-white hover:bg-orange-600 shadow-orange-500/20' : 'bg-primary text-green-900 hover:bg-primary/90 shadow-primary/20'}`}>
+                <span className="material-symbols-outlined text-[18px]">{editingId ? 'edit' : 'save'}</span>
+                {editingId ? 'Atualizar Ocorrência' : 'Registrar Ocorrência'}
+              </button>
+            </div>
+          </div>
+        </div>
+          </form>
+        </section >
+      )}
+
+<section className="flex flex-col gap-6">
+  <div className="flex items-center justify-between px-2">
+    <h3 className="text-gray-900 text-xl font-black uppercase tracking-tight">Histórico Clínico</h3>
+    {historyList.length > 0 && (
+      <span className="text-[10px] font-black text-primary bg-green-50 px-3 py-1 rounded border border-green-100 uppercase tracking-wider">
+        {historyList.length} Registros
+      </span>
+    )}
+  </div>
+
+  <div className="relative min-h-[100px]">
+    {/* Linha Vertical da Timeline */}
+    {historyList.length > 0 && (
+      <div className="absolute left-[20px] md:left-[110px] top-0 bottom-0 w-px bg-gray-200 z-0 no-print"></div>
+    )}
+
+    <div className="flex flex-col gap-8">
+      {historyList.length > 0 ? (
+        historyList.map((event) => (
+          <div key={event.id} className="relative flex flex-col md:flex-row gap-4 md:gap-12 group">
+
+            {/* Coluna da Esquerda: Data */}
+            <div className="w-full md:w-20 pt-2 flex md:justify-end shrink-0 pl-10 md:pl-0">
+              <time className="text-[11px] font-black text-slate-400 uppercase leading-none tracking-tighter">
+                {formatDate(event.date)}
+              </time>
+            </div>
+
+            {/* Marcador na Timeline */}
+            <div className="absolute left-4 md:left-[103px] top-2 z-10 no-print">
+              <div className={`size-4 rounded-full border-4 border-white shadow-sm ${event.type === 'EXAM' ? 'bg-primary' :
+                event.type === 'DESTINATION' ? 'bg-slate-900' :
+                  'bg-slate-400'
+                }`}></div>
+            </div>
+
+            {/* Card de Conteúdo */}
+            <div className={`flex-1 bg-white border rounded-xl p-5 shadow-sm transition-all hover:shadow-md ${event.type === 'DESTINATION'
+              ? 'border-slate-900/20 bg-slate-50/30'
+              : 'border-gray-200'
+              }`}>
+              <div className="flex items-start gap-4">
+                <div className={`size-10 rounded-lg flex items-center justify-center shrink-0 ${event.type === 'EXAM' ? 'bg-primary/10 text-primary' :
+                  event.type === 'DESTINATION' ? 'bg-slate-900 text-white' :
+                    'bg-gray-100 text-gray-500'
+                  }`}>
+                  <span className="material-symbols-outlined text-[24px]">{event.icon}</span>
+                </div>
+
+                <div className="flex-1">
+                  <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-1">
+                    <h4 className={`text-sm md:text-base font-black tracking-tight uppercase ${event.type === 'DESTINATION' ? 'text-slate-900' : 'text-gray-900'
+                      }`}>
+                      {event.title}
+                    </h4>
+
+                    <div className="flex items-center gap-2">
+                      {event.type === 'EXAM' && event.result && (
+                        <span className={`text-[10px] font-black px-2.5 py-1 rounded-full uppercase tracking-tight border ${event.result === 'Negativo'
+                          ? 'bg-green-50 text-green-700 border-green-100'
+                          : 'bg-red-50 text-red-700 border-red-100'
+                          }`}>
+                          {event.result}
+                        </span>
+                      )}
+
+                      {event.type === 'OCCURRENCE' && (
+                        <button
+                          onClick={() => handleEditHistoryItem(event)}
+                          className="size-8 rounded-lg bg-gray-50 text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center group/edit"
+                          title="Editar Ocorrência"
+                        >
+                          <span className="material-symbols-outlined text-[18px]">edit</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {event.subtitle && (
+                    <p className="text-[11px] font-bold text-gray-400 uppercase tracking-wide mb-2">
+                      {event.subtitle}
+                    </p>
+                  )}
+
+                  {event.content && (
+                    <p className={`text-sm leading-relaxed ${event.type === 'DESTINATION' ? 'text-slate-700' : 'text-gray-600'
+                      }`}>
+                      {event.content}
+                    </p>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+        ))
+      ) : (
+        <div className="flex flex-col items-center justify-center py-12 bg-gray-50 rounded-xl border border-dashed border-gray-200 text-gray-400">
+          <span className="material-symbols-outlined text-[48px] mb-2">history</span>
+          <p className="font-bold text-sm">{animal.id !== '' ? 'Nenhum histórico registrado para este animal.' : 'Pesquise um prontuário para visualizar o histórico.'}</p>
         </div>
       )}
     </div>
+  </div>
+</section>
+
+{/* Modal de Edição de Cadastro (Básico) */ }
+{
+  isEditModalOpen && (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in no-print">
+      <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full overflow-hidden flex flex-col relative text-left">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="size-10 rounded-lg bg-primary/10 text-green-700 flex items-center justify-center">
+              <span className="material-symbols-outlined">edit_square</span>
+            </div>
+            <h3 className="text-xl font-black text-slate-800 tracking-tight uppercase">Editar Cadastro do Animal</h3>
+          </div>
+          <button onClick={() => setIsEditModalOpen(false)} className="size-8 text-slate-400 hover:text-slate-600 transition-colors">
+            <span className="material-symbols-outlined">close</span>
+          </button>
+        </div>
+
+        <form onSubmit={handleSaveEdit} className="p-8 space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Nome do Semovente Removed */}
+            {/* Espécie (Dropdown) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Espécie</label>
+              <select
+                required
+                value={editFormData.specie || ''}
+                onChange={e => setEditFormData({ ...editFormData, specie: e.target.value })}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+              >
+                <option value="">Selecione...</option>
+                <option value="Equino">Equino</option>
+                <option value="Bovino">Bovino</option>
+                <option value="Asinino">Asinino</option>
+                <option value="Muar">Muar</option>
+                <option value="Bubalino">Bubalino</option>
+                <option value="Caprino/Ovino">Caprino/Ovino</option>
+              </select>
+            </div>
+
+            {/* Idade (Texto Livre) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Idade</label>
+              <input
+                value={editFormData.age || ''}
+                onChange={e => setEditFormData({ ...editFormData, age: e.target.value })}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                placeholder="Ex: 5 anos"
+              />
+            </div>
+
+            {/* Sexo (Dropdown) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Sexo</label>
+              <select
+                required
+                value={editFormData.gender || 'Macho'}
+                onChange={e => setEditFormData({ ...editFormData, gender: e.target.value as any })}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+              >
+                <option value="Macho">Macho</option>
+                <option value="Fêmea">Fêmea</option>
+              </select>
+            </div>
+
+            {/* Pelagem / Cor (Texto Livre) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Pelagem / Cor</label>
+              <input
+                value={editFormData.color || ''}
+                onChange={e => setEditFormData({ ...editFormData, color: e.target.value })}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+                placeholder="Ex: Tordilho"
+              />
+            </div>
+
+            {/* Nº do CHIP (Visualização/Edição) */}
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Nº do CHIP / Brinco</label>
+              <input
+                required
+                value={editFormData.chip || ''}
+                onChange={e => setEditFormData({ ...editFormData, chip: e.target.value })}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm font-mono focus:ring-2 focus:ring-primary outline-none transition-all"
+                placeholder="Número do Chip"
+              />
+            </div>
+
+            {/* Status do Semovente (Mantendo a lista anterior) */}
+            <div className="flex flex-col gap-1.5 md:col-span-2">
+              <label className="text-xs font-bold text-slate-500 uppercase tracking-wide">Status do Semovente</label>
+              <select
+                value={editFormData.status || ''}
+                onChange={e => setEditFormData({ ...editFormData, status: e.target.value })}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:ring-2 focus:ring-primary outline-none transition-all"
+              >
+                <option value="Em Tratamento">Em Tratamento</option>
+                <option value="HVET">HVET</option>
+                <option value="Albergado">Albergado</option>
+                <option value="Adoção">Adoção</option>
+                <option value="Eutanásia">Eutanásia</option>
+                <option value="Restituição">Restituição</option>
+                <option value="Restituição para outros Órgãos">Restituição para outros Órgãos</option>
+                <option value="Furto">Furto</option>
+                <option value="Óbito">Óbito</option>
+                <option value="AIE+">AIE+</option>
+                <option value="Mormo">Mormo</option>
+                <option value="Raiva">Raiva</option>
+                <option value="Outros">Outros</option>
+              </select>
+            </div>
+          </div>
+
+          {/* Footer do Modal */}
+          <div className="pt-6 border-t border-gray-100 flex justify-end gap-3">
+            <button
+              type="button"
+              onClick={() => setIsEditModalOpen(false)}
+              className="px-6 py-2.5 rounded-lg text-gray-500 font-black text-xs uppercase hover:bg-gray-100 transition-colors tracking-widest"
+            >
+              Cancelar
+            </button>
+            <button
+              type="submit"
+              className="px-8 py-2.5 rounded-lg bg-primary text-green-900 font-black text-xs uppercase shadow-lg shadow-primary/20 flex items-center gap-2 tracking-widest hover:bg-primary/90 transition-all"
+            >
+              <span className="material-symbols-outlined text-[18px]">save</span>
+              Salvar Alterações
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  )
+}
+    </div >
   );
 };
 
