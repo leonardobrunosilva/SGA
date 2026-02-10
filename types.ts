@@ -35,6 +35,7 @@ export interface Animal {
   age?: string;
   receiverName?: string;
   receiverCpf?: string;
+  resenha_body_marks?: { id: number; x: number; y: number }[];
 }
 
 export interface Metric {
