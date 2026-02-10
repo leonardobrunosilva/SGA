@@ -63,6 +63,18 @@ const Prontuario: React.FC = () => {
   const [examResults, setExamResults] = useState<{ exam: string, result: string }[]>([{ exam: '', result: '' }]);
   const [resenhaMarks, setResenhaMarks] = useState<Mark[]>([]);
 
+  const handleSaveMarks = async (marks: Mark[]) => {
+    if (!animal.id || animal.id === 'NOVO') return;
+    try {
+      await apreensoesService.updateApreensao(animal.id, {
+        resenha_body_marks: marks
+      });
+      setAnimal(prev => ({ ...prev, resenha_body_marks: marks }));
+    } catch (err) {
+      console.error('Erro ao auto-salvar marcas:', err);
+    }
+  };
+
   // --- ESTADOS DE HISTÓRICO REAL ---
   const [historyList, setHistoryList] = useState<TimelineEvent[]>([]);
   const [editingId, setEditingId] = useState<string | null>(null);
@@ -160,6 +172,7 @@ const Prontuario: React.FC = () => {
     setSpecieForm(BLANK_ANIMAL.specie);
     setGenderForm(BLANK_ANIMAL.gender);
     setColorForm(BLANK_ANIMAL.color);
+    setResenhaMarks([]);
     setHistoryList([]);
     setEditingId(null);
     resetForm();
@@ -278,15 +291,6 @@ const Prontuario: React.FC = () => {
         alert("Sucesso! Atendimento registrado no prontuário.");
       }
 
-      // SALVAR MARCAS DA RESENHA NO CADASTRO DO ANIMAL
-      if (animal.id && animal.id !== 'NOVO') {
-        await apreensoesService.updateApreensao(animal.id, {
-          resenha_body_marks: resenhaMarks
-        });
-        // Atualiza estado local do animal para refletir as novas marcas
-        setAnimal(prev => ({ ...prev, resenha_body_marks: resenhaMarks }));
-      }
-
       const closeAttendance = window.confirm("Operação realizada com sucesso!\n\nDeseja ENCERRAR o atendimento deste animal e limpar a tela?");
 
       if (closeAttendance) {
@@ -338,53 +342,120 @@ const Prontuario: React.FC = () => {
 
       {/* Header do Semovente (Sujeito do Atendimento) */}
       {animal.id !== '' && (
-        <header className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm print-card">
-          <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
-            <div className="flex gap-5 items-center">
-              <div className="relative">
-                <div
-                  className="size-20 md:size-24 rounded-full bg-cover bg-center border-4 border-gray-100 shadow-md"
-                  style={{ backgroundImage: `url('${animal.imageUrl}')` }}
-                ></div>
-                <div className="absolute -bottom-1 -right-1 bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border-2 border-white uppercase whitespace-nowrap">
-                  {animal.id === 'NOVO' ? 'NOVO CADASTRO' : animal.status}
-                </div>
-              </div>
-              <div className="flex flex-col gap-1">
-                <div className="flex items-center gap-3 flex-wrap">
-                  <h1 className="text-gray-900 text-2xl md:text-3xl font-black leading-tight tracking-tight">
-                    {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.age || 'Idade não informada'}`}
-                  </h1>
-                  <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded text-[11px] text-primary font-black font-mono tracking-wide border border-gray-200 uppercase">
-                    <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
-                    CHIP #{animal.chip}
+        <>
+          <header className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm print-card">
+            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
+              <div className="flex gap-5 items-center">
+                <div className="relative">
+                  <div
+                    className="size-20 md:size-24 rounded-full bg-cover bg-center border-4 border-gray-100 shadow-md"
+                    style={{ backgroundImage: `url('${animal.imageUrl}')` }}
+                  ></div>
+                  <div className="absolute -bottom-1 -right-1 bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border-2 border-white uppercase whitespace-nowrap">
+                    {animal.id === 'NOVO' ? 'NOVO CADASTRO' : animal.status}
                   </div>
                 </div>
-                <p className="text-gray-500 text-sm md:text-base font-medium flex items-center gap-2">
-                  Sexo: {animal.gender}
-                  <span className="size-1 rounded-full bg-gray-300"></span>
-                  Pelagem: {animal.color}
-                </p>
+                <div className="flex flex-col gap-1">
+                  <div className="flex items-center gap-3 flex-wrap">
+                    <h1 className="text-gray-900 text-2xl md:text-3xl font-black leading-tight tracking-tight">
+                      {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.age || 'Idade não informada'}`}
+                    </h1>
+                    <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded text-[11px] text-primary font-black font-mono tracking-wide border border-gray-200 uppercase">
+                      <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
+                      CHIP #{animal.chip}
+                    </div>
+                  </div>
+                  <p className="text-gray-500 text-sm md:text-base font-medium flex items-center gap-2">
+                    Sexo: {animal.gender}
+                    <span className="size-1 rounded-full bg-gray-300"></span>
+                    Pelagem: {animal.color}
+                  </p>
+                </div>
+              </div>
+              <div className="flex gap-3 w-full md:w-auto no-print">
+                <button
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition-colors border border-gray-200"
+                  onClick={() => window.print()}
+                >
+                  <span className="material-symbols-outlined text-[20px]">print</span>
+                  <span className="truncate">Ficha de Campo</span>
+                </button>
+                <button
+                  onClick={handleOpenEdit}
+                  className="flex-1 md:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-primary text-green-900 hover:bg-primary/90 text-sm font-black rounded-lg transition-colors shadow-lg shadow-primary/10"
+                >
+                  <span className="material-symbols-outlined text-[20px]">edit</span>
+                  <span className="truncate">Editar Cadastro</span>
+                </button>
               </div>
             </div>
-            <div className="flex gap-3 w-full md:w-auto no-print">
+          </header>
+
+          {/* Resenha Gráfica Permanente (Sempre à mostra) */}
+          <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col gap-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-gray-900 text-lg font-black tracking-tight uppercase flex items-center gap-2">
+                <span className="material-symbols-outlined text-primary text-[24px]">brush</span>
+                Resenha Gráfica / Marcas de Identificação
+              </h3>
               <button
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition-colors border border-gray-200"
-                onClick={() => window.print()}
+                type="button"
+                onClick={() => {
+                  setResenhaMarks([]);
+                  handleSaveMarks([]);
+                }}
+                className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-red-600 text-[10px] font-black uppercase tracking-widest rounded-md transition-all border border-gray-200 shadow-sm"
               >
-                <span className="material-symbols-outlined text-[20px]">print</span>
-                <span className="truncate">Ficha de Campo</span>
-              </button>
-              <button
-                onClick={handleOpenEdit}
-                className="flex-1 md:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-primary text-green-900 hover:bg-primary/90 text-sm font-black rounded-lg transition-colors shadow-lg shadow-primary/10"
-              >
-                <span className="material-symbols-outlined text-[20px]">edit</span>
-                <span className="truncate">Editar Cadastro</span>
+                <span className="material-symbols-outlined text-[16px]">backspace</span>
+                Limpar Tudo
               </button>
             </div>
-          </div>
-        </header>
+
+            <div className="relative w-full rounded-xl overflow-hidden border border-gray-100 bg-white select-none shadow-inner group">
+              <img
+                src={resenhaBg}
+                alt="Esquema Corporal"
+                className="w-full h-auto object-contain pointer-events-none"
+              />
+              <div
+                className="absolute inset-0 cursor-crosshair z-10"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                  const newMarks = [...resenhaMarks, { id: Date.now(), x, y }];
+                  setResenhaMarks(newMarks);
+                  handleSaveMarks(newMarks);
+                }}
+              >
+                {resenhaMarks.map((mark) => (
+                  <div
+                    key={mark.id}
+                    className="absolute size-4 bg-red-600 rounded-full border-2 border-white shadow-sm z-20 transform -translate-x-1/2 -translate-y-1/2 animate-scale-in"
+                    style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
+                    title="Marca Identificada (Clique para remover)"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      const filtered = resenhaMarks.filter(m => m.id !== mark.id);
+                      setResenhaMarks(filtered);
+                      handleSaveMarks(filtered);
+                    }}
+                  />
+                ))}
+              </div>
+              <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
+                <div className="bg-black/60 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20 shadow-xl flex items-center gap-2">
+                  <span className="material-symbols-outlined text-[14px] text-primary">touch_app</span>
+                  Clique para marcar / Clique no ponto para remover
+                </div>
+              </div>
+            </div>
+            <p className="text-[10px] text-gray-400 flex items-center gap-1 font-medium italic">
+              <span className="material-symbols-outlined text-[14px]">info</span>
+              Para cavalos/animais novos, as marcas são salvas automaticamente assim que clicadas.
+            </p>
+          </section>
+        </>
       )}
 
       {/* Seção Nova Ocorrência */}
