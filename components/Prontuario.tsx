@@ -451,21 +451,21 @@ const Prontuario: React.FC = () => {
               {/* Descrição e Destinação */}
               <div className="flex flex-col gap-6 w-full">
                 <div className="flex flex-col gap-2 w-full">
-                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Descrição dos Fatos / Exame Físico</label>
+                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Descrição do Animal</label>
                   <textarea
                     value={descricao}
                     onChange={(e) => setDescricao(e.target.value)}
                     className="w-full h-40 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent px-4 py-3 outline-none resize-none transition-all text-sm"
-                    placeholder="Detalhes do local da apreensão, condições físicas do animal..."
+                    placeholder="Características físicas, sinais clínicos, temperamento e observações do animal..."
                   ></textarea>
                 </div>
                 <div className="flex flex-col gap-2 w-full">
-                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Destinação / Medidas Adotadas</label>
+                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide">Histórico Clínico/Tratamento</label>
                   <textarea
                     value={destinacao}
                     onChange={(e) => setDestinacao(e.target.value)}
                     className="w-full h-40 rounded-lg bg-white border border-gray-300 text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-primary focus:border-transparent px-4 py-3 outline-none resize-none transition-all text-sm"
-                    placeholder="Encaminhamento ao curral, auto de infração lavrado, exames solicitados..."
+                    placeholder="Histórico clínico prévio, tratamentos realizados, medicações e evolução..."
                   ></textarea>
                 </div>
               </div>
