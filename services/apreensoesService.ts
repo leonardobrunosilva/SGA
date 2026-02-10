@@ -70,7 +70,8 @@ export const apreensoesService = {
             os_number: animal.osNumber,
             maps_url: animal.mapsUrl,
             days_in: animal.daysIn,
-            classification: animal.classification
+            classification: animal.classification,
+            resenha_body_marks: animal.resenha_body_marks
         };
 
         const { data, error } = await supabase
@@ -124,6 +125,7 @@ export const apreensoesService = {
         if (animal.daysIn !== undefined) dbPayload.days_in = animal.daysIn;
         if (animal.classification !== undefined) dbPayload.classification = animal.classification;
         if (animal.seiProcess !== undefined) dbPayload.sei_process = animal.seiProcess;
+        if (animal.resenha_body_marks !== undefined) dbPayload.resenha_body_marks = animal.resenha_body_marks;
 
         const { data, error } = await supabase
             .from('apreensoes')
