@@ -130,7 +130,7 @@ export const apreensoesService = {
             .update(dbPayload)
             .eq('id', id)
             .select()
-            .single();
+            .maybeSingle();
 
         if (error) {
             console.error('Erro ao atualizar apreensão:', error);

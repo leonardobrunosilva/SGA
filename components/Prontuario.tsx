@@ -448,69 +448,6 @@ const Prontuario: React.FC = () => {
                 />
               </div>
 
-              {/* Resenha Gráfica (Identificação Visual) */}
-              <div className="flex flex-col gap-4">
-                <div className="flex items-center justify-between">
-                  <label className="text-gray-700 text-xs font-black uppercase tracking-wide flex items-center gap-2">
-                    <span className="material-symbols-outlined text-primary text-[18px]">brush</span>
-                    Resenha Gráfica (Identificação Visual)
-                  </label>
-                  <button
-                    type="button"
-                    onClick={() => setResenhaMarks([])}
-                    className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-red-600 text-[10px] font-black uppercase tracking-widest rounded-md transition-all border border-gray-200 shadow-sm"
-                  >
-                    <span className="material-symbols-outlined text-[16px]">backspace</span>
-                    Limpar / Borracha
-                  </button>
-                </div>
-
-                <div className="relative w-full rounded-xl overflow-hidden border border-gray-200 bg-white select-none shadow-inner group">
-                  {/* Imagem Importada */}
-                  <img
-                    src={resenhaBg}
-                    alt="Esquema Corporal"
-                    className="w-full h-auto object-contain pointer-events-none"
-                  />
-                  {/* Overlay de Clique */}
-                  <div
-                    className="absolute inset-0 cursor-crosshair z-10"
-                    onClick={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      const x = ((e.clientX - rect.left) / rect.width) * 100;
-                      const y = ((e.clientY - rect.top) / rect.height) * 100;
-                      setResenhaMarks([...resenhaMarks, { id: Date.now(), x, y }]);
-                    }}
-                  >
-                    {/* Renderização das Marcas */}
-                    {resenhaMarks.map((mark) => (
-                      <div
-                        key={mark.id}
-                        className="absolute size-4 bg-red-600 rounded-full border-2 border-white shadow-sm z-20 transform -translate-x-1/2 -translate-y-1/2 animate-scale-in"
-                        style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
-                        title="Marca Identificada"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setResenhaMarks(resenhaMarks.filter(m => m.id !== mark.id));
-                        }}
-                      />
-                    ))}
-                  </div>
-
-                  {/* Hover Info Overlay */}
-                  <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
-                    <div className="bg-black/60 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20 shadow-xl flex items-center gap-2">
-                      <span className="material-symbols-outlined text-[14px] text-primary">touch_app</span>
-                      Clique para marcar / Clique no ponto para remover
-                    </div>
-                  </div>
-                </div>
-                <p className="text-[10px] text-gray-400 flex items-center gap-1 font-medium italic">
-                  <span className="material-symbols-outlined text-[14px]">info</span>
-                  Clique sobre a imagem para adicionar pontos de identificação (cicatrizes, marcas, ferimentos). Clique em um ponto para removê-lo individualmente.
-                </p>
-              </div>
-
               {/* Descrição e Destinação */}
               <div className="flex flex-col gap-6 w-full">
                 <div className="flex flex-col gap-2 w-full">
