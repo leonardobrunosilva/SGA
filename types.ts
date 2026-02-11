@@ -37,12 +37,13 @@ export interface Animal {
   receiverCpf?: string;
   resenha_body_marks?: {
     id: number;
-    type: 'circle' | 'x' | 'line';
+    type: 'circle' | 'x' | 'line' | 'pencil';
     x: number;
     y: number;
     endX?: number;
     endY?: number;
     color?: string;
+    points?: { x: number; y: number }[];
   }[];
 }
 

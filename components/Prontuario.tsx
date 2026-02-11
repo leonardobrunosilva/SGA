@@ -8,12 +8,13 @@ import resenhaBg from '../src/assets/resenha-template.png';
 
 interface Mark {
   id: number;
-  type: 'circle' | 'x' | 'line';
+  type: 'circle' | 'x' | 'line' | 'pencil';
   x: number;
   y: number;
   endX?: number;
   endY?: number;
   color?: string;
+  points?: { x: number; y: number }[];
 }
 
 interface TimelineEvent {
@@ -70,7 +71,7 @@ const Prontuario: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [examResults, setExamResults] = useState<{ exam: string, result: string, date?: string }[]>([{ exam: '', result: '', date: '' }]);
   const [resenhaMarks, setResenhaMarks] = useState<Mark[]>([]);
-  const [selectedTool, setSelectedTool] = useState<'circle' | 'x' | 'line'>('circle');
+  const [selectedTool, setSelectedTool] = useState<'circle' | 'x' | 'line' | 'pencil'>('circle');
   const [selectedColor, setSelectedColor] = useState('red');
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentLine, setCurrentLine] = useState<Partial<Mark> | null>(null);
@@ -418,15 +419,16 @@ const Prontuario: React.FC = () => {
                   {[
                     { id: 'circle', icon: 'radio_button_unchecked', label: 'Círculo' },
                     { id: 'x', icon: 'close', label: 'X' },
-                    { id: 'line', icon: 'horizontal_rule', label: 'Linha' }
+                    { id: 'line', icon: 'horizontal_rule', label: 'Linha' },
+                    { id: 'pencil', icon: 'edit', label: 'Lápis' }
                   ].map((tool) => (
                     <button
                       key={tool.id}
                       type="button"
                       onClick={() => setSelectedTool(tool.id as any)}
                       className={`size-9 rounded-lg flex items-center justify-center transition-all ${selectedTool === tool.id
-                        ? 'bg-primary text-green-900 shadow-md scale-105'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-white'
+                          ? 'bg-primary text-green-900 shadow-md scale-105'
+                          : 'text-gray-400 hover:text-gray-600 hover:bg-white'
                         }`}
                       title={tool.label}
                     >
@@ -500,9 +502,18 @@ const Prontuario: React.FC = () => {
                   const x = ((e.clientX - rect.left) / rect.width) * 100;
                   const y = ((e.clientY - rect.top) / rect.height) * 100;
 
-                  if (selectedTool === 'line') {
+                  if (selectedTool === 'line' || selectedTool === 'pencil') {
                     setIsDrawing(true);
-                    setCurrentLine({ id: Date.now(), type: 'line', x, y, endX: x, endY: y, color: selectedColor });
+                    setCurrentLine({
+                      id: Date.now(),
+                      type: selectedTool,
+                      x,
+                      y,
+                      endX: x,
+                      endY: y,
+                      color: selectedColor,
+                      points: selectedTool === 'pencil' ? [{ x, y }] : undefined
+                    });
                   } else {
                     const newMarks: Mark[] = [...resenhaMarks, {
                       id: Date.now(),
@@ -516,11 +527,24 @@ const Prontuario: React.FC = () => {
                   }
                 }}
                 onMouseMove={(e) => {
-                  if (!isDrawing || selectedTool !== 'line') return;
+                  if (!isDrawing || !currentLine) return;
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = ((e.clientX - rect.left) / rect.width) * 100;
                   const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  setCurrentLine(prev => prev ? { ...prev, endX: x, endY: y } : null);
+
+                  if (selectedTool === 'pencil') {
+                    // Otimização básica: só adiciona se moveu mais de 0.5%
+                    const lastPoint = currentLine.points![currentLine.points!.length - 1];
+                    const dist = Math.sqrt(Math.pow(x - lastPoint.x, 2) + Math.pow(y - lastPoint.y, 2));
+                    if (dist > 0.5) {
+                      setCurrentLine(prev => ({
+                        ...prev!,
+                        points: [...prev!.points!, { x, y }]
+                      }));
+                    }
+                  } else {
+                    setCurrentLine(prev => prev ? { ...prev, endX: x, endY: y } : null);
+                  }
                 }}
                 onMouseUp={() => {
                   if (isDrawing && currentLine) {
@@ -579,28 +603,54 @@ const Prontuario: React.FC = () => {
                         style={{ filter: 'drop-shadow(0px 1px 1px rgba(255,255,255,0.8))' }}
                       />
                     )}
+                    {mark.type === 'pencil' && mark.points && (
+                      <polyline
+                        points={mark.points.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill="none"
+                        stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                        className="transition-all group-hover/mark:stroke-yellow-400"
+                        style={{ filter: 'drop-shadow(0px 1px 1px rgba(255,255,255,0.8))' }}
+                      />
+                    )}
                   </g>
                 ))}
 
-                {/* Linha sendo desenhada (Preview) */}
+                {/* Pré-visualização (Linha ou Lápis) */}
                 {isDrawing && currentLine && (
-                  <line
-                    x1={`${currentLine.x}%`}
-                    y1={`${currentLine.y}%`}
-                    x2={`${currentLine.endX}%`}
-                    y2={`${currentLine.endY}%`}
-                    stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
-                    strokeWidth="3"
-                    strokeDasharray="4"
-                    strokeLinecap="round"
-                  />
+                  <>
+                    {selectedTool === 'line' && (
+                      <line
+                        x1={`${currentLine.x}%`}
+                        y1={`${currentLine.y}%`}
+                        x2={`${currentLine.endX}%`}
+                        y2={`${currentLine.endY}%`}
+                        stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
+                        strokeWidth="3"
+                        strokeDasharray="4"
+                        strokeLinecap="round"
+                      />
+                    )}
+                    {selectedTool === 'pencil' && currentLine.points && (
+                      <polyline
+                        points={currentLine.points.map(p => `${p.x},${p.y}`).join(' ')}
+                        fill="none"
+                        stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                      />
+                    )}
+                  </>
                 )}
               </svg>
 
               <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
                 <div className="bg-black/60 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20 shadow-xl flex items-center gap-2">
                   <span className="material-symbols-outlined text-[14px] text-primary">touch_app</span>
-                  {selectedTool === 'line' ? 'Clique e arraste para desenhar' : 'Clique para marcar'} | Clique na marca para remover
+                  {selectedTool === 'line' || selectedTool === 'pencil' ? 'Clique e arraste para desenhar' : 'Clique para marcar'} | Clique na marca para remover
                 </div>
               </div>
             </div>
