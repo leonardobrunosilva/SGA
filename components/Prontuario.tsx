@@ -251,6 +251,22 @@ const Prontuario: React.FC = () => {
     }
   };
 
+  const handleDeleteHistoryItem = async (id: string) => {
+    if (!window.confirm("Tem certeza que deseja excluir este registro permanentemente?")) return;
+    try {
+      await prontuarioService.delete(id);
+      setHistoryList(prev => prev.filter(item => item.id !== id));
+      alert("Registro excluído com sucesso.");
+      if (editingId === id) {
+        setEditingId(null);
+        resetForm();
+      }
+    } catch (err: any) {
+      console.error(err);
+      alert(`Erro ao excluir registro: ${err.message || 'Erro desconhecido'}`);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!dataExame) {
@@ -946,13 +962,22 @@ const Prontuario: React.FC = () => {
                             )}
 
                             {event.type === 'OCCURRENCE' && (
-                              <button
-                                onClick={() => handleEditHistoryItem(event)}
-                                className="size-8 rounded-lg bg-gray-50 text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center group/edit"
-                                title="Editar Ocorrência"
-                              >
-                                <span className="material-symbols-outlined text-[18px]">edit</span>
-                              </button>
+                              <div className="flex items-center gap-1">
+                                <button
+                                  onClick={() => handleEditHistoryItem(event)}
+                                  className="size-8 rounded-lg bg-gray-50 text-gray-400 hover:text-orange-500 hover:bg-orange-50 transition-all flex items-center justify-center group/edit"
+                                  title="Editar Ocorrência"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">edit</span>
+                                </button>
+                                <button
+                                  onClick={() => handleDeleteHistoryItem(event.id)}
+                                  className="size-8 rounded-lg bg-gray-50 text-gray-400 hover:text-red-500 hover:bg-red-50 transition-all flex items-center justify-center group/delete"
+                                  title="Excluir Registro"
+                                >
+                                  <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                              </div>
                             )}
                           </div>
                         </div>
