@@ -44,6 +44,7 @@ export interface Animal {
     endY?: number;
     color?: string;
     points?: { x: number; y: number }[];
+    strokeWidth?: number;
   }[];
 }
 

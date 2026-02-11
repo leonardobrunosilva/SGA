@@ -15,6 +15,7 @@ interface Mark {
   endY?: number;
   color?: string;
   points?: { x: number; y: number }[];
+  strokeWidth?: number;
 }
 
 interface TimelineEvent {
@@ -73,6 +74,7 @@ const Prontuario: React.FC = () => {
   const [resenhaMarks, setResenhaMarks] = useState<Mark[]>([]);
   const [selectedTool, setSelectedTool] = useState<'circle' | 'x' | 'line' | 'pencil'>('circle');
   const [selectedColor, setSelectedColor] = useState('red');
+  const [selectedStrokeWidth, setSelectedStrokeWidth] = useState(1);
   const [isDrawing, setIsDrawing] = useState(false);
   const [currentLine, setCurrentLine] = useState<Partial<Mark> | null>(null);
 
@@ -458,6 +460,36 @@ const Prontuario: React.FC = () => {
 
                 <div className="w-px h-6 bg-gray-200 mx-1"></div>
 
+                {/* Espessuras */}
+                <div className="flex items-center gap-1">
+                  {[
+                    { id: 0.5, label: 'Fino', icon: 'line_weight' },
+                    { id: 1.0, label: 'Médio', icon: 'line_weight' },
+                    { id: 2.5, label: 'Grosso', icon: 'line_weight' }
+                  ].map((stroke) => (
+                    <button
+                      key={stroke.id}
+                      type="button"
+                      onClick={() => setSelectedStrokeWidth(stroke.id)}
+                      className={`size-9 rounded-lg flex flex-col items-center justify-center transition-all ${selectedStrokeWidth === stroke.id
+                        ? 'bg-primary text-green-900 shadow-md scale-105'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-white'
+                        }`}
+                      title={stroke.label}
+                    >
+                      <div
+                        className="bg-current rounded-full"
+                        style={{
+                          width: stroke.id === 0.5 ? '12px' : stroke.id === 1.0 ? '16px' : '20px',
+                          height: stroke.id === 0.5 ? '1.5px' : stroke.id === 1.0 ? '3px' : '6px'
+                        }}
+                      />
+                    </button>
+                  ))}
+                </div>
+
+                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
                 {/* Ações */}
                 <div className="flex items-center gap-1">
                   <button
@@ -514,6 +546,7 @@ const Prontuario: React.FC = () => {
                       endX: x,
                       endY: y,
                       color: selectedColor,
+                      strokeWidth: selectedStrokeWidth,
                       points: selectedTool === 'pencil' ? [{ x, y }] : undefined
                     });
                   } else {
@@ -522,7 +555,8 @@ const Prontuario: React.FC = () => {
                       type: selectedTool,
                       x,
                       y,
-                      color: selectedColor
+                      color: selectedColor,
+                      strokeWidth: selectedStrokeWidth
                     }];
                     setResenhaMarks(newMarks);
                     handleSaveMarks(newMarks);
@@ -570,10 +604,10 @@ const Prontuario: React.FC = () => {
                       <circle
                         cx={mark.x}
                         cy={mark.y}
-                        r="1.2"
+                        r={mark.strokeWidth ? mark.strokeWidth * 1.2 : 1.2}
                         fill={!mark.color || mark.color === 'red' ? '#ef4444' : mark.color === 'blue' ? '#3b82f6' : '#16a34a'}
                         stroke="white"
-                        strokeWidth="0.5"
+                        strokeWidth={mark.strokeWidth ? mark.strokeWidth * 0.4 : 0.5}
                         className="transition-all group-hover/mark:stroke-yellow-400"
                       />
                     )}
@@ -584,7 +618,7 @@ const Prontuario: React.FC = () => {
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fill={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        fontSize="5"
+                        fontSize={mark.strokeWidth ? 4 + (mark.strokeWidth * 2) : 5}
                         fontWeight="black"
                         className="select-none transition-all group-hover/mark:fill-yellow-400"
                         style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
@@ -599,7 +633,7 @@ const Prontuario: React.FC = () => {
                         x2={mark.endX}
                         y2={mark.endY}
                         stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="1"
+                        strokeWidth={mark.strokeWidth || 1}
                         strokeLinecap="round"
                         className="transition-all group-hover/mark:stroke-yellow-400"
                         style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
@@ -610,7 +644,7 @@ const Prontuario: React.FC = () => {
                         points={mark.points.map(p => `${p.x},${p.y}`).join(' ')}
                         fill="none"
                         stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="1"
+                        strokeWidth={mark.strokeWidth || 1}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         className="transition-all group-hover/mark:stroke-yellow-400"
@@ -630,8 +664,8 @@ const Prontuario: React.FC = () => {
                         x2={currentLine.endX}
                         y2={currentLine.endY}
                         stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="1"
-                        strokeDasharray="1"
+                        strokeWidth={currentLine.strokeWidth || 1}
+                        strokeDasharray={currentLine.strokeWidth === 0.5 ? "0.5" : "1"}
                         strokeLinecap="round"
                       />
                     )}
@@ -640,7 +674,7 @@ const Prontuario: React.FC = () => {
                         points={currentLine.points.map(p => `${p.x},${p.y}`).join(' ')}
                         fill="none"
                         stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="1"
+                        strokeWidth={currentLine.strokeWidth || 1}
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
