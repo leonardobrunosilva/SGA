@@ -427,8 +427,8 @@ const Prontuario: React.FC = () => {
                       type="button"
                       onClick={() => setSelectedTool(tool.id as any)}
                       className={`size-9 rounded-lg flex items-center justify-center transition-all ${selectedTool === tool.id
-                          ? 'bg-primary text-green-900 shadow-md scale-105'
-                          : 'text-gray-400 hover:text-gray-600 hover:bg-white'
+                        ? 'bg-primary text-green-900 shadow-md scale-105'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-white'
                         }`}
                       title={tool.label}
                     >
@@ -496,6 +496,8 @@ const Prontuario: React.FC = () => {
 
               {/* Overlay SVG para Desenho */}
               <svg
+                viewBox="0 0 100 100"
+                preserveAspectRatio="none"
                 className="absolute inset-0 w-full h-full cursor-crosshair z-10"
                 onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
@@ -566,41 +568,41 @@ const Prontuario: React.FC = () => {
                   }} className="cursor-pointer group/mark">
                     {(mark.type === 'circle' || !mark.type) && (
                       <circle
-                        cx={`${mark.x}%`}
-                        cy={`${mark.y}%`}
-                        r="1.2%"
+                        cx={mark.x}
+                        cy={mark.y}
+                        r="1.2"
                         fill={!mark.color || mark.color === 'red' ? '#ef4444' : mark.color === 'blue' ? '#3b82f6' : '#16a34a'}
                         stroke="white"
-                        strokeWidth="2"
+                        strokeWidth="0.5"
                         className="transition-all group-hover/mark:stroke-yellow-400"
                       />
                     )}
                     {mark.type === 'x' && (
                       <text
-                        x={`${mark.x}%`}
-                        y={`${mark.y}%`}
+                        x={mark.x}
+                        y={mark.y}
                         textAnchor="middle"
                         dominantBaseline="middle"
                         fill={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        fontSize="20"
+                        fontSize="5"
                         fontWeight="black"
                         className="select-none transition-all group-hover/mark:fill-yellow-400"
-                        style={{ filter: 'drop-shadow(0px 1px 1px rgba(255,255,255,0.8))' }}
+                        style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
                       >
                         X
                       </text>
                     )}
                     {mark.type === 'line' && (
                       <line
-                        x1={`${mark.x}%`}
-                        y1={`${mark.y}%`}
-                        x2={`${mark.endX}%`}
-                        y2={`${mark.endY}%`}
+                        x1={mark.x}
+                        y1={mark.y}
+                        x2={mark.endX}
+                        y2={mark.endY}
                         stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="3"
+                        strokeWidth="1"
                         strokeLinecap="round"
                         className="transition-all group-hover/mark:stroke-yellow-400"
-                        style={{ filter: 'drop-shadow(0px 1px 1px rgba(255,255,255,0.8))' }}
+                        style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
                       />
                     )}
                     {mark.type === 'pencil' && mark.points && (
@@ -608,11 +610,11 @@ const Prontuario: React.FC = () => {
                         points={mark.points.map(p => `${p.x},${p.y}`).join(' ')}
                         fill="none"
                         stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="3"
+                        strokeWidth="1"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                         className="transition-all group-hover/mark:stroke-yellow-400"
-                        style={{ filter: 'drop-shadow(0px 1px 1px rgba(255,255,255,0.8))' }}
+                        style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
                       />
                     )}
                   </g>
@@ -623,13 +625,13 @@ const Prontuario: React.FC = () => {
                   <>
                     {selectedTool === 'line' && (
                       <line
-                        x1={`${currentLine.x}%`}
-                        y1={`${currentLine.y}%`}
-                        x2={`${currentLine.endX}%`}
-                        y2={`${currentLine.endY}%`}
+                        x1={currentLine.x}
+                        y1={currentLine.y}
+                        x2={currentLine.endX}
+                        y2={currentLine.endY}
                         stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="3"
-                        strokeDasharray="4"
+                        strokeWidth="1"
+                        strokeDasharray="1"
                         strokeLinecap="round"
                       />
                     )}
@@ -638,7 +640,7 @@ const Prontuario: React.FC = () => {
                         points={currentLine.points.map(p => `${p.x},${p.y}`).join(' ')}
                         fill="none"
                         stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth="3"
+                        strokeWidth="1"
                         strokeLinecap="round"
                         strokeLinejoin="round"
                       />
