@@ -35,7 +35,15 @@ export interface Animal {
   age?: string;
   receiverName?: string;
   receiverCpf?: string;
-  resenha_body_marks?: { id: number; x: number; y: number }[];
+  resenha_body_marks?: {
+    id: number;
+    type: 'circle' | 'x' | 'line';
+    x: number;
+    y: number;
+    endX?: number;
+    endY?: number;
+    color?: string;
+  }[];
 }
 
 export interface Metric {

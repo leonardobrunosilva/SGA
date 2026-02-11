@@ -6,7 +6,15 @@ import { Animal } from '../types';
 import { formatDate } from '../utils';
 import resenhaBg from '../src/assets/resenha-template.png';
 
-interface Mark { id: number; x: number; y: number; }
+interface Mark {
+  id: number;
+  type: 'circle' | 'x' | 'line';
+  x: number;
+  y: number;
+  endX?: number;
+  endY?: number;
+  color?: string;
+}
 
 interface TimelineEvent {
   id: string;
@@ -62,6 +70,10 @@ const Prontuario: React.FC = () => {
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [examResults, setExamResults] = useState<{ exam: string, result: string, date?: string }[]>([{ exam: '', result: '', date: '' }]);
   const [resenhaMarks, setResenhaMarks] = useState<Mark[]>([]);
+  const [selectedTool, setSelectedTool] = useState<'circle' | 'x' | 'line'>('circle');
+  const [selectedColor, setSelectedColor] = useState('red');
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [currentLine, setCurrentLine] = useState<Partial<Mark> | null>(null);
 
   const handleSaveMarks = async (marks: Mark[]) => {
     if (!animal.id || animal.id === 'NOVO') return;
@@ -393,22 +405,84 @@ const Prontuario: React.FC = () => {
 
           {/* Resenha Gráfica Permanente (Sempre à mostra) */}
           <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col gap-4">
-            <div className="flex items-center justify-between">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
               <h3 className="text-gray-900 text-lg font-black tracking-tight uppercase flex items-center gap-2">
                 <span className="material-symbols-outlined text-primary text-[24px]">brush</span>
-                Resenha Gráfica / Marcas de Identificação
+                Resenha Gráfica
               </h3>
-              <button
-                type="button"
-                onClick={() => {
-                  setResenhaMarks([]);
-                  handleSaveMarks([]);
-                }}
-                className="flex items-center gap-1.5 px-3 py-1 bg-gray-100 hover:bg-gray-200 text-gray-500 hover:text-red-600 text-[10px] font-black uppercase tracking-widest rounded-md transition-all border border-gray-200 shadow-sm"
-              >
-                <span className="material-symbols-outlined text-[16px]">backspace</span>
-                Limpar Tudo
-              </button>
+
+              {/* Barra de Ferramentas (Toolbar) */}
+              <div className="flex items-center gap-6 bg-gray-50 p-1.5 rounded-xl border border-gray-200 no-print flex-wrap">
+                {/* Ferramentas */}
+                <div className="flex items-center gap-1">
+                  {[
+                    { id: 'circle', icon: 'radio_button_unchecked', label: 'Círculo' },
+                    { id: 'x', icon: 'close', label: 'X' },
+                    { id: 'line', icon: 'horizontal_rule', label: 'Linha' }
+                  ].map((tool) => (
+                    <button
+                      key={tool.id}
+                      type="button"
+                      onClick={() => setSelectedTool(tool.id as any)}
+                      className={`size-9 rounded-lg flex items-center justify-center transition-all ${selectedTool === tool.id
+                        ? 'bg-primary text-green-900 shadow-md scale-105'
+                        : 'text-gray-400 hover:text-gray-600 hover:bg-white'
+                        }`}
+                      title={tool.label}
+                    >
+                      <span className="material-symbols-outlined text-[20px]">{tool.icon}</span>
+                    </button>
+                  ))}
+                </div>
+
+                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
+                {/* Cores */}
+                <div className="flex items-center gap-1.5">
+                  {[
+                    { id: 'red', color: 'bg-red-500' },
+                    { id: 'blue', color: 'bg-blue-500' },
+                    { id: 'green', color: 'bg-green-600' }
+                  ].map((color) => (
+                    <button
+                      key={color.id}
+                      type="button"
+                      onClick={() => setSelectedColor(color.id)}
+                      className={`size-6 rounded-full ${color.color} transition-all border-2 ${selectedColor === color.id ? 'border-gray-900 scale-125' : 'border-white'
+                        }`}
+                    />
+                  ))}
+                </div>
+
+                <div className="w-px h-6 bg-gray-200 mx-1"></div>
+
+                {/* Ações */}
+                <div className="flex items-center gap-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const newMarks = resenhaMarks.slice(0, -1);
+                      setResenhaMarks(newMarks);
+                      handleSaveMarks(newMarks);
+                    }}
+                    className="size-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-orange-500 hover:bg-white transition-all"
+                    title="Desfazer (Undo)"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">undo</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setResenhaMarks([]);
+                      handleSaveMarks([]);
+                    }}
+                    className="size-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-white transition-all"
+                    title="Limpar Tudo"
+                  >
+                    <span className="material-symbols-outlined text-[20px]">delete_sweep</span>
+                  </button>
+                </div>
+              </div>
             </div>
 
             <div className="relative w-full rounded-xl overflow-hidden border border-gray-100 bg-white select-none shadow-inner group">
@@ -417,42 +491,122 @@ const Prontuario: React.FC = () => {
                 alt="Esquema Corporal"
                 className="w-full h-auto object-contain pointer-events-none"
               />
-              <div
-                className="absolute inset-0 cursor-crosshair z-10"
-                onClick={(e) => {
+
+              {/* Overlay SVG para Desenho */}
+              <svg
+                className="absolute inset-0 w-full h-full cursor-crosshair z-10"
+                onMouseDown={(e) => {
                   const rect = e.currentTarget.getBoundingClientRect();
                   const x = ((e.clientX - rect.left) / rect.width) * 100;
                   const y = ((e.clientY - rect.top) / rect.height) * 100;
-                  const newMarks = [...resenhaMarks, { id: Date.now(), x, y }];
-                  setResenhaMarks(newMarks);
-                  handleSaveMarks(newMarks);
+
+                  if (selectedTool === 'line') {
+                    setIsDrawing(true);
+                    setCurrentLine({ id: Date.now(), type: 'line', x, y, endX: x, endY: y, color: selectedColor });
+                  } else {
+                    const newMarks: Mark[] = [...resenhaMarks, {
+                      id: Date.now(),
+                      type: selectedTool,
+                      x,
+                      y,
+                      color: selectedColor
+                    }];
+                    setResenhaMarks(newMarks);
+                    handleSaveMarks(newMarks);
+                  }
+                }}
+                onMouseMove={(e) => {
+                  if (!isDrawing || selectedTool !== 'line') return;
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = ((e.clientX - rect.left) / rect.width) * 100;
+                  const y = ((e.clientY - rect.top) / rect.height) * 100;
+                  setCurrentLine(prev => prev ? { ...prev, endX: x, endY: y } : null);
+                }}
+                onMouseUp={() => {
+                  if (isDrawing && currentLine) {
+                    const newMarks = [...resenhaMarks, currentLine as Mark];
+                    setResenhaMarks(newMarks);
+                    handleSaveMarks(newMarks);
+                  }
+                  setIsDrawing(false);
+                  setCurrentLine(null);
                 }}
               >
+                {/* Marcas Salvas */}
                 {resenhaMarks.map((mark) => (
-                  <div
-                    key={mark.id}
-                    className="absolute size-4 bg-red-600 rounded-full border-2 border-white shadow-sm z-20 transform -translate-x-1/2 -translate-y-1/2 animate-scale-in"
-                    style={{ left: `${mark.x}%`, top: `${mark.y}%` }}
-                    title="Marca Identificada (Clique para remover)"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      const filtered = resenhaMarks.filter(m => m.id !== mark.id);
-                      setResenhaMarks(filtered);
-                      handleSaveMarks(filtered);
-                    }}
-                  />
+                  <g key={mark.id} onClick={(e) => {
+                    e.stopPropagation();
+                    const filtered = resenhaMarks.filter(m => m.id !== mark.id);
+                    setResenhaMarks(filtered);
+                    handleSaveMarks(filtered);
+                  }} className="cursor-pointer group/mark">
+                    {(mark.type === 'circle' || !mark.type) && (
+                      <circle
+                        cx={`${mark.x}%`}
+                        cy={`${mark.y}%`}
+                        r="1.2%"
+                        fill={!mark.color || mark.color === 'red' ? '#ef4444' : mark.color === 'blue' ? '#3b82f6' : '#16a34a'}
+                        stroke="white"
+                        strokeWidth="2"
+                        className="transition-all group-hover/mark:stroke-yellow-400"
+                      />
+                    )}
+                    {mark.type === 'x' && (
+                      <text
+                        x={`${mark.x}%`}
+                        y={`${mark.y}%`}
+                        textAnchor="middle"
+                        dominantBaseline="middle"
+                        fill={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
+                        fontSize="20"
+                        fontWeight="black"
+                        className="select-none transition-all group-hover/mark:fill-yellow-400"
+                        style={{ filter: 'drop-shadow(0px 1px 1px rgba(255,255,255,0.8))' }}
+                      >
+                        X
+                      </text>
+                    )}
+                    {mark.type === 'line' && (
+                      <line
+                        x1={`${mark.x}%`}
+                        y1={`${mark.y}%`}
+                        x2={`${mark.endX}%`}
+                        y2={`${mark.endY}%`}
+                        stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
+                        strokeWidth="3"
+                        strokeLinecap="round"
+                        className="transition-all group-hover/mark:stroke-yellow-400"
+                        style={{ filter: 'drop-shadow(0px 1px 1px rgba(255,255,255,0.8))' }}
+                      />
+                    )}
+                  </g>
                 ))}
-              </div>
+
+                {/* Linha sendo desenhada (Preview) */}
+                {isDrawing && currentLine && (
+                  <line
+                    x1={`${currentLine.x}%`}
+                    y1={`${currentLine.y}%`}
+                    x2={`${currentLine.endX}%`}
+                    y2={`${currentLine.endY}%`}
+                    stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
+                    strokeWidth="3"
+                    strokeDasharray="4"
+                    strokeLinecap="round"
+                  />
+                )}
+              </svg>
+
               <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
                 <div className="bg-black/60 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20 shadow-xl flex items-center gap-2">
                   <span className="material-symbols-outlined text-[14px] text-primary">touch_app</span>
-                  Clique para marcar / Clique no ponto para remover
+                  {selectedTool === 'line' ? 'Clique e arraste para desenhar' : 'Clique para marcar'} | Clique na marca para remover
                 </div>
               </div>
             </div>
             <p className="text-[10px] text-gray-400 flex items-center gap-1 font-medium italic">
               <span className="material-symbols-outlined text-[14px]">info</span>
-              Para cavalos/animais novos, as marcas são salvas automaticamente assim que clicadas.
+              Selecione a ferramenta e cor desejada. As marcas são salvas automaticamente no prontuário.
             </p>
           </section>
         </>
