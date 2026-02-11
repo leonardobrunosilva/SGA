@@ -10,7 +10,7 @@ export interface ProntuarioRecord {
     subtitle?: string;
     content?: string;
     result?: 'Positivo' | 'Negativo';
-    exam_results?: { exam: string; result: string }[];
+    exam_results?: { exam: string; result: string; date?: string }[];
     icon: string;
     created_at?: string;
 }
