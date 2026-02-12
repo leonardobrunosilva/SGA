@@ -389,7 +389,7 @@ const Prontuario: React.FC = () => {
                 <div className="flex flex-col gap-1">
                   <div className="flex items-center gap-3 flex-wrap">
                     <h1 className="text-gray-900 text-2xl md:text-3xl font-black leading-tight tracking-tight">
-                      {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.age || 'Idade não informada'}`}
+                      {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.chip}`}
                     </h1>
                     <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded text-[11px] text-primary font-black font-mono tracking-wide border border-gray-200 uppercase">
                       <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
