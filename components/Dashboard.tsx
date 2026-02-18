@@ -99,8 +99,14 @@ const Dashboard: React.FC = () => {
           { label: 'Eutanásia/Óbito', value: (histObito || 0).toLocaleString(), change: '+0%', icon: 'medical_services', color: 'red' },
           { label: 'Furtos', value: (histFurto || 0).toLocaleString(), change: '0%', icon: 'warning', color: 'orange' },
           { label: 'HVET', value: (hvetTotal || 0).toLocaleString(), change: '+0%', icon: 'local_hospital', color: 'cyan' },
-          { label: 'Outros Órgãos', value: (activeOutros || 0).toLocaleString(), change: '+0%', icon: 'account_balance', color: 'indigo' },
-          { label: 'Transferidos (FAL)', value: (falOutros || 0).toLocaleString(), change: '+0%', icon: 'forklift', color: 'orange' },
+          {
+            label: 'Outros Órgãos',
+            value: (activeOutros || 0).toLocaleString(),
+            change: '+0%',
+            icon: 'account_balance',
+            color: 'indigo',
+            subLabel: `TRANSFERIDOS: ${falOutros || 0}`
+          },
         ]);
 
         // 2. Fetch All Data for Charts (Frontend Aggregation)
