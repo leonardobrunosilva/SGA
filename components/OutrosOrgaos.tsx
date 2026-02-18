@@ -8,7 +8,7 @@ import { ORGAOS_LIST, ESPECIES } from '../constants';
 import EditModal, { FieldConfig } from './EditModal';
 
 // Status Options
-const STATUS_OPTIONS = ['Curral de Apreensão', 'HVET', 'Experimento'];
+const STATUS_OPTIONS = ['Curral de Apreensão', 'HVET', 'Experimento', 'FAL'];
 
 // Chart Data (Mock)
 const DATA_ORGAOS = [
@@ -260,7 +260,8 @@ const OutrosOrgaos: React.FC = () => {
   };
 
   // --- KPI CALCULATIONS ---
-  const totalAnimals = animals.length;
+  const totalAnimals = animals.filter(a => a.status !== 'FAL').length;
+  const animalsFAL = animals.filter(a => a.status === 'FAL').length;
   const avgStay = animals.length > 0
     ? Math.round(animals.reduce((sum, a) => sum + calculateDaysIn(a.dataEntrada), 0) / animals.length)
     : 0;
@@ -364,15 +365,15 @@ const OutrosOrgaos: React.FC = () => {
         <div className="bg-white border border-gray-200 rounded-xl p-6 flex flex-col gap-3 relative overflow-hidden shadow-sm hover:shadow-md transition-all group">
           <div className="flex justify-between items-start z-10">
             <div className="flex flex-col gap-1">
-              <p className="text-gray-500 text-sm font-medium">Tempo Médio (dias)</p>
-              <h3 className="text-3xl font-bold text-slate-800">{avgStay}</h3>
+              <p className="text-gray-500 text-sm font-medium">Albergados em outro local</p>
+              <h3 className="text-3xl font-bold text-slate-800">{animalsFAL}</h3>
             </div>
             <div className="size-10 rounded-full bg-orange-50 text-orange-600 flex items-center justify-center">
-              <span className="material-symbols-outlined">schedule</span>
+              <span className="material-symbols-outlined">forklift</span>
             </div>
           </div>
           <div className="h-1 w-full bg-gray-100 rounded-full mt-2 overflow-hidden">
-            <div className="h-full bg-orange-400" style={{ width: `${Math.min(avgStay * 3, 100)}%` }}></div>
+            <div className="h-full bg-orange-400" style={{ width: `${Math.min(animalsFAL * 10, 100)}%` }}></div>
           </div>
         </div>
       </div>

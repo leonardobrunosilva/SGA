@@ -47,7 +47,8 @@ const Dashboard: React.FC = () => {
           { count: histAdocao },
           { count: histRestituicao },
           { count: histObito },
-          { count: histFurto }
+          { count: histFurto },
+          { count: falOutros }
         ] = await Promise.all([
           // Apreensões (Estoque Total Histórico)
           supabase.from('apreensoes').select('*', { count: 'exact', head: true }),
@@ -55,7 +56,7 @@ const Dashboard: React.FC = () => {
           // Worklists (Saldos Atuais)
           supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }),
           supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }),
-          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }),
+          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).neq('status', 'FAL'),
 
           // HVET (Contagem exata do status "HVET" nas worklists)
           supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }).eq('status', 'HVET'),
@@ -66,7 +67,10 @@ const Dashboard: React.FC = () => {
           supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Adoção,destination.eq.Adotado,destination.eq.Adotados'),
           supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Restituído,destination.eq.Restituição,destination.eq.Restituidos'),
           supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Eutanásia,destination.eq.Óbito'),
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).eq('destination', 'Furto')
+          supabase.from('saidas').select('*', { count: 'exact', head: true }).eq('destination', 'Furto'),
+
+          // FAL (Transferidos - Albergados em outro local)
+          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).eq('status', 'FAL')
         ]);
 
         const albergadosTotal = (activeAdocao || 0) + (activeRestituicao || 0) + (activeOutros || 0);
@@ -96,6 +100,7 @@ const Dashboard: React.FC = () => {
           { label: 'Furtos', value: (histFurto || 0).toLocaleString(), change: '0%', icon: 'warning', color: 'orange' },
           { label: 'HVET', value: (hvetTotal || 0).toLocaleString(), change: '+0%', icon: 'local_hospital', color: 'cyan' },
           { label: 'Outros Órgãos', value: (activeOutros || 0).toLocaleString(), change: '+0%', icon: 'account_balance', color: 'indigo' },
+          { label: 'Transferidos (FAL)', value: (falOutros || 0).toLocaleString(), change: '+0%', icon: 'forklift', color: 'orange' },
         ]);
 
         // 2. Fetch All Data for Charts (Frontend Aggregation)
