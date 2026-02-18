@@ -167,6 +167,7 @@ const OutrosOrgaos: React.FC = () => {
       showNotification("Animal adicionado à lista!", "success");
       setSearchTerm('');
       setFoundEntry(null);
+      setNewStatus(STATUS_OPTIONS[0]); // Reset para o padrão
       setIsModalOpen(false);
       loadAnimals();
     } catch (e: any) {
@@ -567,7 +568,10 @@ const OutrosOrgaos: React.FC = () => {
                       <td className="px-4 py-3 whitespace-nowrap text-sm text-gray-500">{dateInFormatted}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-sm font-bold text-orange-600">{calculateDaysIn(dateInFormatted)} dias</td>
                       <td className="px-4 py-3">
-                        <span className="px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tight bg-blue-100 text-blue-700 border border-blue-200">
+                        <span className={`px-2 py-1 rounded-full text-[10px] font-black uppercase tracking-tight border outline-none transition-all ${row.status === 'FAL'
+                            ? 'bg-orange-100 text-orange-700 border-orange-200'
+                            : 'bg-blue-100 text-blue-700 border-blue-200'
+                          }`}>
                           {row.status}
                         </span>
                       </td>
