@@ -321,6 +321,26 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
     }
   };
 
+  const handleUpdateUserName = async (userId: string, newName: string) => {
+    if (!isAdmin) return;
+    if (!newName.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from('profiles')
+        .update({ nome: newName })
+        .eq('id', userId);
+
+      if (error) throw error;
+
+      showNotification("Nome atualizado com sucesso!");
+      fetchInitialData(); // Refresh list
+    } catch (error: any) {
+      console.error('Erro ao atualizar nome:', error);
+      showNotification("Erro ao atualizar nome.", "info");
+    }
+  };
+
   const handleAddSystemUser = () => {
     if (!newSystemUser.nome || !newSystemUser.email) {
       showNotification("Por favor, preencha Nome e Email.", "info");
@@ -931,7 +951,20 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                             <div className="size-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center font-black text-xs">
                               {u.nome.charAt(0)}
                             </div>
-                            <span className="text-sm font-bold text-slate-800">{u.nome}</span>
+                            {isAdmin ? (
+                              <input
+                                type="text"
+                                defaultValue={u.nome}
+                                onBlur={(e) => {
+                                  if (e.target.value !== u.nome) {
+                                    handleUpdateUserName(u.id, e.target.value);
+                                  }
+                                }}
+                                className="text-sm font-bold text-slate-800 bg-transparent border-b border-transparent hover:border-slate-300 focus:border-primary focus:bg-white px-1 outline-none transition-all w-full"
+                              />
+                            ) : (
+                              <span className="text-sm font-bold text-slate-800">{u.nome}</span>
+                            )}
                           </div>
                         </td>
                         <td className="px-6 py-4 text-sm text-slate-600 font-medium">{u.email}</td>
