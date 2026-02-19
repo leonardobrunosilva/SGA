@@ -208,6 +208,12 @@ const Dashboard: React.FC = () => {
     }));
   }, [flowData, chartView]);
 
+  // Cálculos de Totalização Dinâmica
+  const totalFluxoMensal = flowData.reduce((acc, curr) => acc + (curr.in || 0), 0);
+  const totalApreensoesEvol = flowData.reduce((acc, curr) => acc + (curr.in || 0), 0);
+  const totalRestituicoesEvol = flowData.reduce((acc, curr) => acc + (curr.restituicao || 0), 0);
+  const totalAdocoesEvol = flowData.reduce((acc, curr) => acc + (curr.adocao || 0), 0);
+
   const monthlyFlowData = flowData;
 
   const handleApplyFilters = () => {
@@ -361,19 +367,25 @@ const Dashboard: React.FC = () => {
         </div>
 
         <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex items-center justify-between mb-6">
+          <div className="flex justify-between items-start mb-6">
             <div>
-              <h3 className="text-gray-900 text-lg font-bold">Fluxo Mensal</h3>
-              <p className="text-gray-500 text-sm">Comparativo de Entradas vs Saídas em {appliedFilters.year || 'Todos os Anos'}</p>
+              <h3 className="text-lg font-black text-slate-800">Fluxo Mensal</h3>
+              <p className="text-xs text-slate-500">Comparativo de Entradas vs Saídas em {appliedFilters.year || 'Todos os Anos'}</p>
             </div>
-            <div className="flex gap-4 text-xs font-semibold">
-              <div className="flex items-center gap-2">
-                <div className="size-3 rounded-full bg-[#13ec80]"></div>
-                <span className="text-slate-600">Entradas</span>
+            <div className="flex items-center gap-6">
+              <div className="flex gap-4 text-[10px] font-bold uppercase tracking-wider">
+                <div className="flex items-center gap-2">
+                  <div className="size-2.5 rounded-full bg-[#13ec80]"></div>
+                  <span className="text-slate-500">Entradas</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="size-2.5 rounded-full bg-[#cbd5e1]"></div>
+                  <span className="text-slate-500">Saídas</span>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <div className="size-3 rounded-full bg-[#cbd5e1]"></div>
-                <span className="text-slate-600">Saídas</span>
+              <div className="bg-primary/10 px-4 py-2 rounded-xl border border-primary/20 text-right min-w-[100px]">
+                <p className="text-[10px] font-bold text-primary uppercase tracking-widest mb-0.5">Total Exibido</p>
+                <p className="text-2xl font-black text-slate-800 leading-none">{totalFluxoMensal}</p>
               </div>
             </div>
           </div>
@@ -403,30 +415,50 @@ const Dashboard: React.FC = () => {
       {/* Row 3: Annual Indicators and Distribution */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex flex-wrap items-center justify-between mb-8 gap-4">
+          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
             <div>
-              <h3 className="text-gray-900 text-lg font-bold">Evolução de {chartView}s</h3>
-              <p className="text-gray-500 text-sm">Distribuição de ocorrências em {appliedFilters.year || 'Todos os Anos'}</p>
+              <h3 className="text-lg font-black text-slate-800">Evolução de {chartView}s</h3>
+              <p className="text-xs text-slate-500">Distribuição de ocorrências em {appliedFilters.year || 'Todos os Anos'}</p>
             </div>
-            <div className="flex gap-2 p-1 bg-slate-100 rounded-lg">
-              <button
-                onClick={() => setChartView('Apreendido')}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${chartView === 'Apreendido' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                Apreensões
-              </button>
-              <button
-                onClick={() => setChartView('Restituído')}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${chartView === 'Restituído' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                Restituições
-              </button>
-              <button
-                onClick={() => setChartView('Adotado')}
-                className={`px-3 py-1.5 rounded-md text-xs font-bold transition-all ${chartView === 'Adotado' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-400 hover:text-slate-600'}`}
-              >
-                Adoções
-              </button>
+            <div className="flex items-center gap-3">
+              {/* Badge Apreensões */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                <div className="w-2 h-2 rounded-full bg-[#13ec80]"></div>
+                <span className="text-[10px] font-bold text-slate-600 uppercase">Apr: <span className="text-slate-900 text-sm ml-0.5">{totalApreensoesEvol}</span></span>
+              </div>
+              {/* Badge Restituições */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                <div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div>
+                <span className="text-[10px] font-bold text-slate-600 uppercase">Rest: <span className="text-slate-900 text-sm ml-0.5">{totalRestituicoesEvol}</span></span>
+              </div>
+              {/* Badge Adoções */}
+              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
+                <div className="w-2 h-2 rounded-full bg-[#8b5cf6]"></div>
+                <span className="text-[10px] font-bold text-slate-600 uppercase">Adoç: <span className="text-slate-900 text-sm ml-0.5">{totalAdocoesEvol}</span></span>
+              </div>
+
+              <div className="w-px h-8 bg-slate-200 mx-2"></div>
+
+              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+                <button
+                  onClick={() => setChartView('Apreendido')}
+                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${chartView === 'Apreendido' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Apr
+                </button>
+                <button
+                  onClick={() => setChartView('Restituído')}
+                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${chartView === 'Restituído' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Rest
+                </button>
+                <button
+                  onClick={() => setChartView('Adotado')}
+                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${chartView === 'Adotado' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  Adoç
+                </button>
+              </div>
             </div>
           </div>
           <div className="h-64">
