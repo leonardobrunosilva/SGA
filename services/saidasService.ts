@@ -181,6 +181,37 @@ export const saidasService = {
         return activeChips;
     },
 
+    async update(id: string, saida: Partial<Saida>) {
+        const dbPayload: any = {};
+        if (saida.chip !== undefined) dbPayload.chip = saida.chip;
+        if (saida.specie !== undefined) dbPayload.specie = saida.specie;
+        if (saida.gender !== undefined) dbPayload.gender = saida.gender;
+        if (saida.color !== undefined) dbPayload.color = saida.color;
+        if (saida.history !== undefined) dbPayload.history = saida.history;
+        if (saida.observations !== undefined) dbPayload.observations = saida.observations;
+        if (saida.osNumber !== undefined) dbPayload.os_number = saida.osNumber;
+        if (saida.dateOut !== undefined) dbPayload.date_out = saida.dateOut;
+        if (saida.destination !== undefined) dbPayload.destination = saida.destination;
+        if (saida.seiProcess !== undefined) dbPayload.sei_process = saida.seiProcess;
+        if (saida.receiverName !== undefined) dbPayload.receiver_name = saida.receiverName;
+        if (saida.receiverCpf !== undefined) dbPayload.receiver_cpf = saida.receiverCpf;
+        if (saida.autoInfracao !== undefined) dbPayload.auto_infracao = saida.autoInfracao;
+        if (saida.autoApreensao !== undefined) dbPayload.auto_apreensao = saida.autoApreensao;
+
+        const { data, error } = await supabase
+            .from('saidas')
+            .update(dbPayload)
+            .eq('id', id)
+            .select()
+            .single();
+
+        if (error) {
+            console.error('Erro ao atualizar saída:', error);
+            throw error;
+        }
+
+        return data;
+    },
     async delete(id: string) {
         const { error } = await supabase
             .from('saidas')

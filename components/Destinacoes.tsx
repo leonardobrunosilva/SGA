@@ -19,6 +19,18 @@ const Destinacoes: React.FC = () => {
   const [isEntryModalOpen, setIsEntryModalOpen] = useState(false);
   const [selectedAnimalForEntry, setSelectedAnimalForEntry] = useState<Animal | null>(null);
 
+  // Edit State
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
+  const [editData, setEditData] = useState({
+    dateOut: '',
+    status: '',
+    responsible: '',
+    cpf: '',
+    observations: '',
+    seiProcess: ''
+  });
+
   // Initial Load - from Supabase saidas table
   useEffect(() => {
     loadHistory();
@@ -188,6 +200,46 @@ const Destinacoes: React.FC = () => {
     }
   };
 
+  const handleEdit = (animal: Animal) => {
+    setEditingAnimal(animal);
+    setEditData({
+      dateOut: animal.exitDate ? animal.exitDate.split('/').reverse().join('-') : new Date().toISOString().split('T')[0],
+      status: animal.status,
+      responsible: animal.receiverName || '',
+      cpf: animal.receiverCpf || '',
+      observations: animal.observations || '',
+      seiProcess: animal.seiProcess || ''
+    });
+    setIsEditModalOpen(true);
+  };
+
+  const handleUpdateExit = async () => {
+    if (!editingAnimal) return;
+    if (!editData.responsible || !editData.cpf) {
+      alert("Por favor, preencha o responsável e o CPF.");
+      return;
+    }
+
+    try {
+      await saidasService.update(editingAnimal.id, {
+        dateOut: editData.dateOut,
+        destination: editData.status,
+        receiverName: editData.responsible,
+        receiverCpf: editData.cpf,
+        observations: editData.observations,
+        seiProcess: editData.seiProcess
+      });
+
+      alert("Registro atualizado com sucesso!");
+      setIsEditModalOpen(false);
+      setEditingAnimal(null);
+      loadHistory();
+    } catch (error: any) {
+      console.error('Erro ao atualizar registro:', error);
+      alert(`Erro ao atualizar: ${error.message || "Tente novamente."}`);
+    }
+  };
+
   return (
     <div className="flex flex-col gap-8 animate-fade-in pb-12">
 
@@ -349,7 +401,11 @@ const Destinacoes: React.FC = () => {
                       <button onClick={() => setViewingAnimal(animal)} className="text-gray-400 hover:text-gdf-blue transition-colors p-1.5 rounded-full hover:bg-gray-100" title="Visualizar">
                         <span className="material-symbols-outlined text-[20px]">visibility</span>
                       </button>
-                      <button className="text-gray-400 hover:text-orange-600 transition-colors p-1.5 rounded-full hover:bg-gray-100" title="Editar">
+                      <button
+                        onClick={() => handleEdit(animal)}
+                        className="text-gray-400 hover:text-orange-600 transition-colors p-1.5 rounded-full hover:bg-gray-100"
+                        title="Editar"
+                      >
                         <span className="material-symbols-outlined text-[20px]">edit</span>
                       </button>
                       <button
@@ -549,6 +605,118 @@ const Destinacoes: React.FC = () => {
               >
                 <span className="material-symbols-outlined">verified</span>
                 Confirmar Saída
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      {/* Edit Modal */}
+      {isEditModalOpen && editingAnimal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative max-h-[90vh] overflow-y-auto">
+            <button
+              onClick={() => setIsEditModalOpen(false)}
+              className="absolute top-4 right-4 text-gray-400 hover:text-gray-600 transition-colors"
+            >
+              <span className="material-symbols-outlined">close</span>
+            </button>
+
+            <div className="flex items-center gap-4 mb-6 pb-4 border-b border-gray-100">
+              <div className="w-16 h-16 rounded-xl overflow-hidden bg-orange-50 flex items-center justify-center">
+                <span className="material-symbols-outlined text-orange-500 text-3xl">edit_note</span>
+              </div>
+              <div className="flex flex-col text-left">
+                <h3 className="text-2xl font-black text-slate-900 leading-tight">Editar Destinação</h3>
+                <p className="text-sm font-medium text-orange-600">Alterando registro: {editingAnimal.chip}</p>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8 text-left">
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Data de Saída</label>
+                <input
+                  type="date"
+                  value={editData.dateOut}
+                  onChange={(e) => setEditData({ ...editData, dateOut: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium text-slate-700"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Status de Destino</label>
+                <select
+                  value={editData.status}
+                  onChange={(e) => setEditData({ ...editData, status: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none transition-all font-bold text-slate-700"
+                >
+                  <option value="Adoção">Adoção</option>
+                  <option value="Eutanásia">Eutanásia</option>
+                  <option value="Restituição">Restituição</option>
+                  <option value="Óbito">Óbito</option>
+                  <option value="Transferência">Transferência</option>
+                  <option value="Hvet">Hvet</option>
+                  <option value="Projeto de Ensino">Projeto de Ensino</option>
+                </select>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Responsável / Requerente</label>
+                <input
+                  type="text"
+                  placeholder="Nome completo..."
+                  value={editData.responsible}
+                  onChange={(e) => setEditData({ ...editData, responsible: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium text-slate-700 placeholder:text-gray-300"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">CPF</label>
+                <input
+                  type="text"
+                  placeholder="000.000.000-00"
+                  value={editData.cpf}
+                  onChange={(e) => setEditData({ ...editData, cpf: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium text-slate-700 placeholder:text-gray-300"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Processo SEI</label>
+                <input
+                  type="text"
+                  placeholder="00000-00000000/0000-00"
+                  value={editData.seiProcess}
+                  onChange={(e) => setEditData({ ...editData, seiProcess: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium text-slate-700 placeholder:text-gray-300"
+                />
+              </div>
+
+              <div className="flex flex-col gap-1.5 md:col-span-2">
+                <label className="text-[10px] text-gray-400 uppercase font-black tracking-widest pl-1">Observações / Motivo</label>
+                <textarea
+                  rows={3}
+                  placeholder="Detalhes sobre a alteração..."
+                  value={editData.observations}
+                  onChange={(e) => setEditData({ ...editData, observations: e.target.value })}
+                  className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none transition-all font-medium text-slate-700 placeholder:text-gray-300 resize-none"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <button
+                onClick={() => setIsEditModalOpen(false)}
+                className="flex-1 px-6 py-4 rounded-xl border border-gray-200 text-gray-500 font-bold hover:bg-gray-50 transition-all active:scale-95"
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={handleUpdateExit}
+                className="flex-[2] bg-orange-600 hover:bg-orange-700 text-white font-black rounded-xl px-6 py-4 flex items-center justify-center gap-2 transition-all shadow-lg shadow-orange-100 active:scale-95"
+              >
+                <span className="material-symbols-outlined">save</span>
+                Salvar Alterações
               </button>
             </div>
           </div>
