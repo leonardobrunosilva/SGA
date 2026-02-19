@@ -341,6 +341,33 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
     }
   };
 
+  const handleDeleteUser = async (userId: string, userName: string) => {
+    if (!isAdmin) return;
+
+    const { data: { user } } = await supabase.auth.getUser();
+    if (user && user.id === userId) {
+      showNotification("Você não pode excluir seu próprio usuário aqui.", "info");
+      return;
+    }
+
+    if (window.confirm(`Tem certeza que deseja excluir o usuário ${userName}? Esta ação não poderá ser desfeita.`)) {
+      try {
+        const { error } = await supabase
+          .from('profiles')
+          .delete()
+          .eq('id', userId);
+
+        if (error) throw error;
+
+        showNotification("Usuário excluído com sucesso!");
+        fetchInitialData(); // Refresh list
+      } catch (error: any) {
+        console.error('Erro ao excluir usuário:', error);
+        showNotification("Erro ao excluir usuário.", "info");
+      }
+    }
+  };
+
   const handleAddSystemUser = () => {
     if (!newSystemUser.nome || !newSystemUser.email) {
       showNotification("Por favor, preencha Nome e Email.", "info");
@@ -920,6 +947,7 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase">Email</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase">Cargo / Função</th>
                       <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase">Nível de Acesso</th>
+                      <th className="px-6 py-4 text-xs font-black text-slate-500 uppercase text-right">Ações</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
@@ -941,6 +969,11 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                         <span className="px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-tight bg-amber-100 text-amber-700 border border-amber-200">
                           Administrador
                         </span>
+                      </td>
+                      <td className="px-6 py-4 text-right">
+                        <button disabled className="text-slate-300 cursor-not-allowed transition-colors p-1.5 rounded-lg">
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
                       </td>
                     </tr>
                     {/* Registered System Users */}
@@ -992,10 +1025,20 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                             <option value="admin">Administrador</option>
                           </select>
                         </td>
+                        <td className="px-6 py-4 text-right">
+                          <button
+                            onClick={() => handleDeleteUser(u.id, u.nome)}
+                            disabled={!isAdmin}
+                            className={`text-slate-400 hover:text-red-500 transition-colors p-1.5 rounded-lg ${!isAdmin ? 'cursor-not-allowed' : 'hover:bg-red-50'}`}
+                            title="Excluir Usuário"
+                          >
+                            <span className="material-symbols-outlined text-[20px]">delete</span>
+                          </button>
+                        </td>
                       </tr>
                     ))}
                     {systemUsers.length === 0 && (
-                      <tr><td colSpan={4} className="p-8 text-center text-slate-400 italic">Nenhum outro usuário cadastrado.</td></tr>
+                      <tr><td colSpan={5} className="p-8 text-center text-slate-400 italic">Nenhum outro usuário cadastrado.</td></tr>
                     )}
                   </tbody>
                 </table>
