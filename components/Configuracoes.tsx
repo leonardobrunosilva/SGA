@@ -398,18 +398,36 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
     }
   };
 
-  const handleAddSystemUser = () => {
+  const handleAddSystemUser = async () => {
     if (!newSystemUser.nome || !newSystemUser.email) {
       showNotification("Por favor, preencha Nome e Email.", "info");
       return;
     }
-    const userToAdd: SystemUser = { ...newSystemUser, id: Date.now().toString() };
-    const updatedList = [userToAdd, ...systemUsers];
-    setSystemUsers(updatedList);
-    localStorage.setItem('system_users_list', JSON.stringify(updatedList));
-    setNewSystemUser({ nome: '', email: '', perfil: 'operador' });
-    setIsAddUserModalOpen(false);
-    showNotification(`Usuário ${newSystemUser.nome} cadastrado com sucesso!`, "success");
+
+    try {
+      // Inserir no Supabase (tabela profiles)
+      // Nota: Como não temos criação de auth.user aqui, inserimos apenas o perfil. 
+      // Supabase gerará um UUID se o campo ID for do tipo UUID com default gen_random_uuid()
+      const { error } = await supabase
+        .from('profiles')
+        .insert([{
+          nome: newSystemUser.nome,
+          email: newSystemUser.email,
+          role: newSystemUser.perfil === 'admin' ? 'ADMIN' : 'USER',
+          cargo: '',
+          lotacao: 'GEFAP' // Default
+        }]);
+
+      if (error) throw error;
+
+      showNotification(`Usuário ${newSystemUser.nome} cadastrado com sucesso!`, "success");
+      setNewSystemUser({ nome: '', email: '', perfil: 'operador' });
+      setIsAddUserModalOpen(false);
+      fetchInitialData(); // Atualiza a lista do banco
+    } catch (error: any) {
+      console.error('Erro ao cadastrar usuário:', error);
+      showNotification("Erro ao cadastrar usuário: " + (error.message || ""), "info");
+    }
   };
 
   const uploadImage = async (file: File, bucket: string, path: string) => {
