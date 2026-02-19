@@ -352,23 +352,27 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
 
     if (window.confirm(`Tem certeza que deseja excluir o usuário ${userName}? Esta ação não poderá ser desfeita.`)) {
       try {
-        // Redução reativa do estado (visual instantâneo)
-        setSystemUsers(prev => prev.filter(u => u.id !== userId));
-
-        const { error } = await supabase
+        // Tentar deletar no Supabase e retornar a linha deletada
+        const { data, error } = await supabase
           .from('profiles')
           .delete()
-          .eq('id', userId);
+          .eq('id', userId)
+          .select();
 
         if (error) throw error;
 
+        // Verificar se algo foi deletado
+        if (!data || data.length === 0) {
+          throw new Error("O usuário não pôde ser removido do banco de dados. Isso pode ocorrer por restrições de segurança ou se o usuário possuir registros vinculados (como apreensões).");
+        }
+
+        // Se deletou com sucesso no banco, atualiza o estado local
+        setSystemUsers(prev => prev.filter(u => u.id !== userId));
         showNotification("Usuário excluído com sucesso!");
-        // Não chamamos fetchInitialData aqui para evitar 'piscada' se o estado já foi filtrado, 
-        // mas a deleção no banco garante a persistência.
       } catch (error: any) {
         console.error('Erro ao excluir usuário:', error);
-        showNotification("Erro ao excluir usuário.", "info");
-        fetchInitialData(); // Reverte o estado se falhar
+        showNotification(error.message || "Erro ao excluir usuário.", "info");
+        fetchInitialData(); // Reverte o estado (se necessário)
       }
     }
   };
