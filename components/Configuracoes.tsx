@@ -352,6 +352,9 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
 
     if (window.confirm(`Tem certeza que deseja excluir o usuário ${userName}? Esta ação não poderá ser desfeita.`)) {
       try {
+        // Redução reativa do estado (visual instantâneo)
+        setSystemUsers(prev => prev.filter(u => u.id !== userId));
+
         const { error } = await supabase
           .from('profiles')
           .delete()
@@ -360,10 +363,37 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
         if (error) throw error;
 
         showNotification("Usuário excluído com sucesso!");
-        fetchInitialData(); // Refresh list
+        // Não chamamos fetchInitialData aqui para evitar 'piscada' se o estado já foi filtrado, 
+        // mas a deleção no banco garante a persistência.
       } catch (error: any) {
         console.error('Erro ao excluir usuário:', error);
         showNotification("Erro ao excluir usuário.", "info");
+        fetchInitialData(); // Reverte o estado se falhar
+      }
+    }
+  };
+
+  const handleDeleteMember = async (memberId: string, memberName: string) => {
+    if (!isAdmin) return;
+
+    if (window.confirm(`Tem certeza que deseja remover ${memberName} da equipe técnica?`)) {
+      try {
+        const updatedEquipe = equipeList.filter(m => m.id !== memberId);
+        setEquipeList(updatedEquipe);
+
+        // Save to system_settings in Supabase
+        const { error: settingsError } = await supabase
+          .from('system_settings')
+          .update({ equipe_list: updatedEquipe })
+          .eq('id', 1);
+
+        if (settingsError) throw settingsError;
+
+        showNotification("Membro removido da equipe com sucesso!");
+      } catch (error: any) {
+        console.error('Erro ao remover membro:', error);
+        showNotification("Erro ao remover membro.", "info");
+        fetchInitialData();
       }
     }
   };
@@ -833,6 +863,15 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
                                 title="Editar Cadastro"
                               >
                                 <span className="material-symbols-outlined text-[20px]">edit_square</span>
+                              </button>
+                            )}
+                            {isAdmin && (
+                              <button
+                                onClick={() => m.id && handleDeleteMember(m.id, m.nome)}
+                                className="p-1.5 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-all"
+                                title="Remover Membro"
+                              >
+                                <span className="material-symbols-outlined text-[20px]">delete_forever</span>
                               </button>
                             )}
                           </div>
