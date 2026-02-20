@@ -72,11 +72,8 @@ const Destinacoes: React.FC = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  // Lógica de Filtragem e Paginação con Reset
+  // Lógica de Filtragem
   const filteredAnimals = useMemo(() => {
-    // Reset page on filter change
-    if (currentPage !== 1) setCurrentPage(1);
-
     return animals.filter(a => {
       const matchChip = a.chip.includes(chipFilter);
       const matchStatus = !statusFilter || a.status === statusFilter;
@@ -85,6 +82,12 @@ const Destinacoes: React.FC = () => {
       return matchChip && matchStatus && matchYear;
     });
   }, [animals, chipFilter, statusFilter, yearFilter]);
+
+  // Reset page only when filters change, keeping the page when editing
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [chipFilter, statusFilter, yearFilter]);
+
 
   // Status Badge Logic
   const getStatusStyles = (status: string) => {
