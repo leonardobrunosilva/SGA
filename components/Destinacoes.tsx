@@ -243,17 +243,54 @@ const Destinacoes: React.FC = () => {
     }
   };
 
+  // --- RELATÓRIOS ---
+  const handleExportCSV = () => {
+    const headers = ['Animal', 'Raça', 'Cor', 'Sexo', 'Identificação (CHIP)', 'Data Saída', 'Permanência (Dias)', 'Processo SEI', 'Status', 'Destinatário', 'CPF'];
+
+    const csvRows = [
+      headers.join(','),
+      ...filteredAnimals.map(animal => [
+        `"${animal.specie}"`,
+        `"${animal.breed || '-'}"`,
+        `"${animal.color}"`,
+        `"${animal.gender}"`,
+        `"${animal.chip}"`,
+        `"${animal.exitDate}"`,
+        `"${animal.daysIn}"`,
+        `"${animal.seiProcess || '-'}"`,
+        `"${animal.status}"`,
+        `"${animal.receiverName || '-'}"`,
+        `"${animal.receiverCpf || '-'}"`
+      ].join(','))
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Relatorio_Destinacoes_${today}.csv`);
+    link.style.visibility = 'hidden';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  const handlePrint = () => {
+    window.print();
+  };
+
   return (
     <div className="flex flex-col gap-8 animate-fade-in pb-12">
 
       {/* Header */}
-      <div className="flex flex-col text-left">
+      <div className="flex flex-col text-left print:hidden">
         <h2 className="text-[#111814] text-3xl font-black leading-tight tracking-[-0.033em]">Histórico de Destinações</h2>
         <p className="text-gray-500 text-sm font-normal">Registro consolidado de todas as saídas e baixas de animais.</p>
       </div>
 
       {/* Metrics (Optional Visuals) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-gray-500 text-xs font-bold uppercase">Total de Saídas</p>
           <h3 className="text-3xl font-black text-slate-800">{animals.length}</h3>
@@ -273,7 +310,7 @@ const Destinacoes: React.FC = () => {
       </div>
 
       {/* Filters Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
         <div className="relative">
           <input
             className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
@@ -308,7 +345,7 @@ const Destinacoes: React.FC = () => {
       </div>
 
       {/* Manual Insertion Container */}
-      <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm animate-fade-in">
+      <div className="bg-blue-50 border border-blue-100 rounded-xl p-6 shadow-sm animate-fade-in print:hidden">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-2">
             <span className="material-symbols-outlined text-blue-600">add_circle</span>
@@ -354,8 +391,26 @@ const Destinacoes: React.FC = () => {
         </div>
       </div>
 
+      {/* Action Bar (Export/Print) */}
+      <div className="flex justify-end gap-3 print:hidden">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Exportar CSV
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">print</span>
+          Imprimir
+        </button>
+      </div>
+
       {/* Table */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden print:hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
@@ -725,6 +780,61 @@ const Destinacoes: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Print Table (Hidden on Screen) */}
+      <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:z-[9999] print:bg-white p-8">
+        <div className="mb-6 flex justify-between items-end border-b border-gray-200 pb-4">
+          <div>
+            <h2 className="text-2xl font-black text-slate-800 tracking-tight">Relatório de Destinações</h2>
+            <p className="text-sm text-slate-500 mt-1">
+              Secretaria de Estado da Agricultura, Abastecimento e Desenvolvimento Rural
+            </p>
+          </div>
+          <div className="text-right">
+            <p className="text-sm font-bold text-slate-700">Data de Emissão: {new Date().toLocaleDateString('pt-BR')}</p>
+            <p className="text-xs text-slate-500 mt-0.5">Total de Registros: {filteredAnimals.length}</p>
+          </div>
+        </div>
+
+        <table className="w-full text-left text-[11px] border-collapse">
+          <thead>
+            <tr className="bg-gray-100 border-y border-gray-300">
+              <th className="py-2 px-2 font-bold text-slate-700">Animal / CHIP</th>
+              <th className="py-2 px-2 font-bold text-slate-700">Data Saída</th>
+              <th className="py-2 px-2 font-bold text-slate-700">Tempo</th>
+              <th className="py-2 px-2 font-bold text-slate-700">Status / Destino</th>
+              <th className="py-2 px-2 font-bold text-slate-700">Responsável</th>
+              <th className="py-2 px-2 font-bold text-slate-700">Processo SEI</th>
+              <th className="py-2 px-2 font-bold text-slate-700">Observações</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-200">
+            {filteredAnimals.map((animal) => (
+              <tr key={animal.id} className="break-inside-avoid">
+                <td className="py-2 px-2 align-top">
+                  <span className="font-bold">{animal.specie}</span><br />
+                  <span className="font-mono text-[9px] text-gray-600">{animal.chip}</span>
+                </td>
+                <td className="py-2 px-2 align-top">{animal.exitDate}</td>
+                <td className="py-2 px-2 align-top">{animal.daysIn} d</td>
+                <td className="py-2 px-2 align-top font-bold">{animal.status}</td>
+                <td className="py-2 px-2 align-top">
+                  {animal.receiverName || '-'}<br />
+                  <span className="text-[9px] text-gray-500">{animal.receiverCpf}</span>
+                </td>
+                <td className="py-2 px-2 align-top font-mono">{animal.seiProcess || '-'}</td>
+                <td className="py-2 px-2 align-top text-[10px] text-gray-600 w-1/4">
+                  {animal.observations || '-'}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div className="mt-8 text-center text-[10px] text-gray-400 border-t border-gray-200 pt-4">
+          Gerado pelo Sistema de Gestão de Animais (SGA) - {new Date().toLocaleString('pt-BR')}
+        </div>
+      </div>
 
     </div>
   );
