@@ -373,6 +373,7 @@ const Destinacoes: React.FC = () => {
               <option value="Restituição">Restituição</option>
               <option value="Óbito">Óbito</option>
               <option value="Transferência">Transferência</option>
+              <option value="Furto">Furto</option>
               <option value="Hvet">Hvet</option>
               <option value="Projeto de Ensino">Projeto de Ensino</option>
             </select>
@@ -712,6 +713,7 @@ const Destinacoes: React.FC = () => {
                   <option value="Restituição">Restituição</option>
                   <option value="Óbito">Óbito</option>
                   <option value="Transferência">Transferência</option>
+                  <option value="Furto">Furto</option>
                   <option value="Hvet">Hvet</option>
                   <option value="Projeto de Ensino">Projeto de Ensino</option>
                 </select>
