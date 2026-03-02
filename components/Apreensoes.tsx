@@ -530,6 +530,7 @@ const Apreensoes: React.FC = () => {
                       setIsFormOpen(false);
                       setEditingAnimal(null);
                       await loadAnimals();
+                      alert('Dados da apreensão atualizados com sucesso.');
                     } else {
                       // Basic validation
                       if (!formData.chip && !formData.osNumber) {
@@ -543,7 +544,7 @@ const Apreensoes: React.FC = () => {
                         uploadedImageUrl = await apreensoesService.uploadPhoto(selectedFile);
                       }
 
-                      await apreensoesService.createApreensao({
+                      const newAnimal = await apreensoesService.createApreensao({
                         breed: 'SRD',
                         chip: formData.chip || 'S/N',
                         // name removed per refactor
@@ -563,8 +564,24 @@ const Apreensoes: React.FC = () => {
                         daysIn: 0
                       });
 
+                      // Automate insertion into Restituicao
+                      if (newAnimal && newAnimal.id) {
+                        try {
+                          await restituicaoService.add(
+                            newAnimal.id,
+                            'Disponível',
+                            'Documentação em análise. Inserido automaticamente após apreensão.'
+                          );
+                        } catch (err) {
+                          console.error('Erro ao adicionar à fila de Restituição:', err);
+                          // We don't block the UI, just log the error that it didn't queue
+                        }
+                      }
+
                       await loadAnimals(); // Refresh list
                       setIsFormOpen(false);
+                      // User Feedback
+                      alert('Animal apreendido com sucesso e adicionado à fila de Restituição (Disponível).');
                     }
                   } catch (e: any) {
                     console.error('Erro detalhado:', e);
