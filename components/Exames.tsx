@@ -1,6 +1,7 @@
 import React, { useState, useRef } from 'react';
 import { adocaoService, restituicaoService } from '../services/worklistService';
 import { apreensoesService } from '../services/apreensoesService';
+import { supabase } from '../supabaseClient';
 
 interface ExameAnimal {
     id: string;
@@ -13,7 +14,38 @@ interface ExameAnimal {
 const Exames: React.FC = () => {
     const [animais, setAnimais] = useState<ExameAnimal[]>([]);
     const [isLoading, setIsLoading] = useState(false);
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 10;
     const fileInputRef = useRef<HTMLInputElement>(null);
+
+    // Carrega do banco no mount
+    React.useEffect(() => {
+        const fetchSavedExames = async () => {
+            try {
+                const { data } = await supabase.from('system_settings').select('exames_data').eq('id', 1).single();
+                if (data && data.exames_data) {
+                    setAnimais(data.exames_data);
+                }
+            } catch (err) {
+                console.error('Erro ao buscar exames salvos:', err);
+            }
+        };
+        fetchSavedExames();
+    }, []);
+
+    const saveToDatabase = async (novaLista: ExameAnimal[]) => {
+        try {
+            await supabase.from('system_settings').update({ exames_data: novaLista }).eq('id', 1);
+        } catch (err) {
+            console.error('Erro ao salvar no banco global:', err);
+        }
+    };
+
+    const handleClearPanel = async () => {
+        setAnimais([]);
+        setCurrentPage(1);
+        await saveToDatabase([]);
+    };
 
     const carregarAnimais = async () => {
         setIsLoading(true);
@@ -39,7 +71,9 @@ const Exames: React.FC = () => {
                 data_exame: item.animal?.data_exame
             }));
 
-            setAnimais([...adocaoMapped, ...restituicaoMapped]);
+            const novaLista = [...adocaoMapped, ...restituicaoMapped];
+            setAnimais(novaLista);
+            await saveToDatabase(novaLista);
         } catch (error) {
             console.error("Erro ao carregar animais:", error);
             alert("Erro ao carregar lista de animais.");
@@ -124,6 +158,7 @@ const Exames: React.FC = () => {
                         });
                     }
                 });
+                saveToDatabase(next);
                 return next;
             });
 
@@ -135,6 +170,29 @@ const Exames: React.FC = () => {
         if (fileInputRef.current) {
             fileInputRef.current.value = '';
         }
+    };
+
+    const sortedAnimais = [...animais].sort((a, b) => {
+        const parseDateExame = (dateStr?: string | null) => {
+            if (!dateStr) return 0;
+            const [day, month, year] = dateStr.split('/');
+            if (day && month && year) {
+                return new Date(Number(year), Number(month) - 1, Number(day)).getTime();
+            }
+            return 0;
+        };
+        const timeA = parseDateExame(a.data_exame) || Date.now();
+        const timeB = parseDateExame(b.data_exame) || Date.now();
+        return timeB - timeA;
+    });
+
+    const indexOfLastItem = currentPage * itemsPerPage;
+    const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+    const currentItems = sortedAnimais.slice(indexOfFirstItem, indexOfLastItem);
+    const totalPages = Math.ceil(sortedAnimais.length / itemsPerPage);
+
+    const handlePageChange = (page: number) => {
+        setCurrentPage(page);
     };
 
     return (
@@ -157,8 +215,18 @@ const Exames: React.FC = () => {
                     </button>
 
                     <button
+                        onClick={handleClearPanel}
+                        disabled={isLoading || animais.length === 0}
+                        className="flex items-center gap-2 bg-white hover:bg-red-50 text-red-600 font-bold py-2.5 px-5 rounded-xl border border-red-200 transition-all shadow-sm active:scale-95 disabled:opacity-50"
+                    >
+                        <span className="material-symbols-outlined text-[20px]">delete</span>
+                        Limpar Painel
+                    </button>
+
+                    <button
                         onClick={() => fileInputRef.current?.click()}
-                        className="flex items-center gap-2 bg-gdf-blue hover:bg-gdf-blue-dark text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-95"
+                        className="flex items-center gap-2 bg-gdf-blue hover:bg-gdf-blue-dark text-white font-bold py-2.5 px-5 rounded-xl transition-all shadow-lg shadow-blue-900/20 active:scale-95 disabled:opacity-50"
+                        disabled={isLoading || animais.length === 0}
                     >
                         <span className="material-symbols-outlined text-[20px]">upload_file</span>
                         Importar Resultados (CSV)
@@ -189,15 +257,15 @@ const Exames: React.FC = () => {
                             </tr>
                         </thead>
                         <tbody className="divide-y divide-gray-100">
-                            {animais.length === 0 ? (
+                            {currentItems.length === 0 ? (
                                 <tr>
                                     <td colSpan={7} className="px-6 py-12 text-center text-gray-400">
                                         <span className="material-symbols-outlined text-4xl block mb-2 opacity-50">science</span>
-                                        <p>Nenhum animal carregado. Clique em "Carregar Animais Ativos".</p>
+                                        <p>Nenhum animal listado. Adicione clicando em "Carregar Animais Ativos" ou aguarde a primeira sincronização.</p>
                                     </td>
                                 </tr>
                             ) : (
-                                animais.map((animal) => {
+                                currentItems.map((animal) => {
                                     const info = calcularValidadeExame(animal.data_exame);
                                     return (
                                         <tr key={animal.id} className="hover:bg-gray-50 transition-colors">
@@ -229,7 +297,42 @@ const Exames: React.FC = () => {
                     </table>
                 </div>
                 <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200 flex justify-between items-center text-xs text-slate-500">
-                    <p>Exibindo <span className="font-bold text-slate-900">{animais.length}</span> registros combinados</p>
+                    <p>Exibindo <span className="font-bold text-slate-900">{animais.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, animais.length)}</span> de <span className="font-bold text-slate-900">{animais.length}</span> registros combinados</p>
+                    <div className="flex gap-1">
+                        <button
+                            onClick={() => handlePageChange(currentPage - 1)}
+                            disabled={currentPage === 1}
+                            className={`px-2 py-1 rounded border border-gray-200 bg-white transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                        >
+                            Anterior
+                        </button>
+
+                        {[...Array(totalPages)].map((_, i) => {
+                            const page = i + 1;
+                            if (page === 1 || page === totalPages || (page >= currentPage - 1 && page <= currentPage + 1)) {
+                                return (
+                                    <button
+                                        key={page}
+                                        onClick={() => handlePageChange(page)}
+                                        className={`px-2 py-1 rounded border ${currentPage === page ? 'border-gdf-blue bg-gdf-blue text-white font-bold' : 'border-gray-200 bg-white hover:bg-gray-50 transition-colors'}`}
+                                    >
+                                        {page}
+                                    </button>
+                                );
+                            } else if (page === currentPage - 2 || page === currentPage + 2) {
+                                return <span key={page} className="px-1 text-slate-400">...</span>;
+                            }
+                            return null;
+                        })}
+
+                        <button
+                            onClick={() => handlePageChange(currentPage + 1)}
+                            disabled={currentPage === totalPages || totalPages === 0}
+                            className={`px-2 py-1 rounded border border-gray-200 bg-white transition-colors ${currentPage === totalPages || totalPages === 0 ? 'opacity-50 cursor-not-allowed' : 'hover:bg-gray-50'}`}
+                        >
+                            Próximo
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
