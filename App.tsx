@@ -9,7 +9,7 @@ import Destinacoes from './components/Destinacoes';
 import Restituicao from './components/Restituicao';
 import Prontuario from './components/Prontuario';
 import OutrosOrgaos from './components/OutrosOrgaos';
-import RegiaoAdm from './components/RegiaoAdm';
+import Exames from './components/Exames';
 import Configuracoes from './components/Configuracoes';
 import Login from './components/Login';
 import { PageType } from './types';
@@ -57,7 +57,7 @@ const App: React.FC = () => {
       case 'Restituicao': return <Restituicao />;
       case 'Prontuario': return <Prontuario />;
       case 'OutrosOrgaos': return <OutrosOrgaos />;
-      case 'RegiaoAdm': return <RegiaoAdm />;
+      case 'Exames': return <Exames />;
       case 'Configuracoes': return <Configuracoes setCurrentPage={setCurrentPage} />;
       default: return null;
     }

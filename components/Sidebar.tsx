@@ -85,7 +85,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, onLogout
     { id: 'Adocao', label: 'Adoção', icon: 'volunteer_activism' },
     { id: 'Prontuario', label: 'Prontuário Eletrônico', icon: 'medical_services' },
     { id: 'OutrosOrgaos', label: 'Outros Órgãos', icon: 'account_balance' },
-    { id: 'RegiaoAdm', label: 'Região Adm', icon: 'map' },
+    { id: 'Exames', label: 'Controle de Exames', icon: 'science' },
   ];
 
   const getInitials = (name: string) => {

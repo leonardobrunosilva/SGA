@@ -7,7 +7,7 @@ export type PageType =
   | 'Adocao'
   | 'Prontuario'
   | 'OutrosOrgaos'
-  | 'RegiaoAdm'
+  | 'Exames'
   | 'Configuracoes';
 
 export interface Animal {
@@ -28,6 +28,7 @@ export interface Animal {
   observations: string;
   imageUrl: string;
   organ: string;
+  data_exame?: string;
   osNumber: string;
   mapsUrl?: string;
   contactInitiated?: boolean;
