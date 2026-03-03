@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+, import React, { useState, useRef } from 'react';
 import { adocaoService, restituicaoService } from '../services/worklistService';
 import { apreensoesService } from '../services/apreensoesService';
 import { supabase } from '../supabaseClient';
@@ -7,6 +7,8 @@ interface ExameAnimal {
     id: string;
     chip: string;
     specie: string;
+    gender?: string;
+    color?: string;
     origem: 'Restituição' | 'Adoção';
     data_exame?: string | null;
 }
@@ -15,6 +17,9 @@ const Exames: React.FC = () => {
     const [animais, setAnimais] = useState<ExameAnimal[]>([]);
     const [isLoading, setIsLoading] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
+    const [chipFilter, setChipFilter] = useState('');
+    const [statusFilter, setStatusFilter] = useState('');
+    const [filaFilter, setFilaFilter] = useState('');
     const itemsPerPage = 10;
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -59,6 +64,8 @@ const Exames: React.FC = () => {
                 id: item.animal?.id || item.animal_id,
                 chip: item.animal?.chip || 'N/A',
                 specie: item.animal?.specie || 'N/A',
+                gender: item.animal?.gender,
+                color: item.animal?.color,
                 origem: 'Adoção',
                 data_exame: item.animal?.data_exame
             }));
@@ -67,6 +74,8 @@ const Exames: React.FC = () => {
                 id: item.animal?.id || item.animal_id,
                 chip: item.animal?.chip || 'N/A',
                 specie: item.animal?.specie || 'N/A',
+                gender: item.animal?.gender,
+                color: item.animal?.color,
                 origem: 'Restituição',
                 data_exame: item.animal?.data_exame
             }));
@@ -172,7 +181,17 @@ const Exames: React.FC = () => {
         }
     };
 
-    const sortedAnimais = [...animais].sort((a, b) => {
+    const filteredAnimais = animais.filter(animal => {
+        if (chipFilter && !animal.chip.toLowerCase().includes(chipFilter.toLowerCase())) return false;
+        if (filaFilter && animal.origem !== filaFilter) return false;
+        if (statusFilter) {
+            const info = calcularValidadeExame(animal.data_exame);
+            if (info.status !== statusFilter) return false;
+        }
+        return true;
+    });
+
+    const sortedAnimais = [...filteredAnimais].sort((a, b) => {
         const parseDateExame = (dateStr?: string | null) => {
             if (!dateStr) return 0;
             const [day, month, year] = dateStr.split('/');
@@ -194,6 +213,11 @@ const Exames: React.FC = () => {
     const handlePageChange = (page: number) => {
         setCurrentPage(page);
     };
+
+    // Reseta paginação sempre que os filtros mudarem
+    React.useEffect(() => {
+        setCurrentPage(1);
+    }, [chipFilter, statusFilter, filaFilter]);
 
     return (
         <div className="flex flex-col gap-8 animate-fade-in pb-12">
@@ -241,6 +265,41 @@ const Exames: React.FC = () => {
                 </div>
             </div>
 
+            {/* Filtros */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="relative">
+                    <input
+                        className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+                        placeholder="Buscar por Chip..."
+                        value={chipFilter}
+                        onChange={(e) => setChipFilter(e.target.value)}
+                    />
+                    <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">search</span>
+                </div>
+
+                <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+                >
+                    <option value="">Todos os Status</option>
+                    <option value="Em dia">Em dia</option>
+                    <option value="Vencido">Vencido</option>
+                    <option value="Sem Exame">Sem Exame</option>
+                    <option value="Data Inválida">Data Inválida</option>
+                </select>
+
+                <select
+                    value={filaFilter}
+                    onChange={(e) => setFilaFilter(e.target.value)}
+                    className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+                >
+                    <option value="">Todas as Filas</option>
+                    <option value="Adoção">Adoção</option>
+                    <option value="Restituição">Restituição</option>
+                </select>
+            </div>
+
             {/* Tabela de Exames */}
             <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col">
                 <div className="overflow-x-auto">
@@ -270,7 +329,14 @@ const Exames: React.FC = () => {
                                     return (
                                         <tr key={animal.id} className="hover:bg-gray-50 transition-colors">
                                             <td className="px-6 py-4 font-mono text-xs font-bold text-slate-700">{animal.chip}</td>
-                                            <td className="px-6 py-4 font-bold text-slate-600">{animal.specie}</td>
+                                            <td className="px-6 py-4">
+                                                <div className="flex flex-col">
+                                                    <span className="font-bold text-slate-800">{animal.specie}</span>
+                                                    <span className="text-[10px] text-gray-400 font-medium uppercase">
+                                                        {animal.gender || 'N/I'} / {animal.color || 'N/I'}
+                                                    </span>
+                                                </div>
+                                            </td>
                                             <td className="px-6 py-4">
                                                 <span className={`px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider ${animal.origem === 'Adoção' ? 'bg-blue-50 text-blue-700' : 'bg-emerald-50 text-emerald-700'
                                                     }`}>
@@ -297,7 +363,7 @@ const Exames: React.FC = () => {
                     </table>
                 </div>
                 <div className="px-6 py-4 bg-gray-50/50 border-t border-gray-200 flex justify-between items-center text-xs text-slate-500">
-                    <p>Exibindo <span className="font-bold text-slate-900">{animais.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, animais.length)}</span> de <span className="font-bold text-slate-900">{animais.length}</span> registros combinados</p>
+                    <p>Exibindo <span className="font-bold text-slate-900">{filteredAnimais.length > 0 ? indexOfFirstItem + 1 : 0}-{Math.min(indexOfLastItem, filteredAnimais.length)}</span> de <span className="font-bold text-slate-900">{filteredAnimais.length}</span> registros combinados</p>
                     <div className="flex gap-1">
                         <button
                             onClick={() => handlePageChange(currentPage - 1)}
