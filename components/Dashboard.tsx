@@ -415,55 +415,53 @@ const Dashboard: React.FC = () => {
       {/* Row 3: Annual Indicators and Distribution */}
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         <div className="xl:col-span-2 bg-white rounded-2xl p-6 border border-gray-200 shadow-sm">
-          <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-8 gap-4">
+          <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center mb-8 gap-4">
             <div>
-              <h3 className="text-lg font-black text-slate-800">Evolução de {chartView}s</h3>
+              <h3 className="text-lg font-black text-slate-800">Evolução de Apreendidos</h3>
               <p className="text-xs text-slate-500">Distribuição de ocorrências em {appliedFilters.year || 'Todos os Anos'}</p>
             </div>
-            <div className="flex items-center gap-3">
-              {/* Badge Apreensões */}
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-                <div className="w-2 h-2 rounded-full bg-[#13ec80]"></div>
-                <span className="text-[10px] font-bold text-slate-600 uppercase">Apr: <span className="text-slate-900 text-sm ml-0.5">{totalApreensoesEvol}</span></span>
-              </div>
-              {/* Badge Restituições */}
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-                <div className="w-2 h-2 rounded-full bg-[#3b82f6]"></div>
-                <span className="text-[10px] font-bold text-slate-600 uppercase">Rest: <span className="text-slate-900 text-sm ml-0.5">{totalRestituicoesEvol}</span></span>
-              </div>
-              {/* Badge Adoções */}
-              <div className="flex items-center gap-2 bg-slate-50 border border-slate-200 px-3 py-1.5 rounded-lg shadow-sm">
-                <div className="w-2 h-2 rounded-full bg-[#8b5cf6]"></div>
-                <span className="text-[10px] font-bold text-slate-600 uppercase">Adoç: <span className="text-slate-900 text-sm ml-0.5">{totalAdocoesEvol}</span></span>
-              </div>
 
-              <div className="w-px h-8 bg-slate-200 mx-2"></div>
-
-              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg">
+            <div className="flex flex-col gap-2 w-full lg:w-auto">
+              <div className="flex gap-1 p-1 bg-slate-100 rounded-lg w-full">
                 <button
                   onClick={() => setChartView('Apreendido')}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${chartView === 'Apreendido' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${chartView === 'Apreendido' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                  Apr
+                  Apreensões
                 </button>
                 <button
                   onClick={() => setChartView('Restituído')}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${chartView === 'Restituído' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${chartView === 'Restituído' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                  Rest
+                  Restituições
                 </button>
                 <button
                   onClick={() => setChartView('Adotado')}
-                  className={`px-3 py-1.5 rounded-md text-[10px] font-bold uppercase transition-all ${chartView === 'Adotado' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                  className={`flex-1 px-3 py-1.5 rounded-md text-[10px] font-bold transition-all ${chartView === 'Adotado' ? 'bg-white text-slate-900 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
                 >
-                  Adoç
+                  Adoções
                 </button>
+              </div>
+
+              <div className="flex items-center gap-2 justify-between">
+                <div className="flex flex-1 items-center justify-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-lg shadow-sm whitespace-nowrap">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#13ec80]"></div>
+                  <span className="text-[10px] font-bold text-slate-600">Apreensões: <span className="text-slate-900">{totalApreensoesEvol}</span></span>
+                </div>
+                <div className="flex flex-1 items-center justify-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-lg shadow-sm whitespace-nowrap">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#3b82f6]"></div>
+                  <span className="text-[10px] font-bold text-slate-600">Restituições: <span className="text-slate-900">{totalRestituicoesEvol}</span></span>
+                </div>
+                <div className="flex flex-1 items-center justify-center gap-1.5 bg-slate-50 border border-slate-200 px-2 py-1.5 rounded-lg shadow-sm whitespace-nowrap">
+                  <div className="w-1.5 h-1.5 rounded-full bg-[#8b5cf6]"></div>
+                  <span className="text-[10px] font-bold text-slate-600">Adoções: <span className="text-slate-900">{totalAdocoesEvol}</span></span>
+                </div>
               </div>
             </div>
           </div>
           <div className="h-64">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={annualChartData}>
+              <AreaChart data={annualChartData} margin={{ top: 10, right: 15, left: 15, bottom: 0 }}>
                 <defs>
                   <linearGradient id="colorVal" x1="0" y1="0" x2="0" y2="1">
                     <stop offset="5%" stopColor={chartView === 'Apreendido' ? '#13ec80' : chartView === 'Restituído' ? '#3b82f6' : '#8b5cf6'} stopOpacity={0.2} />
