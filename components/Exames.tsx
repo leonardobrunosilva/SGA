@@ -265,6 +265,19 @@ const Exames: React.FC = () => {
                 </div>
             </div>
 
+            {/* KPIs */}
+            <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div className="bg-white rounded-xl border border-gray-200 p-4 shadow-sm flex flex-col justify-center border-l-4 border-l-gdf-blue">
+                    <p className="text-sm font-medium text-gray-500 transition-colors uppercase tracking-wider">Total de Registros</p>
+                    <div className="flex items-center justify-between mt-1">
+                        <span className="text-3xl font-black text-[#111814]">{filteredAnimais.length}</span>
+                        <div className="bg-blue-50 w-10 h-10 rounded-lg flex items-center justify-center">
+                            <span className="material-symbols-outlined text-gdf-blue text-xl">biotech</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
             {/* Filtros */}
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="relative">
