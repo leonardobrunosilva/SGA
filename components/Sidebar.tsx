@@ -324,15 +324,15 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, onLogout
                           <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-xs">
                             <div>
                               <span className="text-gray-400 font-bold uppercase tracking-wider block mb-1">Solicitante:</span>
-                              <p className="font-bold text-slate-700">{item.requester || 'N/I'}</p>
+                              <p className="font-bold text-slate-700">{item.organ || 'N/I'}</p>
                             </div>
                             <div>
                               <span className="text-gray-400 font-bold uppercase tracking-wider block mb-1">RA (Origem):</span>
-                              <p className="font-bold text-slate-700">{item.ra || 'N/I'}</p>
+                              <p className="font-bold text-slate-700">{item.origin || 'N/I'}</p>
                             </div>
                             <div className="md:col-span-2">
-                              <span className="text-gray-400 font-bold uppercase tracking-wider block mb-1">Proc. SEI:</span>
-                              <p className="font-mono font-medium text-slate-700">{item.sei_process || 'N/I'}</p>
+                              <span className="text-gray-400 font-bold uppercase tracking-wider block mb-1">Ordem de Serviço (OS):</span>
+                              <p className="font-mono font-medium text-slate-700">{item.os_number || 'N/I'}</p>
                             </div>
                           </div>
                         ) : (
