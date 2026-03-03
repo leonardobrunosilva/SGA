@@ -24,6 +24,7 @@ const Apreensoes: React.FC = () => {
 
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingAnimal, setEditingAnimal] = useState<Animal | null>(null);
+  const [viewingAnimal, setViewingAnimal] = useState<Animal | null>(null);
 
   // Form States
   const [formData, setFormData] = useState<Partial<Animal>>({});
@@ -868,8 +869,9 @@ const Apreensoes: React.FC = () => {
                   <td className="p-4 text-right print:hidden">
                     <div className="flex items-center justify-end gap-2">
                       <button
-                        onClick={() => console.log('Visualizar', animal.id)}
+                        onClick={() => setViewingAnimal(animal)}
                         className="p-2 text-slate-400 hover:text-gdf-blue hover:bg-blue-50 rounded-lg transition-all"
+                        title="Visualizar"
                       >
                         <span className="material-symbols-outlined text-[20px]">visibility</span>
                       </button>
@@ -987,6 +989,76 @@ const Apreensoes: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* Detail View Modal */}
+      {viewingAnimal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in print:hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative">
+            <button onClick={() => setViewingAnimal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><span className="material-symbols-outlined">close</span></button>
+            <h3 className="text-2xl font-black text-slate-900 mb-6 text-left">Detalhes da Apreensão</h3>
+
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6 text-left">
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Animal</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shadow-sm flex-shrink-0">
+                    <img src={viewingAnimal.imageUrl} className="w-full h-full object-cover" alt="Foto" />
+                  </div>
+                  <div className="flex flex-col">
+                    <p className="font-black text-slate-800 text-lg leading-tight">{viewingAnimal.specie}</p>
+                    <p className="text-xs text-slate-500">{viewingAnimal.gender} / {viewingAnimal.color}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1 justify-center">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Identificação (CHIP)</p>
+                <p className="font-mono font-bold text-slate-700 text-lg">{viewingAnimal.chip}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Data / Hora de Entrada</p>
+                <p className="font-bold text-slate-700">{formatDate(viewingAnimal.dateIn)} {viewingAnimal.timeIn ? `às ${viewingAnimal.timeIn}` : ''}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Ordem de Serviço (OS)</p>
+                <p className="font-bold text-slate-700">{viewingAnimal.osNumber}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Órgão Solicitante</p>
+                <p className="font-bold text-slate-800">{viewingAnimal.organ}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Região Administrativa (RA)</p>
+                <p className="font-bold text-slate-800">{viewingAnimal.origin}</p>
+              </div>
+
+              {viewingAnimal.classification && (
+                <div className="flex flex-col gap-1">
+                  <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Classificação</p>
+                  <p className="font-bold text-slate-800">{viewingAnimal.classification}</p>
+                </div>
+              )}
+
+              <div className="flex flex-col gap-1 col-span-2">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Status Atual</p>
+                <p className="font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg inline-block w-max">{viewingAnimal.status}</p>
+              </div>
+
+              {viewingAnimal.observations && (
+                <div className="flex flex-col gap-1 col-span-2 mt-2">
+                  <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Observações</p>
+                  <p className="text-sm text-slate-600 bg-gray-50 p-3 rounded-lg flex-1">"{viewingAnimal.observations}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div >
   );
 };

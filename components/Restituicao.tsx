@@ -54,6 +54,7 @@ const Restituicao: React.FC = () => {
   const [foundEntry, setFoundEntry] = useState<any>(null);
   const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
   const [showEntrySelectionModal, setShowEntrySelectionModal] = useState(false);
+  const [viewingAnimal, setViewingAnimal] = useState<any | null>(null);
 
   // Edit Form State (Robust)
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -889,7 +890,7 @@ const Restituicao: React.FC = () => {
                     <td className="px-6 py-4 text-slate-600">{animalData.origin || animalData.organ || 'Não informado'}</td>
                     <td className="px-6 py-4 text-right print:hidden">
                       <div className="flex items-center justify-end gap-1">
-                        <button onClick={() => showNotification(`Visualizar Detalhes: ${animalData.specie} (${animalData.chip}) - Em breve`, "info")} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Visualizar">
+                        <button onClick={() => setViewingAnimal(row)} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Visualizar">
                           <span className="material-symbols-outlined text-[20px]">visibility</span>
                         </button>
                         <button onClick={() => handleEdit(row)} className="text-gray-400 hover:text-orange-600 p-1.5 rounded-full hover:bg-orange-50 transition-colors" title="Editar">
@@ -1288,6 +1289,77 @@ const Restituicao: React.FC = () => {
           SGA - Sistema de Gestão Animal | Gerado em {new Date().toLocaleString('pt-BR')}
         </div>
       </div>
+
+      {/* Detail View Modal */}
+      {viewingAnimal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in print:hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative">
+            <button onClick={() => setViewingAnimal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><span className="material-symbols-outlined">close</span></button>
+            <h3 className="text-2xl font-black text-slate-900 mb-6 text-left">Detalhes da Restituição</h3>
+
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6 text-left">
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Animal</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shadow-sm flex-shrink-0">
+                    <img src={viewingAnimal.animal?.image_url || getImageUrl(0)} className="w-full h-full object-cover" alt="Foto" />
+                  </div>
+                  <div className="flex flex-col">
+                    <p className="font-black text-slate-800 text-lg leading-tight">{viewingAnimal.animal?.specie}</p>
+                    <p className="text-xs text-slate-500">{viewingAnimal.animal?.gender} / {viewingAnimal.animal?.color}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1 justify-center">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Identificação (CHIP)</p>
+                <p className="font-mono font-bold text-slate-700 text-lg">{viewingAnimal.animal?.chip}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Data de Entrada</p>
+                <p className="font-bold text-slate-700">{formatDate(viewingAnimal.animal?.date_in)}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Ordem de Serviço (OS)</p>
+                <p className="font-bold text-slate-700">{viewingAnimal.animal?.os_number || viewingAnimal.animal?.osNumber || "S/N"}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Órgão Origem</p>
+                <p className="font-bold text-slate-800">{viewingAnimal.animal?.organ || viewingAnimal.animal?.origin}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Processo SEI</p>
+                <p className="font-bold text-blue-800">{viewingAnimal.animal?.sei_process || viewingAnimal.animal?.seiProcess || "Não informado"}</p>
+              </div>
+
+              <div className="flex flex-col gap-1 col-span-2 mt-2">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Status Atual</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg inline-block w-max">{viewingAnimal.status}</p>
+                  {viewingAnimal.contato_realizado && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 border border-green-200 text-[10px] font-black uppercase tracking-tight">
+                      <span className="material-symbols-outlined text-[14px]">phone_in_talk</span>
+                      Contato Realizado
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {viewingAnimal.observations && (
+                <div className="flex flex-col gap-1 col-span-2">
+                  <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Observações da Restituição</p>
+                  <p className="text-sm text-slate-600 bg-gray-50 p-3 rounded-lg flex-1">"{viewingAnimal.observations}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 };
