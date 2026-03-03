@@ -1,4 +1,4 @@
-, import React, { useState, useRef } from 'react';
+import React, { useState, useRef } from 'react';
 import { adocaoService, restituicaoService } from '../services/worklistService';
 import { apreensoesService } from '../services/apreensoesService';
 import { supabase } from '../supabaseClient';
