@@ -191,12 +191,13 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
   // State para Matriz de Permissões
   const [permissions, setPermissions] = useState<PermissionRow[]>([
     { module: 'Dashboard & BI', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V'] },
-    { module: 'Prontuário Eletrônico', admin: ['V', 'E', 'X'], vet: ['V', 'E', 'X'], fiscal: ['V'] },
     { module: 'Entrada de Animais', admin: ['V', 'E', 'X'], vet: ['V', 'E'], fiscal: ['V', 'E', 'X'] },
+    { module: 'Destinações & Termos', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V', 'E', 'X'] },
     { module: 'Restituição', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V', 'E', 'X'] },
     { module: 'Adoção', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V', 'E', 'X'] },
+    { module: 'Prontuário Eletrônico', admin: ['V', 'E', 'X'], vet: ['V', 'E', 'X'], fiscal: ['V'] },
     { module: 'Outros Órgãos', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V', 'E', 'X'] },
-    { module: 'Destinações & Termos', admin: ['V', 'E', 'X'], vet: ['V'], fiscal: ['V', 'E', 'X'] },
+    { module: 'Controle de Exames', admin: ['V', 'E', 'X'], vet: ['V', 'E', 'X'], fiscal: ['V', 'E', 'X'] },
     { module: 'Configurações do Sistema', admin: ['V', 'E', 'X'], vet: [], fiscal: [] },
   ]);
 
