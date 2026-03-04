@@ -192,6 +192,24 @@ const Exames: React.FC = () => {
     });
 
     const sortedAnimais = [...filteredAnimais].sort((a, b) => {
+        const infoA = calcularValidadeExame(a.data_exame);
+        const infoB = calcularValidadeExame(b.data_exame);
+
+        const statusOrder: { [key: string]: number } = {
+            'Sem Exame': 1,
+            'Vencido': 2,
+            'Data Inválida': 3,
+            'Em dia': 4
+        };
+
+        const orderA = statusOrder[infoA.status] || 99;
+        const orderB = statusOrder[infoB.status] || 99;
+
+        if (orderA !== orderB) {
+            return orderA - orderB;
+        }
+
+        // Se tiverem o mesmo status, mantém ordenação de data (mais antigo primeiro ou decrescente de tempo)
         const parseDateExame = (dateStr?: string | null) => {
             if (!dateStr) return 0;
             const [day, month, year] = dateStr.split('/');
@@ -202,7 +220,7 @@ const Exames: React.FC = () => {
         };
         const timeA = parseDateExame(a.data_exame) || Date.now();
         const timeB = parseDateExame(b.data_exame) || Date.now();
-        return timeB - timeA;
+        return timeA - timeB; // Data mais antiga primeiro
     });
 
     const indexOfLastItem = currentPage * itemsPerPage;
