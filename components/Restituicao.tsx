@@ -384,6 +384,29 @@ const Restituicao: React.FC = () => {
       }
 
       return matchChip && matchYear && matchSpecies && matchGender && matchOrigin && matchHistory;
+    }).sort((a, b) => {
+      // Definindo a ordem de prioridade para os status
+      const statusOrder: { [key: string]: number } = {
+        'Disponível': 1,
+        'HVET': 2,
+        'Em Tratamento': 3,
+        'Experimento': 4,
+        'Sem exame': 5,
+        'Prazo vencido': 6,
+        'Restituído': 7
+      };
+
+      const orderA = statusOrder[a.status] || 99;
+      const orderB = statusOrder[b.status] || 99;
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      // Se tiverem o mesmo status, ordena pela data de entrada mais antiga
+      const dateA = new Date((a.animal && a.animal.date_in) || 0).getTime();
+      const dateB = new Date((b.animal && b.animal.date_in) || 0).getTime();
+      return dateA - dateB;
     });
   }, [animals, filterChip, filterYear, filterSpecies, filterGender, filterOrigin, filterHistory]);
 
