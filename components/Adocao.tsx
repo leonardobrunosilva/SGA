@@ -434,6 +434,25 @@ const Adocao: React.FC = () => {
       const matchStatus = !filterStatus || item.status === filterStatus;
 
       return matchChip && matchSpecies && matchGender && matchStatus;
+    }).sort((a, b) => {
+      // Definindo a ordem de prioridade para os status
+      const statusOrder: { [key: string]: number } = {
+        'Disponível': 1,
+        'Escolhido': 2,
+        'HVET': 3
+      };
+
+      const orderA = statusOrder[a.status] || 99;
+      const orderB = statusOrder[b.status] || 99;
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      // Se tiverem o mesmo status, ordena pela data de entrada mais antiga
+      const dateA = new Date((a.animal && a.animal.date_in) || 0).getTime();
+      const dateB = new Date((b.animal && b.animal.date_in) || 0).getTime();
+      return dateA - dateB;
     });
   }, [animals, filterChip, filterSpecies, filterGender, filterStatus]);
 
