@@ -11,6 +11,7 @@ const Destinacoes: React.FC = () => {
   const [chipFilter, setChipFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
+  const [seiFilter, setSeiFilter] = useState('');
   const [identifiedAnimal, setIdentifiedAnimal] = useState<Animal | null>(null);
 
   // Manual Entry State
@@ -78,15 +79,16 @@ const Destinacoes: React.FC = () => {
       const matchChip = a.chip.includes(chipFilter);
       const matchStatus = !statusFilter || a.status === statusFilter;
       const matchYear = !yearFilter || (a.exitDate && a.exitDate.includes(yearFilter));
+      const matchSei = !seiFilter || (a.seiProcess && a.seiProcess.toLowerCase().includes(seiFilter.toLowerCase()));
 
-      return matchChip && matchStatus && matchYear;
+      return matchChip && matchStatus && matchYear && matchSei;
     });
-  }, [animals, chipFilter, statusFilter, yearFilter]);
+  }, [animals, chipFilter, statusFilter, yearFilter, seiFilter]);
 
   // Reset page only when filters change, keeping the page when editing
   useEffect(() => {
     setCurrentPage(1);
-  }, [chipFilter, statusFilter, yearFilter]);
+  }, [chipFilter, statusFilter, yearFilter, seiFilter]);
 
 
   // Status Badge Logic
@@ -310,7 +312,7 @@ const Destinacoes: React.FC = () => {
       </div>
 
       {/* Filters Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 print:hidden">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 print:hidden">
         <div className="relative">
           <input
             className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
@@ -319,6 +321,16 @@ const Destinacoes: React.FC = () => {
             onChange={(e) => setChipFilter(e.target.value)}
           />
           <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">search</span>
+        </div>
+
+        <div className="relative">
+          <input
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+            placeholder="Processo SEI..."
+            value={seiFilter}
+            onChange={(e) => setSeiFilter(e.target.value)}
+          />
+          <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">folder_open</span>
         </div>
 
         <select
