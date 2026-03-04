@@ -45,7 +45,7 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, onLogout
         const [adocao, restituicao, outros] = await Promise.all([
           supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }),
           supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }),
-          supabase.from('worklist_outros').select('*', { count: 'exact', head: true })
+          supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).neq('status', 'FAL')
         ]);
 
         const total = (adocao.count || 0) + (restituicao.count || 0) + (outros.count || 0);
