@@ -159,7 +159,16 @@ const Configuracoes: React.FC<ConfiguracoesProps> = ({ setCurrentPage }) => {
         if (settings.unidade_data) setUnidadeData(settings.unidade_data);
         if (settings.preferencias) setPrefs(settings.preferencias);
         if (settings.equipe_list) setEquipeList(settings.equipe_list);
-        if (settings.permissões_matriz) setPermissions(settings.permissões_matriz);
+        if (settings.permissões_matriz) {
+          // Merge configuration from DB with new possible modules
+          setPermissions(prev => {
+            const dbList: PermissionRow[] = settings.permissões_matriz;
+            return prev.map(defaultModule => {
+              const fromDb = dbList.find(db_m => db_m.module === defaultModule.module);
+              return fromDb || defaultModule;
+            });
+          });
+        }
       }
 
       // Fetch All Users if Admin
