@@ -8,7 +8,7 @@ import { ORGAOS_LIST, ESPECIES } from '../constants';
 import EditModal, { FieldConfig } from './EditModal';
 
 // Status Options
-const STATUS_OPTIONS = ['Curral de Apreensão', 'HVET', 'Experimento', 'FAL'];
+const STATUS_OPTIONS = ['Curral', 'HVET', 'Experimento', 'FAL'];
 
 // Chart Data (Mock)
 const DATA_ORGAOS = [
