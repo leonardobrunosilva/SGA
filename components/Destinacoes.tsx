@@ -39,29 +39,39 @@ const Destinacoes: React.FC = () => {
 
   const loadHistory = async () => {
     try {
-      const data = await saidasService.getAll();
+      const [data, apreensoesData] = await Promise.all([
+        saidasService.getAll(),
+        apreensoesService.getApreensoes() // fetching to get dateIn for the calculation
+      ]);
+
+      const apreensoesMap = new Map(apreensoesData.map((a: Animal) => [a.chip, a.dateIn]));
 
       // Map saidas to Animal objects
-      const history: Animal[] = data.map((saida: any) => ({
-        id: saida.id,
-        specie: saida.specie || 'Semovente',
-        chip: saida.chip,
-        dateIn: saida.dateIn, // Keep original date for sorting if needed, or rely on service sort
-        exitDate: formatDate(saida.dateOut),
-        origin: saida.origin || '-',
-        gender: saida.gender || '-',
-        breed: saida.color || '-',
-        color: saida.color || '-',
-        status: saida.destination || 'Outros',
-        seiProcess: saida.seiProcess || '-',
-        osNumber: saida.osNumber || '-',
-        imageUrl: `https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop`,
-        daysIn: calculateDays(saida.dateIn, saida.dateOut),
-        observations: saida.observations || '',
-        organ: saida.organ || '-',
-        receiverName: saida.receiverName || '-',
-        receiverCpf: saida.receiverCpf || '-'
-      }));
+      const history: Animal[] = data.map((saida: any) => {
+        // Obter data de entrada mapeada pelo banco de apreensões
+        const safeDateIn = apreensoesMap.get(saida.chip) || saida.dateIn || '';
+
+        return {
+          id: saida.id,
+          specie: saida.specie || 'Semovente',
+          chip: saida.chip,
+          dateIn: safeDateIn,
+          exitDate: formatDate(saida.dateOut),
+          origin: saida.origin || '-',
+          gender: saida.gender || '-',
+          breed: saida.color || '-',
+          color: saida.color || '-',
+          status: saida.destination || 'Outros',
+          seiProcess: saida.seiProcess || '-',
+          osNumber: saida.osNumber || '-',
+          imageUrl: `https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop`,
+          daysIn: calculateDays(safeDateIn, saida.dateOut),
+          observations: saida.observations || '',
+          organ: saida.organ || '-',
+          receiverName: saida.receiverName || '-',
+          receiverCpf: saida.receiverCpf || '-'
+        };
+      });
 
       setAnimals(history);
     } catch (e) {
@@ -304,7 +314,7 @@ const Destinacoes: React.FC = () => {
           </h3>
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
-          <p className="text-gray-500 text-xs font-bold uppercase">Adocões / Leilão</p>
+          <p className="text-gray-500 text-xs font-bold uppercase">Adoções</p>
           <h3 className="text-3xl font-black text-blue-600">
             {animals.filter(a => a.status !== 'Restituído' && a.status !== 'Restituição').length}
           </h3>
