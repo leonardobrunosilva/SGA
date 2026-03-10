@@ -50,7 +50,8 @@ const Apreensoes: React.FC = () => {
         restituicaoService.getAll(),
         outrosOrgaosService.getAll()
       ]);
-      setTotalExternalCount(adocoes.length + restituicoes.length + outros.length);
+      const validOutros = outros.filter((item: any) => item.status !== 'FAL');
+      setTotalExternalCount(adocoes.length + restituicoes.length + validOutros.length);
     } catch (error) {
       console.error('Error loading external stats:', error);
     }
