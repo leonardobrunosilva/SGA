@@ -268,14 +268,15 @@ const OutrosOrgaos: React.FC = () => {
     ? Math.round(animals.reduce((sum, a) => sum + calculateDaysIn(a.dataEntrada), 0) / animals.length)
     : 0;
 
-  // --- DYNAMIC CHART DATA ---
   const chartDataOrgaos = useMemo(() => {
     const grouped: Record<string, number> = {};
     animals.forEach(a => {
       const orgao = a.organ_destination || a.animal?.origin || 'Não informado';
       grouped[orgao] = (grouped[orgao] || 0) + 1;
     });
-    return Object.entries(grouped).map(([name, val]) => ({ name, val }));
+    return Object.entries(grouped)
+      .filter(([name]) => name !== 'SEAGRI')
+      .map(([name, val]) => ({ name, val }));
   }, [animals]);
 
   // --- FILTERING LOGIC ---
