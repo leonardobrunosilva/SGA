@@ -280,7 +280,11 @@ const Sidebar: React.FC<SidebarProps> = ({ currentPage, setCurrentPage, onLogout
               <div className="relative border-l-2 border-gray-200 ml-4 py-2 flex flex-col gap-8">
                 {animalTimeline.map((item, index) => {
                   const isEntrada = item.tipo_registro === 'ENTRADA';
-                  const dataRender = item.data_relevante ? new Date(item.data_relevante).toLocaleDateString('pt-BR') : 'N/I';
+                  // Evita bug de D-1 por timezone em strings "YYYY-MM-DD"
+                  const safeDateStr = item.data_relevante && !item.data_relevante.includes('T')
+                    ? `${item.data_relevante}T12:00:00`
+                    : item.data_relevante;
+                  const dataRender = safeDateStr ? new Date(safeDateStr).toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' }) : 'N/I';
 
                   let borderColor = 'border-l-blue-500';
                   let textColor = 'text-blue-500';
