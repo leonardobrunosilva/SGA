@@ -82,6 +82,8 @@ const Apreensoes: React.FC = () => {
         classification: item.classification || '',
         mapsUrl: item.maps_url || item.mapsUrl || '',
         daysIn: item.days_in || item.daysIn || 0,
+        motorista: item.motorista || '',
+        servidor: item.servidor || '',
       }));
 
       // Ordenar por data (mais recente primeiro)
@@ -173,7 +175,27 @@ const Apreensoes: React.FC = () => {
 
   const handleEdit = (animal: Animal) => {
     setEditingAnimal(animal);
-    setFormData(animal);
+    setFormData({
+      id: animal.id,
+      organ: animal.organ,
+      chip: animal.chip,
+      osNumber: animal.osNumber,
+      specie: animal.specie,
+      gender: animal.gender,
+      breed: animal.breed,
+      color: animal.color,
+      status: animal.status,
+      origin: animal.origin,
+      dateIn: animal.dateIn,
+      timeIn: animal.timeIn,
+      observations: animal.observations,
+      imageUrl: animal.imageUrl,
+      classification: animal.classification,
+      mapsUrl: animal.mapsUrl,
+      daysIn: animal.daysIn,
+      motorista: animal.motorista,
+      servidor: animal.servidor,
+    });
     setSelectedGender(animal.gender);
     setPhotoPreview(animal.imageUrl);
     setIsFormOpen(true);
