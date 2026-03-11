@@ -36,6 +36,8 @@ export interface Animal {
   age?: string;
   receiverName?: string;
   receiverCpf?: string;
+  motorista?: string;
+  servidor?: string;
   resenha_body_marks?: {
     id: number;
     type: 'circle' | 'x' | 'line' | 'pencil';

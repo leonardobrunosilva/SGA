@@ -375,6 +375,32 @@ const Apreensoes: React.FC = () => {
                     />
                   </div>
                 </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Motorista</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[18px]">directions_car</span>
+                    <input
+                      value={formData.motorista || ''}
+                      onChange={(e) => setFormData({ ...formData, motorista: e.target.value })}
+                      className="w-full rounded-lg bg-gray-50 border border-gray-200 pl-10 pr-4 py-2.5 text-sm focus:border-gdf-blue outline-none"
+                      placeholder="Nome do motorista..."
+                      type="text"
+                    />
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Servidor / Funcionário</label>
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[18px]">badge</span>
+                    <input
+                      value={formData.servidor || ''}
+                      onChange={(e) => setFormData({ ...formData, servidor: e.target.value })}
+                      className="w-full rounded-lg bg-gray-50 border border-gray-200 pl-10 pr-4 py-2.5 text-sm focus:border-gdf-blue outline-none"
+                      placeholder="Nome do servidor/funcionário..."
+                      type="text"
+                    />
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -527,6 +553,8 @@ const Apreensoes: React.FC = () => {
                         breed: formData.breed || editingAnimal.breed,
                         status: formData.status || editingAnimal.status,
                         classification: formData.classification !== undefined ? formData.classification : editingAnimal.classification,
+                        motorista: formData.motorista,
+                        servidor: formData.servidor,
                       });
 
                       setIsFormOpen(false);
@@ -563,7 +591,9 @@ const Apreensoes: React.FC = () => {
                         osNumber: formData.osNumber || 'S/N',
                         mapsUrl: formData.mapsUrl,
                         classification: formData.classification,
-                        daysIn: 0
+                        daysIn: 0,
+                        motorista: formData.motorista,
+                        servidor: formData.servidor
                       });
 
                       // Automate insertion into Restituicao
@@ -597,7 +627,7 @@ const Apreensoes: React.FC = () => {
             </div>
           </div>
         </div>
-      </div>
+      </div >
     );
   }
 

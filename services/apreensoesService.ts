@@ -14,7 +14,9 @@ export const apreensoesService = {
         mapsUrl:maps_url,
         daysIn:days_in,
         imageUrl:image_url,
-        classification
+        classification,
+        motorista,
+        servidor
       `)
             .order('date_in', { ascending: false })
             .range(0, 4999);
@@ -38,7 +40,9 @@ export const apreensoesService = {
                 mapsUrl:maps_url,
                 daysIn:days_in,
                 imageUrl:image_url,
-                classification
+                classification,
+                motorista,
+                servidor
             `)
             .eq('chip', chip)
             .order('date_in', { ascending: false })
@@ -71,7 +75,9 @@ export const apreensoesService = {
             maps_url: animal.mapsUrl,
             days_in: animal.daysIn,
             classification: animal.classification,
-            resenha_body_marks: animal.resenha_body_marks
+            resenha_body_marks: animal.resenha_body_marks,
+            motorista: animal.motorista,
+            servidor: animal.servidor
         };
 
         const { data, error } = await supabase
@@ -126,6 +132,8 @@ export const apreensoesService = {
         if (animal.classification !== undefined) dbPayload.classification = animal.classification;
         if (animal.seiProcess !== undefined) dbPayload.sei_process = animal.seiProcess;
         if (animal.resenha_body_marks !== undefined) dbPayload.resenha_body_marks = animal.resenha_body_marks;
+        if (animal.motorista !== undefined) dbPayload.motorista = animal.motorista;
+        if (animal.servidor !== undefined) dbPayload.servidor = animal.servidor;
 
         const { data, error } = await supabase
             .from('apreensoes')
