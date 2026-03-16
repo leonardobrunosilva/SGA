@@ -35,7 +35,46 @@ const Dashboard: React.FC = () => {
     const fetchDashboardData = async () => {
       setLoading(true);
       try {
-        // 1. Fetch Basic Metrics via Promise.all
+        // 1. Build Base Queries for Historical Metrics
+        let qTotalApreensoes = supabase.from('apreensoes').select('*', { count: 'exact', head: true });
+        let qHistAdocao = supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Adoção,destination.eq.Adotado,destination.eq.Adotados');
+        let qHistRestituicao = supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Restituído,destination.eq.Restituição,destination.eq.Restituidos');
+        let qHistObito = supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Eutanásia,destination.eq.Óbito');
+        let qHistFurto = supabase.from('saidas').select('*', { count: 'exact', head: true }).eq('destination', 'Furto');
+
+        // Apply Date Filters to Historical Queries
+        if (appliedFilters.period.start && appliedFilters.period.end) {
+          qTotalApreensoes = qTotalApreensoes.gte('date_in', appliedFilters.period.start).lte('date_in', appliedFilters.period.end);
+          qHistAdocao = qHistAdocao.gte('date_out', appliedFilters.period.start).lte('date_out', appliedFilters.period.end);
+          qHistRestituicao = qHistRestituicao.gte('date_out', appliedFilters.period.start).lte('date_out', appliedFilters.period.end);
+          qHistObito = qHistObito.gte('date_out', appliedFilters.period.start).lte('date_out', appliedFilters.period.end);
+          qHistFurto = qHistFurto.gte('date_out', appliedFilters.period.start).lte('date_out', appliedFilters.period.end);
+        } else if (appliedFilters.year) {
+          let startDate = `${appliedFilters.year}-01-01`;
+          let endDate = `${appliedFilters.year}-12-31`;
+
+          if (appliedFilters.month) {
+            const monthsNames = [
+              'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+              'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+            ];
+            const monthIndex = monthsNames.indexOf(appliedFilters.month);
+            if (monthIndex !== -1) {
+              // Create dates carefully to avoid timezone shifts
+              startDate = `${appliedFilters.year}-${String(monthIndex + 1).padStart(2, '0')}-01`;
+              const endTarget = new Date(parseInt(appliedFilters.year), monthIndex + 1, 0); // Last day of that month
+              endDate = `${appliedFilters.year}-${String(monthIndex + 1).padStart(2, '0')}-${String(endTarget.getDate()).padStart(2, '0')}`;
+            }
+          }
+
+          qTotalApreensoes = qTotalApreensoes.gte('date_in', startDate).lte('date_in', endDate);
+          qHistAdocao = qHistAdocao.gte('date_out', startDate).lte('date_out', endDate);
+          qHistRestituicao = qHistRestituicao.gte('date_out', startDate).lte('date_out', endDate);
+          qHistObito = qHistObito.gte('date_out', startDate).lte('date_out', endDate);
+          qHistFurto = qHistFurto.gte('date_out', startDate).lte('date_out', endDate);
+        }
+
+        // Execute All Queries via Promise.all
         const [
           { count: totalApreensoes },
           { count: activeAdocao },
@@ -50,8 +89,7 @@ const Dashboard: React.FC = () => {
           { count: histFurto },
           { count: falOutros }
         ] = await Promise.all([
-          // Apreensões (Estoque Total Histórico)
-          supabase.from('apreensoes').select('*', { count: 'exact', head: true }),
+          qTotalApreensoes,
 
           // Worklists (Saldos Atuais)
           supabase.from('worklist_adocao').select('*', { count: 'exact', head: true }),
@@ -63,11 +101,11 @@ const Dashboard: React.FC = () => {
           supabase.from('worklist_restituicao').select('*', { count: 'exact', head: true }).eq('status', 'HVET'),
           supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).eq('status', 'HVET'),
 
-          // Destinações (Histórico de Saídas - filtros exatos conforme feedback)
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Adoção,destination.eq.Adotado,destination.eq.Adotados'),
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Restituído,destination.eq.Restituição,destination.eq.Restituidos'),
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).or('destination.eq.Eutanásia,destination.eq.Óbito'),
-          supabase.from('saidas').select('*', { count: 'exact', head: true }).eq('destination', 'Furto'),
+          // Destinações (Histórico de Saídas Filtrado)
+          qHistAdocao,
+          qHistRestituicao,
+          qHistObito,
+          qHistFurto,
 
           // FAL (Transferidos - Albergados em outro local)
           supabase.from('worklist_outros').select('*', { count: 'exact', head: true }).eq('status', 'FAL')
