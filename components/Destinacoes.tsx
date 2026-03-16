@@ -730,14 +730,10 @@ const Destinacoes: React.FC = () => {
                   onChange={(e) => setEditData({ ...editData, status: e.target.value })}
                   className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-orange-400 outline-none transition-all font-bold text-slate-700"
                 >
-                  <option value="Adoção">Adoção</option>
-                  <option value="Eutanásia">Eutanásia</option>
-                  <option value="Restituição">Restituição</option>
-                  <option value="Óbito">Óbito</option>
-                  <option value="Transferência">Transferência</option>
-                  <option value="Furto">Furto</option>
-                  <option value="Hvet">Hvet</option>
-                  <option value="Projeto de Ensino">Projeto de Ensino</option>
+                  <option value="" disabled>Selecione um status...</option>
+                  {statusOptions.map(status => (
+                    <option key={status} value={status}>{status}</option>
+                  ))}
                 </select>
               </div>
 
