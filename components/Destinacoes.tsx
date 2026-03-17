@@ -10,6 +10,9 @@ const Destinacoes: React.FC = () => {
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [chipFilter, setChipFilter] = useState('');
   const [yearFilter, setYearFilter] = useState('');
+  const [monthFilter, setMonthFilter] = useState('');
+  const [periodStart, setPeriodStart] = useState('');
+  const [periodEnd, setPeriodEnd] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [seiFilter, setSeiFilter] = useState('');
   const [identifiedAnimal, setIdentifiedAnimal] = useState<Animal | null>(null);
@@ -56,6 +59,7 @@ const Destinacoes: React.FC = () => {
           specie: saida.specie || 'Semovente',
           chip: saida.chip,
           dateIn: safeDateIn,
+          rawExitDate: saida.dateOut, // For better period filtering
           exitDate: formatDate(saida.dateOut),
           origin: saida.origin || '-',
           gender: saida.gender || '-',
@@ -91,14 +95,34 @@ const Destinacoes: React.FC = () => {
       const matchYear = !yearFilter || (a.exitDate && a.exitDate.includes(yearFilter));
       const matchSei = !seiFilter || (a.seiProcess && a.seiProcess.toLowerCase().includes(seiFilter.toLowerCase()));
 
-      return matchChip && matchStatus && matchYear && matchSei;
+      let matchMonth = true;
+      if (monthFilter && a.rawExitDate) {
+        const dateObj = new Date(a.rawExitDate);
+        if (!isNaN(dateObj.getTime())) {
+          const monthsNames = [
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+          ];
+          const monthIndex = monthsNames.indexOf(monthFilter);
+          if (monthIndex !== -1) {
+            matchMonth = dateObj.getMonth() === monthIndex;
+          }
+        }
+      }
+
+      let matchPeriod = true;
+      if (periodStart && periodEnd && a.rawExitDate) {
+        matchPeriod = a.rawExitDate >= periodStart && a.rawExitDate <= periodEnd;
+      }
+
+      return matchChip && matchStatus && matchYear && matchSei && matchMonth && matchPeriod;
     });
-  }, [animals, chipFilter, statusFilter, yearFilter, seiFilter]);
+  }, [animals, chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter]);
 
   // Reset page only when filters change, keeping the page when editing
   useEffect(() => {
     setCurrentPage(1);
-  }, [chipFilter, statusFilter, yearFilter, seiFilter]);
+  }, [chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter]);
 
 
   // Status Badge Logic
@@ -305,18 +329,18 @@ const Destinacoes: React.FC = () => {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 print:hidden">
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-gray-500 text-xs font-bold uppercase">Total de Saídas</p>
-          <h3 className="text-3xl font-black text-slate-800">{animals.length}</h3>
+          <h3 className="text-3xl font-black text-slate-800">{filteredAnimals.length}</h3>
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-gray-500 text-xs font-bold uppercase">Restituições</p>
           <h3 className="text-3xl font-black text-green-600">
-            {animals.filter(a => a.status === 'Restituído' || a.status === 'Restituição').length}
+            {filteredAnimals.filter(a => a.status === 'Restituído' || a.status === 'Restituição').length}
           </h3>
         </div>
         <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm">
           <p className="text-gray-500 text-xs font-bold uppercase">Adoções</p>
           <h3 className="text-3xl font-black text-blue-600">
-            {animals.filter(a => a.status !== 'Restituído' && a.status !== 'Restituição').length}
+            {filteredAnimals.filter(a => a.status.includes('Adoç') || a.status.includes('Adotad')).length}
           </h3>
         </div>
       </div>
@@ -355,11 +379,47 @@ const Destinacoes: React.FC = () => {
         </select>
 
         <select
-          value={statusFilter}
-          onChange={(e) => setStatusFilter(e.target.value)}
+          value={monthFilter}
+          onChange={(e) => setMonthFilter(e.target.value)}
           className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
         >
-          <option value="">Todos os Status</option>
+          <option value="">Todos os Meses</option>
+          {[
+            'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+            'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+          ].map(m => (
+            <option key={m} value={m}>{m}</option>
+          ))}
+        </select>
+
+        <div className="relative md:col-span-1">
+          <input
+            type="date"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-10 focus:ring-2 focus:ring-gdf-blue outline-none transition-all text-gray-500"
+            value={periodStart}
+            onChange={(e) => setPeriodStart(e.target.value)}
+            title="Data Inicial"
+          />
+          <span className="material-symbols-outlined absolute left-3 top-3.5 text-gray-400 text-lg">calendar_today</span>
+        </div>
+
+        <div className="relative md:col-span-1">
+          <input
+            type="date"
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-10 focus:ring-2 focus:ring-gdf-blue outline-none transition-all text-gray-500"
+            value={periodEnd}
+            onChange={(e) => setPeriodEnd(e.target.value)}
+            title="Data Final"
+          />
+          <span className="material-symbols-outlined absolute left-3 top-3.5 text-gray-400 text-lg">calendar_today</span>
+        </div>
+
+        <select
+          value={statusFilter}
+          onChange={(e) => setStatusFilter(e.target.value)}
+          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all md:col-span-2"
+        >
+          <option value="">Todos os Status de Destino</option>
           {statusOptions.map(opt => (
             <option key={opt} value={opt}>{opt}</option>
           ))}
