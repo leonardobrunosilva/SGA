@@ -13,6 +13,7 @@ const Destinacoes: React.FC = () => {
   const [monthFilter, setMonthFilter] = useState('');
   const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
+  const [organFilter, setOrganFilter] = useState('');
   const [statusFilter, setStatusFilter] = useState('');
   const [seiFilter, setSeiFilter] = useState('');
   const [identifiedAnimal, setIdentifiedAnimal] = useState<Animal | null>(null);
@@ -115,14 +116,16 @@ const Destinacoes: React.FC = () => {
         matchPeriod = a.rawExitDate >= periodStart && a.rawExitDate <= periodEnd;
       }
 
-      return matchChip && matchStatus && matchYear && matchSei && matchMonth && matchPeriod;
+      const matchOrgan = !organFilter || a.organ === organFilter;
+
+      return matchChip && matchStatus && matchYear && matchSei && matchMonth && matchPeriod && matchOrgan;
     });
-  }, [animals, chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter]);
+  }, [animals, chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter, organFilter]);
 
   // Reset page only when filters change, keeping the page when editing
   useEffect(() => {
     setCurrentPage(1);
-  }, [chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter]);
+  }, [chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter, organFilter]);
 
 
   // Status Badge Logic
@@ -144,6 +147,7 @@ const Destinacoes: React.FC = () => {
   };
 
   const statusOptions = Array.from(new Set(animals.map(a => a.status))).sort();
+  const organOptions = Array.from(new Set(animals.map(a => a.organ))).filter(Boolean).sort();
 
   // Pagination Calculations
   const indexOfLastItem = currentPage * itemsPerPage;
@@ -415,9 +419,20 @@ const Destinacoes: React.FC = () => {
         </div>
 
         <select
+          value={organFilter}
+          onChange={(e) => setOrganFilter(e.target.value)}
+          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all md:col-span-1"
+        >
+          <option value="">Todos os Órgãos</option>
+          {organOptions.map(opt => (
+            <option key={opt} value={opt}>{opt}</option>
+          ))}
+        </select>
+
+        <select
           value={statusFilter}
           onChange={(e) => setStatusFilter(e.target.value)}
-          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all md:col-span-2"
+          className="bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 focus:ring-2 focus:ring-gdf-blue outline-none transition-all md:col-span-1"
         >
           <option value="">Todos os Status de Destino</option>
           {statusOptions.map(opt => (
@@ -498,6 +513,7 @@ const Destinacoes: React.FC = () => {
           <table className="w-full text-left text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">ÓRGÃO</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">ANIMAL / DETALHES</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">IDENTIFICAÇÃO</th>
                 <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">DATA SAÍDA</th>
@@ -510,6 +526,7 @@ const Destinacoes: React.FC = () => {
             <tbody className="divide-y divide-gray-100">
               {currentAnimals.map((animal, idx) => (
                 <tr key={animal.id || idx} className="hover:bg-gray-50 transition-colors">
+                  <td className="px-6 py-4 font-bold text-slate-800">{animal.organ}</td>
                   <td className="px-6 py-4">
                     <div className="flex flex-col">
                       <span className="font-bold text-slate-800">{animal.specie}</span>
@@ -879,6 +896,7 @@ const Destinacoes: React.FC = () => {
         <table className="w-full text-left text-[11px] border-collapse">
           <thead>
             <tr className="bg-gray-100 border-y border-gray-300">
+              <th className="py-2 px-2 font-bold text-slate-700">Órgão</th>
               <th className="py-2 px-2 font-bold text-slate-700">Animal / CHIP</th>
               <th className="py-2 px-2 font-bold text-slate-700">Data Saída</th>
               <th className="py-2 px-2 font-bold text-slate-700">Tempo</th>
@@ -891,6 +909,7 @@ const Destinacoes: React.FC = () => {
           <tbody className="divide-y divide-gray-200">
             {filteredAnimals.map((animal) => (
               <tr key={animal.id} className="break-inside-avoid">
+                <td className="py-2 px-2 align-top font-bold">{animal.organ}</td>
                 <td className="py-2 px-2 align-top">
                   <span className="font-bold">{animal.specie}</span><br />
                   <span className="font-mono text-[9px] text-gray-600">{animal.chip}</span>
