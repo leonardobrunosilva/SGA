@@ -48,12 +48,14 @@ const Destinacoes: React.FC = () => {
         apreensoesService.getApreensoes() // fetching to get dateIn for the calculation
       ]);
 
-      const apreensoesMap = new Map(apreensoesData.map((a: Animal) => [a.chip, a.dateIn]));
+      const apreensoesMap = new Map(apreensoesData.map((a: Animal) => [a.chip, a]));
 
       // Map saidas to Animal objects
       const history: Animal[] = data.map((saida: any) => {
-        // Obter data de entrada mapeada pelo banco de apreensões
-        const safeDateIn = apreensoesMap.get(saida.chip) || saida.dateIn || '';
+        // Obter dados mapeados pelo banco de apreensões
+        const sourceAnimal = apreensoesMap.get(saida.chip);
+        const safeDateIn = sourceAnimal?.dateIn || saida.dateIn || '';
+        const safeOrgan = sourceAnimal?.organ || saida.organ || '-';
 
         return {
           id: saida.id,
@@ -72,7 +74,7 @@ const Destinacoes: React.FC = () => {
           imageUrl: `https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop`,
           daysIn: calculateDays(safeDateIn, saida.dateOut),
           observations: saida.observations || '',
-          organ: saida.organ || '-',
+          organ: safeOrgan,
           receiverName: saida.receiverName || '-',
           receiverCpf: saida.receiverCpf || '-'
         };
