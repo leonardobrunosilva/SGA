@@ -5,7 +5,6 @@ import { prontuarioService, ProntuarioRecord } from '../services/prontuarioServi
 import { Animal } from '../types';
 import { formatDate } from '../utils';
 import resenhaBg from '../src/assets/resenha-template.png';
-import cabecalhoGdf from '../src/assets/cabecalho-gdf.png';
 
 interface Mark {
   id: number;
@@ -56,9 +55,6 @@ const Prontuario: React.FC = () => {
   const [animal, setAnimal] = useState<Animal>(BLANK_ANIMAL);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Animal>>({});
-
-  // Controle do Modal de Impressão
-  const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   // Estado da Busca
   const [searchQuery, setSearchQuery] = useState('');
@@ -340,102 +336,8 @@ const Prontuario: React.FC = () => {
     }
   };
 
-  // ------------------------------------------------------------------
-  // NOVO: COMPONENTE DO RELATÓRIO OFICIAL (Apenas para Impressão/Modal)
-  // ------------------------------------------------------------------
-  const RelatorioImpresso = () => (
-    <div className="w-full text-black text-left">
-      {/* 1. CABEÇALHO GDF */}
-      <div className="flex flex-col items-center text-center mb-8">
-        <img src={cabecalhoGdf} alt="Governo do Distrito Federal" className="h-28 mb-4 object-contain" />
-        <h2 className="text-xl font-bold uppercase tracking-wider mt-4 text-center w-full">
-          Prontuário Clínico Veterinário
-        </h2>
-      </div>
-
-      {/* 2. DADOS DO ANIMAL */}
-      <div className="mb-8 border border-gray-800 rounded-lg p-4">
-        <h3 className="font-bold text-lg border-b border-gray-400 mb-3 pb-1 uppercase bg-gray-100 px-2">1. Identificação do Animal</h3>
-        <div className="grid grid-cols-2 gap-y-3 text-base px-2">
-          <p><strong>Espécie:</strong> {animal.specie}</p>
-          <p><strong>Chip/Brinco:</strong> {animal.chip}</p>
-          <p><strong>Sexo:</strong> {animal.gender}</p>
-          <p><strong>Pelagem/Cor:</strong> {animal.color}</p>
-          <p><strong>Idade Estimada:</strong> {animal.age || 'Não informada'}</p>
-          <p><strong>Status Atual:</strong> {animal.status}</p>
-        </div>
-      </div>
-
-      {/* 3. DESCRIÇÃO GERAL */}
-      <div className="mb-8 border border-gray-800 rounded-lg p-4">
-        <h3 className="font-bold text-lg border-b border-gray-400 mb-3 pb-1 uppercase bg-gray-100 px-2">2. Descrição Geral / Observações</h3>
-        <p className="text-base text-justify leading-relaxed px-2 whitespace-pre-wrap">
-          {animal.observations || 'Nenhuma observação geral cadastrada para este animal.'}
-        </p>
-      </div>
-
-      {/* 4. HISTÓRICO CLÍNICO */}
-      <div className="mb-12">
-        <h3 className="font-bold text-lg border-b-2 border-gray-800 mb-4 pb-1 uppercase">3. Histórico Clínico e Atendimentos</h3>
-        
-        {historyList && historyList.length > 0 ? (
-          <div className="space-y-6">
-            {historyList.map((item) => (
-              <div key={item.id} className="border border-gray-300 rounded p-4 print:break-inside-avoid">
-                <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-2">
-                  <span className="font-bold text-lg text-gray-900">{formatDate(item.date)}</span>
-                  <span className="text-sm font-bold uppercase bg-gray-100 px-2 py-1 rounded">{item.title}</span>
-                </div>
-                
-                {item.subtitle && (
-                  <p className="text-sm font-bold mb-2 uppercase">Destinação/Tratamento: <span className="font-normal normal-case">{item.subtitle}</span></p>
-                )}
-                
-                {item.content && (
-                  <p className="text-base text-justify whitespace-pre-wrap mb-3">{item.content}</p>
-                )}
-
-                {/* Exames do Atendimento */}
-                {item.exam_results && item.exam_results.length > 0 && (
-                  <div className="mt-3 bg-gray-50 p-3 rounded border border-gray-200">
-                    <p className="font-bold text-sm mb-2 uppercase underline">Exames Realizados:</p>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                      {item.exam_results.map((exame, idx) => (
-                         <li key={idx}>
-                           <strong>{exame.exam}</strong> - Resultado: 
-                           <span className={`ml-1 font-bold ${exame.result === 'Positivo' ? 'text-black' : 'text-gray-700'}`}>
-                              {exame.result || 'Pendente'}
-                           </span>
-                           {exame.date && ` (Data: ${formatDate(exame.date)})`}
-                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
-              </div>
-            ))}
-          </div>
-        ) : (
-          <p className="text-base italic text-gray-500 border border-dashed border-gray-300 p-4 text-center">
-            Nenhum histórico clínico registrado até o momento.
-          </p>
-        )}
-      </div>
-
-      {/* 5. ASSINATURA (Sempre no final da impressão) */}
-      <div className="mt-24 pt-8 text-center w-2/3 mx-auto print:break-inside-avoid">
-         <div className="border-t border-black mb-2"></div>
-         <p className="font-bold uppercase text-sm">Assinatura e Carimbo do Médico Veterinário</p>
-         <p className="text-sm mt-1">SEAGRI/DF - Subsecretaria de Proteção aos Animais</p>
-         <p className="text-sm mt-1">CRMV-DF: ___________________</p>
-      </div>
-    </div>
-  );
-
   return (
-    <>
-      {/* Tela Principal do Sistema (Recebe print:hidden para não sair na folha) */}
-      <div className="max-w-[1024px] mx-auto flex flex-col gap-8 pb-20 animate-fade-in text-left print:hidden">
+    <div className="max-w-[1024px] mx-auto flex flex-col gap-8 pb-20 animate-fade-in text-left">
 
       {/* 1. BARRA DE BUSCA DESTACADA */}
       <section className="no-print bg-white border border-gray-200 rounded-xl p-5 shadow-sm">
@@ -504,7 +406,7 @@ const Prontuario: React.FC = () => {
               <div className="flex gap-3 w-full md:w-auto no-print">
                 <button
                   className="flex-1 md:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition-colors border border-gray-200"
-                  onClick={() => setIsPrintModalOpen(true)}
+                  onClick={() => window.print()}
                 >
                   <span className="material-symbols-outlined text-[20px]">print</span>
                   <span className="truncate">Ficha de Campo</span>
@@ -1266,60 +1168,8 @@ const Prontuario: React.FC = () => {
           </div>
         )
       }
-    </div>
-
-    {/* Relatório Impresso Oficial (Apenas para Impressão) */}
-    <div className="hidden print:block">
-      <RelatorioImpresso />
-    </div>
-
-    {/* Modal de Impressão (Apenas para Tela) */}
-    {isPrintModalOpen && (
-      <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 no-print overflow-y-auto">
-        <div className="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] flex flex-col">
-          {/* Cabeçalho do Modal */}
-          <div className="px-6 py-4 border-b border-gray-200 flex justify-between items-center bg-gray-50">
-            <h3 className="text-gray-900 font-black uppercase tracking-tight flex items-center gap-2">
-              <span className="material-symbols-outlined text-primary">print</span>
-              Pré-visualização do Prontuário
-            </h3>
-            <button onClick={() => setIsPrintModalOpen(false)} className="text-gray-400 hover:text-gray-600 flex items-center">
-              <span className="material-symbols-outlined">close</span>
-            </button>
-          </div>
-
-          {/* Conteúdo do Modal (Visualização da Folha A4) */}
-          <div className="p-8 overflow-y-auto flex-1 bg-gray-100">
-            <div className="bg-white shadow-lg p-12 max-w-[21cm] mx-auto border border-gray-200 text-black">
-              <RelatorioImpresso />
-            </div>
-          </div>
-
-          {/* Rodapé do Modal */}
-          <div className="px-6 py-4 border-t border-gray-200 flex justify-end gap-3 bg-gray-50">
-            <button
-              type="button"
-              onClick={() => setIsPrintModalOpen(false)}
-              className="px-6 py-2.5 rounded-lg text-gray-500 font-black text-xs uppercase hover:bg-gray-100 transition-colors tracking-widest"
-            >
-              Fechar
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                window.print();
-              }}
-              className="px-8 py-2.5 rounded-lg bg-slate-900 text-white font-black text-xs uppercase shadow-lg flex items-center gap-2 tracking-widest hover:bg-slate-800 transition-all"
-            >
-              <span className="material-symbols-outlined text-[18px]">print</span>
-              Confirmar Impressão
-            </button>
-          </div>
-        </div>
-      </div>
-    )}
-  </>
-);
+    </div >
+  );
 };
 
 export default Prontuario;
