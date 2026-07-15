@@ -4,6 +4,7 @@ import { apreensoesService } from '../services/apreensoesService';
 import { prontuarioService, ProntuarioRecord } from '../services/prontuarioService';
 import { Animal } from '../types';
 import { formatDate } from '../utils';
+import { supabase } from '../supabaseClient';
 import resenhaBg from '../src/assets/resenha-template.png';
 import cabecalhoGdf from '../src/assets/cabecalho-gdf.png';
 
@@ -30,6 +31,7 @@ interface TimelineEvent {
   exam_results?: { exam: string; result: string; date?: string }[];
   badge?: string;
   icon: string;
+  veterinario?: string;
 }
 
 const BLANK_ANIMAL: Animal = {
@@ -56,6 +58,37 @@ const Prontuario: React.FC = () => {
   const [animal, setAnimal] = useState<Animal>(BLANK_ANIMAL);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editFormData, setEditFormData] = useState<Partial<Animal>>({});
+  const [currentUserProfile, setCurrentUserProfile] = useState<{ nome: string; email: string } | null>(null);
+
+  React.useEffect(() => {
+    const fetchUserProfile = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('nome, email')
+            .eq('id', user.id)
+            .single();
+
+          if (profile) {
+            setCurrentUserProfile({
+              nome: profile.nome || 'Usuário Sem Nome',
+              email: profile.email || user.email || ''
+            });
+          } else {
+            setCurrentUserProfile({
+              nome: user.email || 'Usuário Sem Nome',
+              email: user.email || ''
+            });
+          }
+        }
+      } catch (err) {
+        console.error('Erro ao carregar perfil do usuário:', err);
+      }
+    };
+    fetchUserProfile();
+  }, []);
 
   // Controle do Modal de Impressão
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
@@ -158,7 +191,9 @@ const Prontuario: React.FC = () => {
             subtitle: h.subtitle,
             content: h.content,
             result: h.result,
-            icon: h.icon
+            icon: h.icon,
+            exam_results: h.exam_results,
+            veterinario: h.veterinario
           })));
         } catch (err) {
           console.error('Erro ao carregar histórico:', err);
@@ -307,7 +342,8 @@ const Prontuario: React.FC = () => {
           subtitle: destinacao,
           content: descricao,
           exam_results: examResults,
-          icon: 'history_edu'
+          icon: 'history_edu',
+          veterinario: currentUserProfile?.nome || ''
         };
 
         const saved = await prontuarioService.create(newRecord);
@@ -320,7 +356,8 @@ const Prontuario: React.FC = () => {
           subtitle: saved.subtitle,
           content: saved.content,
           exam_results: saved.exam_results,
-          icon: saved.icon
+          icon: saved.icon,
+          veterinario: saved.veterinario
         }, ...prev]);
 
         alert("Sucesso! Atendimento registrado no prontuário.");
@@ -393,6 +430,11 @@ const Prontuario: React.FC = () => {
                 
                 {item.content && (
                   <p className="text-base text-justify whitespace-pre-wrap mb-3">{item.content}</p>
+                )}
+                {item.veterinario && (
+                  <p className="text-sm text-gray-500 mb-3">
+                    <strong>Veterinário responsável:</strong> {item.veterinario}
+                  </p>
                 )}
 
                 {/* Exames do Atendimento */}
@@ -1089,6 +1131,12 @@ const Prontuario: React.FC = () => {
                           <p className={`text-sm leading-relaxed ${event.type === 'DESTINATION' ? 'text-slate-700' : 'text-gray-600'
                             }`}>
                             {event.content}
+                          </p>
+                        )}
+
+                        {event.veterinario && (
+                          <p className="text-xs font-semibold text-slate-400 mt-2">
+                            Veterinário responsável: <span className="font-normal text-slate-500">{event.veterinario}</span>
                           </p>
                         )}
 

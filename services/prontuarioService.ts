@@ -13,6 +13,7 @@ export interface ProntuarioRecord {
     exam_results?: { exam: string; result: string; date?: string }[];
     icon: string;
     created_at?: string;
+    veterinario?: string;
 }
 
 export const prontuarioService = {
