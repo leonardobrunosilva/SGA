@@ -427,7 +427,6 @@ const Prontuario: React.FC = () => {
          <div className="border-t border-black mb-2"></div>
          <p className="font-bold uppercase text-sm">Assinatura e Carimbo do Médico Veterinário</p>
          <p className="text-sm mt-1">SEAGRI/DF - Subsecretaria de Proteção aos Animais</p>
-         <p className="text-sm mt-1">CRMV-DF: ___________________</p>
       </div>
     </div>
   );
