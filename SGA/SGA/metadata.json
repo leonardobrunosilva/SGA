@@ -1,0 +1,5 @@
+{
+  "name": "S.G.A. - Sistema de Gestão Animal",
+  "description": "Uma plataforma completa para gestão de semoventes apreendidos, abrangendo desde a apreensão inicial até a adoção, restituição ou destinação final, com integração de prontuário eletrônico e estatísticas em tempo real para a SEAGRI-DF.",
+  "requestFramePermissions": []
+}

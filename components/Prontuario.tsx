@@ -440,23 +440,7 @@ const Prontuario: React.FC = () => {
                     </p>
                   )}
 
-                  {/* Exames do Atendimento */}
-                  {item.exam_results && item.exam_results.length > 0 && (
-                    <div className="mt-3 bg-gray-50 p-3 rounded border border-gray-200">
-                      <p className="font-bold text-sm mb-2 uppercase underline">Exames Realizados:</p>
-                      <ul className="list-disc pl-5 space-y-1 text-sm">
-                        {item.exam_results.map((exame, idx) => (
-                           <li key={idx}>
-                             <strong>{exame.exam}</strong> - Resultado: 
-                             <span className={`ml-1 font-bold ${exame.result === 'Positivo' ? 'text-black' : 'text-gray-700'}`}>
-                               {exame.result || 'Pendente'}
-                             </span>
-                             {exame.date && ` (Data: ${formatDate(exame.date)})`}
-                           </li>
-                        ))}
-                      </ul>
-                    </div>
-                  )}
+
                 </div>
               </div>
             ))}
@@ -1144,30 +1128,7 @@ const Prontuario: React.FC = () => {
                           </p>
                         )}
 
-                        {event.exam_results && event.exam_results.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-gray-100 flex flex-col gap-2">
-                            <h5 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Resultados de Exames</h5>
-                            <div className="grid grid-cols-1 gap-2">
-                              {event.exam_results.map((er, idx) => (
-                                <div key={idx} className="flex items-center justify-between bg-gray-50/50 p-2 rounded border border-gray-100">
-                                  <div className="flex flex-col">
-                                    <span className="text-[11px] font-bold text-gray-700 uppercase tracking-tight">
-                                      {er.exam}
-                                    </span>
-                                    {er.date && (
-                                      <span className="text-[9px] font-medium text-gray-400">
-                                        Realizado em: {formatDate(er.date)}
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className={`text-[10px] font-black px-2 py-0.5 rounded uppercase ${er.result === 'Positivo' ? 'bg-red-100 text-red-700' : 'bg-green-100 text-green-700'}`}>
-                                    {er.result}
-                                  </span>
-                                </div>
-                              ))}
-                            </div>
-                          </div>
-                        )}
+
                       </div>
                     </div>
                   </div>

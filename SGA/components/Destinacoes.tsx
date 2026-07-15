@@ -9,6 +9,8 @@ const Destinacoes: React.FC = () => {
   // History View State
   const [animals, setAnimals] = useState<Animal[]>([]);
   const [chipFilter, setChipFilter] = useState('');
+  const [searchCpf, setSearchCpf] = useState('');
+  const [searchName, setSearchName] = useState('');
   const [yearFilter, setYearFilter] = useState('');
   const [monthFilter, setMonthFilter] = useState('');
   const [periodStart, setPeriodStart] = useState('');
@@ -120,14 +122,23 @@ const Destinacoes: React.FC = () => {
 
       const matchOrgan = !organFilter || a.organ === organFilter;
 
-      return matchChip && matchStatus && matchYear && matchSei && matchMonth && matchPeriod && matchOrgan;
+      const matchCpf = !searchCpf.trim() || (a.receiverCpf && (
+        a.receiverCpf.replace(/\D/g, '').includes(searchCpf.replace(/\D/g, '')) ||
+        a.receiverCpf.toLowerCase().includes(searchCpf.toLowerCase())
+      ));
+
+      const matchName = !searchName.trim() || (a.receiverName && (
+        a.receiverName.toLowerCase().includes(searchName.toLowerCase())
+      ));
+
+      return matchChip && matchStatus && matchYear && matchSei && matchMonth && matchPeriod && matchOrgan && matchCpf && matchName;
     });
-  }, [animals, chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter, organFilter]);
+  }, [animals, chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter, organFilter, searchCpf, searchName]);
 
   // Reset page only when filters change, keeping the page when editing
   useEffect(() => {
     setCurrentPage(1);
-  }, [chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter, organFilter]);
+  }, [chipFilter, statusFilter, yearFilter, monthFilter, periodStart, periodEnd, seiFilter, organFilter, searchCpf, searchName]);
 
 
   // Status Badge Logic
@@ -371,6 +382,26 @@ const Destinacoes: React.FC = () => {
             onChange={(e) => setSeiFilter(e.target.value)}
           />
           <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">folder_open</span>
+        </div>
+
+        <div className="relative">
+          <input
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+            placeholder="CPF do Responsável..."
+            value={searchCpf}
+            onChange={(e) => setSearchCpf(e.target.value)}
+          />
+          <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">fingerprint</span>
+        </div>
+
+        <div className="relative">
+          <input
+            className="w-full bg-gray-50 border border-gray-200 rounded-xl px-4 py-3 pl-12 focus:ring-2 focus:ring-gdf-blue outline-none transition-all"
+            placeholder="Nome do Responsável..."
+            value={searchName}
+            onChange={(e) => setSearchName(e.target.value)}
+          />
+          <span className="material-symbols-outlined absolute left-4 top-3.5 text-gray-400">person</span>
         </div>
 
         <select
@@ -665,6 +696,18 @@ const Destinacoes: React.FC = () => {
                   <p className="text-xs text-slate-500 mt-1 italic">"{viewingAnimal.observations}"</p>
                 )}
               </div>
+              {viewingAnimal.receiverName && viewingAnimal.receiverName !== '-' && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-bold">Responsável</p>
+                  <p className="font-bold text-slate-800">{viewingAnimal.receiverName}</p>
+                </div>
+              )}
+              {viewingAnimal.receiverCpf && viewingAnimal.receiverCpf !== '-' && (
+                <div>
+                  <p className="text-xs text-gray-500 uppercase font-bold">CPF do Responsável</p>
+                  <p className="font-mono text-slate-800">{viewingAnimal.receiverCpf}</p>
+                </div>
+              )}
             </div>
           </div>
         </div>

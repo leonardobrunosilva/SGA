@@ -46,14 +46,26 @@
         .no-print {
           display: none !important;
         }
+        html, body, #root, #root > div, main, main > div, .print-layout {
+          height: auto !important;
+          overflow: visible !important;
+          max-height: none !important;
+          position: static !important;
+          display: block !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          width: 100% !important;
+          box-shadow: none !important;
+          border: none !important;
+        }
         body {
           background-color: white !important;
           color: black !important;
         }
+        main {
+          margin-left: 0 !important;
+        }
         .print-layout {
-          max-width: 100% !important;
-          padding: 0 !important;
-          margin: 0 !important;
           background-color: white !important;
         }
         .print-card {
