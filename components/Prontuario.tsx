@@ -416,7 +416,7 @@ const Prontuario: React.FC = () => {
         <h3 className="font-bold text-lg border-b-2 border-gray-800 mb-4 pb-1 uppercase">3. Histórico Clínico e Atendimentos</h3>
         
         {historyList && historyList.length > 0 ? (
-          <div className="border border-gray-300 rounded-lg overflow-hidden print:break-inside-avoid">
+          <div className="border border-gray-300 rounded-lg overflow-hidden">
             {historyList.map((item, index) => (
               <div key={item.id} className={`${index > 0 ? 'border-t border-gray-300' : ''} print:break-inside-avoid`}>
                 <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200 bg-white">
