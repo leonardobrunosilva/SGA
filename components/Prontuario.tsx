@@ -416,44 +416,48 @@ const Prontuario: React.FC = () => {
         <h3 className="font-bold text-lg border-b-2 border-gray-800 mb-4 pb-1 uppercase">3. Histórico Clínico e Atendimentos</h3>
         
         {historyList && historyList.length > 0 ? (
-          <div className="space-y-6">
-            {historyList.map((item) => (
-              <div key={item.id} className="border border-gray-300 rounded p-4 print:break-inside-avoid">
-                <div className="flex justify-between items-center mb-2 border-b border-gray-200 pb-2">
-                  <span className="font-bold text-lg text-gray-900">{formatDate(item.date)}</span>
-                  <span className="text-sm font-bold uppercase bg-gray-100 px-2 py-1 rounded">{item.title}</span>
+          <div className="border border-gray-300 rounded-lg overflow-hidden print:break-inside-avoid">
+            {historyList.map((item, index) => (
+              <div key={item.id} className={`${index > 0 ? 'border-t border-gray-300' : ''} print:break-inside-avoid`}>
+                <div className="flex justify-between items-center px-4 py-2 border-b border-gray-200 bg-white">
+                  <span className="font-bold text-base text-gray-900">{formatDate(item.date)}</span>
+                  <span className="text-sm font-bold uppercase text-gray-900">{item.title}</span>
                 </div>
                 
-                {item.subtitle && (
-                  <p className="text-sm font-bold mb-2 uppercase">Destinação/Tratamento: <span className="font-normal normal-case">{item.subtitle}</span></p>
-                )}
-                
-                {item.content && (
-                  <p className="text-base text-justify whitespace-pre-wrap mb-3">{item.content}</p>
-                )}
-                {item.veterinario && (
-                  <p className="text-sm text-gray-500 mb-3">
-                    <strong>Veterinário responsável:</strong> {item.veterinario}
-                  </p>
-                )}
+                <div className="p-4 space-y-3">
+                  {item.subtitle && (
+                    <p className="text-sm font-bold uppercase">
+                      DESTINAÇÃO/TRATAMENTO: <span className="font-normal normal-case">{item.subtitle}</span>
+                    </p>
+                  )}
+                  
+                  {item.content && (
+                    <p className="text-base text-justify whitespace-pre-wrap">{item.content}</p>
+                  )}
+                  {item.veterinario && (
+                    <p className="text-sm text-gray-500">
+                      <strong>Veterinário responsável:</strong> {item.veterinario}
+                    </p>
+                  )}
 
-                {/* Exames do Atendimento */}
-                {item.exam_results && item.exam_results.length > 0 && (
-                  <div className="mt-3 bg-gray-50 p-3 rounded border border-gray-200">
-                    <p className="font-bold text-sm mb-2 uppercase underline">Exames Realizados:</p>
-                    <ul className="list-disc pl-5 space-y-1 text-sm">
-                      {item.exam_results.map((exame, idx) => (
-                         <li key={idx}>
-                           <strong>{exame.exam}</strong> - Resultado: 
-                           <span className={`ml-1 font-bold ${exame.result === 'Positivo' ? 'text-black' : 'text-gray-700'}`}>
-                              {exame.result || 'Pendente'}
-                           </span>
-                           {exame.date && ` (Data: ${formatDate(exame.date)})`}
-                         </li>
-                      ))}
-                    </ul>
-                  </div>
-                )}
+                  {/* Exames do Atendimento */}
+                  {item.exam_results && item.exam_results.length > 0 && (
+                    <div className="mt-3 bg-gray-50 p-3 rounded border border-gray-200">
+                      <p className="font-bold text-sm mb-2 uppercase underline">Exames Realizados:</p>
+                      <ul className="list-disc pl-5 space-y-1 text-sm">
+                        {item.exam_results.map((exame, idx) => (
+                           <li key={idx}>
+                             <strong>{exame.exam}</strong> - Resultado: 
+                             <span className={`ml-1 font-bold ${exame.result === 'Positivo' ? 'text-black' : 'text-gray-700'}`}>
+                               {exame.result || 'Pendente'}
+                             </span>
+                             {exame.date && ` (Data: ${formatDate(exame.date)})`}
+                           </li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                </div>
               </div>
             ))}
           </div>
