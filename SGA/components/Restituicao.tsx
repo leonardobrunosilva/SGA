@@ -1,0 +1,1390 @@
+import React, { useState, useEffect } from 'react';
+import { Animal } from '../types';
+import { calculateDays, formatDate } from '../utils';
+import { apreensoesService } from '../services/apreensoesService';
+import { saidasService } from '../services/saidasService';
+import { restituicaoService } from '../services/worklistService';
+import EditModal, { FieldConfig } from './EditModal';
+
+
+const ENTRY_STATUS_OPTIONS = [
+  'Disponível',
+  'Em tratamento',
+  'HVET',
+  'Restituído',
+  'Prazo Vencido',
+  'Sem Exame',
+  'Experimento'
+];
+
+const DESTINATION_OPTIONS = [
+  'Restituição',
+  'Adoção',
+  'Eutanásia',
+  'Óbito',
+  'Furto',
+  'AIE+',
+  'Restituição para outros órgãos',
+  'Outros'
+];
+
+import { ORGAOS_LIST, RA_LIST, ESPECIES } from '../constants';
+import { useMemo } from 'react';
+
+const Restituicao: React.FC = () => {
+  // --- STATE MANAGEMENT (BATCH FLOW) ---
+  const [animals, setAnimals] = useState<any[]>([]);
+
+  // Load from Supabase
+  useEffect(() => {
+    loadAnimals();
+  }, []);
+
+  const loadAnimals = async () => {
+    try {
+      const data = await restituicaoService.getAll();
+      setAnimals(data || []);
+    } catch (error: any) {
+      showNotification(`Erro ao carregar lista: ${error.message || 'Desconhecido'}`, "error");
+    }
+  };
+
+  const [newChip, setNewChip] = useState('');
+  const [newStatus, setNewStatus] = useState(ENTRY_STATUS_OPTIONS[0]); // Default status
+  const [foundEntry, setFoundEntry] = useState<any>(null);
+  const [multipleEntries, setMultipleEntries] = useState<any[]>([]);
+  const [showEntrySelectionModal, setShowEntrySelectionModal] = useState(false);
+  const [viewingAnimal, setViewingAnimal] = useState<any | null>(null);
+
+  // Edit Form State (Robust)
+  const [isFormOpen, setIsFormOpen] = useState(false);
+  const [editingWorklistItem, setEditingWorklistItem] = useState<any | null>(null);
+  const [formData, setFormData] = useState<Partial<Animal>>({});
+  const [selectedGender, setSelectedGender] = useState<'Macho' | 'Fêmea'>('Macho');
+  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  // --- FILTERS STATE ---
+  const [filterChip, setFilterChip] = useState('');
+  const [filterYear, setFilterYear] = useState('');
+  const [filterSpecies, setFilterSpecies] = useState('');
+  const [filterGender, setFilterGender] = useState('');
+  const [filterOrigin, setFilterOrigin] = useState('');
+  const [filterHistory, setFilterHistory] = useState('');
+
+  // Footer state (Section 3 - Baixa)
+  const [searchChipBaixa, setSearchChipBaixa] = useState('');
+  const [selectedForBaixa, setSelectedForBaixa] = useState<any | null>(null);
+  const [isBaixaModalOpen, setIsBaixaModalOpen] = useState(false);
+  const [baixaFormData, setBaixaFormData] = useState({
+    exitDate: new Date().toISOString().split('T')[0],
+    receiverName: '',
+    receiverCpf: '',
+    autoInfracao: '',
+    autoApreensao: '',
+    observations: '',
+    seiProcess: '',
+    status: 'Restituído'
+  });
+
+  // --- NOTIFICATION HANDLER ---
+
+
+  // Notifications
+  const [notification, setNotification] = useState<{ message: string; type: 'success' | 'error' | 'info' } | null>(null);
+
+  const showNotification = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 4000);
+  };
+
+  const ANIMAL_IMAGES = [
+    'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?q=80&w=1471&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1534447677768-be436bb09401?q=80&w=1494&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1599058945522-28d584b6f0ff?q=80&w=1469&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1598263304523-868478d38e3f?q=80&w=1374&auto=format&fit=crop',
+    'https://images.unsplash.com/photo-1692293887579-2420cd501705?q=80&w=1471&auto=format&fit=crop'
+  ];
+  const getImageUrl = (index: number) => ANIMAL_IMAGES[index % ANIMAL_IMAGES.length];
+
+  // --- RELATÓRIOS ---
+  const handleExportCSV = () => {
+    const headers = ['Chip', 'Espécie', 'Status', 'Data Entrada', 'Permanência', 'Origem (RA)'];
+
+    const csvRows = [
+      headers.join(','),
+      ...filteredData.map(item => {
+        const animal = item.animal || {};
+        const dateIn = animal.date_in || animal.dateIn || animal['Data de Entrada'];
+        return [
+          `"${animal.chip}"`,
+          `"${animal.specie}"`,
+          `"${item.status}"`,
+          `"${formatDate(dateIn)}"`,
+          `"${calculateDays(dateIn)} dias"`,
+          `"${animal.origin}"`
+        ].join(',');
+      })
+    ].join('\n');
+
+    const blob = new Blob(['\ufeff' + csvRows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    const today = new Date().toISOString().split('T')[0];
+    link.setAttribute('href', url);
+    link.setAttribute('download', `Relatorio_Restituicao_${today}.csv`);
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handlePrint = () => window.print();
+
+  // --- HANDLERS ---
+
+  const handleSearchEntry = async () => {
+    if (!newChip.trim()) {
+      showNotification("Digite um número de CHIP para buscar.", "info");
+      return;
+    }
+
+    try {
+      const entries = await apreensoesService.getByChip(newChip.trim());
+
+      if (entries.length === 0) {
+        setFoundEntry(null);
+        setMultipleEntries([]);
+        showNotification("Nenhum animal encontrado com este CHIP na base de Entradas.", "error");
+      } else if (entries.length === 1) {
+        setFoundEntry(entries[0]);
+        setMultipleEntries([]);
+        showNotification(`Animal localizado: ${entries[0].specie || entries[0]['Espécie']} - Entrada: ${formatDate(entries[0].dateIn || entries[0]['Data de Entrada'])}`, "success");
+      } else {
+        setMultipleEntries(entries);
+        setFoundEntry(null);
+        setShowEntrySelectionModal(true);
+        showNotification(`${entries.length} registros encontrados. Selecione a entrada correta.`, "info");
+      }
+    } catch (e) {
+      showNotification("Erro ao buscar no banco de dados.", "error");
+      console.error(e);
+    }
+  };
+
+  const handleSelectEntry = (entry: any) => {
+    setFoundEntry(entry);
+    setShowEntrySelectionModal(false);
+    setMultipleEntries([]);
+    const dateIn = entry.dateIn || entry.date_in || entry['Data de Entrada'];
+    showNotification(`Registro de ${formatDate(dateIn)} selecionado.`, "success");
+  };
+
+  const handleEdit = (worklistItem: any) => {
+    const animal = worklistItem.animal || {};
+    setEditingWorklistItem(worklistItem);
+    setFormData({
+      ...animal,
+      id: animal.id,
+      chip: animal.chip,
+      specie: animal.specie,
+      gender: animal.gender,
+      color: animal.color,
+      seiProcess: animal.seiProcess || animal.sei_process,
+      observations: animal.observations,
+      imageUrl: animal.imageUrl || animal.image_url,
+    });
+    // Specific worklist fields stored in a separate temporary object or within formData
+    setFormData((prev: any) => ({
+      ...prev,
+      worklistStatus: worklistItem.status,
+      worklistObservations: worklistItem.observations,
+      contato_realizado: worklistItem.contato_realizado
+    }));
+
+    setSelectedGender(animal.gender || 'Macho');
+    setPhotoPreview(animal.imageUrl || animal.image_url);
+    setIsFormOpen(true);
+  };
+
+  const handleSaveEdit = async () => {
+    console.log('ID para Update:', editingWorklistItem?.id);
+    console.log('Dados Enviados (Animal):', formData);
+
+    if (!editingWorklistItem || !editingWorklistItem.id) {
+      console.error('Erro: ID do item da worklist não encontrado no estado.');
+      showNotification("Erro interno: ID do item não localizado.", "error");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      showNotification("Salvando alterações...", "info");
+
+      // 1. Update Photo if needed (Keep functionality)
+      let uploadedImageUrl = '';
+      if (selectedFile) {
+        console.log('Subindo nova foto...');
+        uploadedImageUrl = await apreensoesService.uploadPhoto(selectedFile);
+      }
+
+      // 2. Update Animal (Apreensões Table) - Keep synced
+      const animalUpdates: Partial<Animal> = {
+        specie: formData.specie,
+        gender: selectedGender,
+        color: formData.color,
+        seiProcess: formData.seiProcess,
+        imageUrl: uploadedImageUrl || formData.imageUrl,
+        chip: formData.chip,
+        observations: formData.observations,
+      };
+      await apreensoesService.updateApreensao(editingWorklistItem.animal_id, animalUpdates);
+
+      // 3. Update Worklist (Worklist Restituicao Table) - CRITICAL REFECTOR
+      const worklistPayload = {
+        status: (formData as any).worklistStatus,
+        observations: (formData as any).worklistObservations, // Correct column: observations
+        contato_realizado: !!(formData as any).contato_realizado
+      };
+
+      console.log('Chamando update da worklist com ID:', editingWorklistItem.id, 'Payload:', worklistPayload);
+      await restituicaoService.update(editingWorklistItem.id, worklistPayload);
+
+      showNotification("Registro atualizado com sucesso!", "success");
+      loadAnimals();
+      setIsFormOpen(false);
+      setEditingWorklistItem(null);
+      setSelectedFile(null);
+    } catch (e: any) {
+      console.error('Erro ao salvar:', e);
+      showNotification(`Erro ao salvar: ${e.message || 'Erro desconhecido'}`, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  const handleAddToStaging = async () => {
+    if (!foundEntry) {
+      showNotification("Busque e selecione um animal primeiro.", "info");
+      return;
+    }
+
+    // Check duplicate
+    if (animals.some(a => a.animal_id === foundEntry.id)) {
+      showNotification("Este animal já está na lista.", "info");
+      return;
+    }
+
+    try {
+      await restituicaoService.add(foundEntry.id, newStatus, foundEntry.observations || foundEntry['Observações Complementares'] || '');
+
+      showNotification("Animal inserido na lista de restituição.", "success");
+      setNewChip('');
+      setFoundEntry(null);
+      loadAnimals();
+    } catch (e: any) {
+      showNotification(`Erro: ${e.message || 'Erro desconhecido'}`, "error");
+      console.error(e);
+    }
+  };
+
+  const handleRemove = async (id: string) => {
+    try {
+      await restituicaoService.remove(id);
+      showNotification("Item removido da lista.", "info");
+      loadAnimals();
+    } catch (error) {
+      showNotification("Erro ao remover item.", "error");
+    }
+  };
+
+  const handleSearchChipBaixa = () => {
+    if (!searchChipBaixa.trim()) {
+      showNotification("Digite o chip para buscar na lista.", "info");
+      return;
+    }
+
+    const found = animals.find(a => a.animal?.chip === searchChipBaixa.trim());
+    if (found) {
+      setSelectedForBaixa(found);
+      setBaixaFormData(prev => ({ ...prev, seiProcess: found.animal?.seiProcess || found.animal?.sei_process || '' }));
+      showNotification("Animal localizado na lista!", "success");
+    } else {
+      setSelectedForBaixa(null);
+      showNotification("Animal não encontrado nesta lista de Restituição.", "error");
+    }
+  };
+
+  const handleCompleteBaixa = async () => {
+    if (!selectedForBaixa) return;
+    if (!baixaFormData.exitDate) {
+      showNotification("A data de saída é obrigatória.", "error");
+      return;
+    }
+
+    try {
+      setIsSaving(true);
+      showNotification("Processando baixa...", "info");
+
+      await restituicaoService.completeRestituicao(
+        selectedForBaixa.id,
+        selectedForBaixa.animal,
+        baixaFormData
+      );
+
+      showNotification("Restituição realizada com sucesso!", "success");
+
+      // RESET AND CLOSE
+      setIsBaixaModalOpen(false);
+      setSelectedForBaixa(null);
+      setSearchChipBaixa('');
+      setBaixaFormData({
+        exitDate: new Date().toISOString().split('T')[0],
+        receiverName: '',
+        receiverCpf: '',
+        autoInfracao: '',
+        autoApreensao: '',
+        observations: '',
+        seiProcess: '',
+        status: 'Restituído'
+      });
+
+      loadAnimals();
+    } catch (e: any) {
+      console.error('Erro na baixa:', e);
+      showNotification(`Erro ao concluir baixa: ${e.message || 'Erro desconhecido'}`, "error");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+  // Filtering logic
+  const filteredData = useMemo(() => {
+    // Reset page when filter changes
+    return animals.filter(item => {
+      const animal = item.animal || {};
+
+      const matchChip = !filterChip || (animal.chip && animal.chip.toLowerCase().includes(filterChip.toLowerCase()));
+
+      const matchYear = !filterYear || (animal.date_in && animal.date_in.startsWith(filterYear));
+
+      const matchSpecies = !filterSpecies || animal.specie === filterSpecies;
+
+      const matchGender = !filterGender || animal.gender === filterGender;
+
+      const matchOrigin = !filterOrigin || animal.origin === filterOrigin;
+
+      // History Filter mapping to contato_realizado
+      // Options: "Pendente" (false), "Realizado" (true)
+      let matchHistory = true;
+      if (filterHistory === 'Pendente') {
+        matchHistory = item.contato_realizado === false;
+      } else if (filterHistory === 'Realizado') {
+        matchHistory = item.contato_realizado === true;
+      }
+
+      return matchChip && matchYear && matchSpecies && matchGender && matchOrigin && matchHistory;
+    }).sort((a, b) => {
+      // Definindo a ordem de prioridade para os status
+      const statusOrder: { [key: string]: number } = {
+        'Disponível': 1,
+        'HVET': 2,
+        'Em Tratamento': 3,
+        'Experimento': 4,
+        'Sem exame': 5,
+        'Prazo vencido': 6,
+        'Restituído': 7
+      };
+
+      const orderA = statusOrder[a.status] || 99;
+      const orderB = statusOrder[b.status] || 99;
+
+      if (orderA !== orderB) {
+        return orderA - orderB;
+      }
+
+      // Se tiverem o mesmo status, ordena pela data de entrada mais antiga
+      const dateA = new Date((a.animal && a.animal.date_in) || 0).getTime();
+      const dateB = new Date((b.animal && b.animal.date_in) || 0).getTime();
+      return dateA - dateB;
+    });
+  }, [animals, filterChip, filterYear, filterSpecies, filterGender, filterOrigin, filterHistory]);
+
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 10;
+
+  // Calculate index using filteredData instead of animals
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentAnimals = filteredData.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredData.length / itemsPerPage);
+  const handlePageChange = (page: number) => setCurrentPage(page);
+
+  // UI helpers
+  const clearFilters = () => {
+    setFilterChip('');
+    setFilterYear('');
+    setFilterSpecies('');
+    setFilterGender('');
+    setFilterOrigin('');
+    setFilterHistory('');
+    setCurrentPage(1);
+  };
+
+  const formatCPF = (value: string) => {
+    return value
+      .replace(/\D/g, '')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d)/, '$1.$2')
+      .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+      .replace(/(-\d{2})\d+?$/, '$1');
+  };
+
+  const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPhotoPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  if (isFormOpen) {
+    return (
+      <div className="flex flex-col gap-6 animate-fade-in max-w-4xl mx-auto pb-20">
+        <div className="flex items-center gap-4 mb-2">
+          <button
+            onClick={() => setIsFormOpen(false)}
+            className="p-2 rounded-full hover:bg-gray-100 text-slate-500 transition-colors"
+          >
+            <span className="material-symbols-outlined">arrow_back</span>
+          </button>
+          <div className="text-left">
+            <h2 className="text-2xl font-black tracking-tight text-slate-800">
+              Editando Animal (Restituição)
+            </h2>
+            <p className="text-slate-500 text-sm">
+              Atualize as informações do semovente e o status da restituição abaixo.
+            </p>
+          </div>
+        </div>
+
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-sm overflow-hidden">
+          <div className="p-8 space-y-8">
+            {/* Secção 1: Características do Animal */}
+            <div>
+              <h3 className="text-xs font-black uppercase tracking-widest text-primary mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">pets</span>
+                Características do Animal
+              </h3>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 text-left">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Chip (Identificação)</label>
+                  <input
+                    value={formData.chip || ''}
+                    readOnly
+                    className="w-full rounded-lg bg-gray-100 border border-gray-200 px-4 py-2.5 text-sm font-mono text-slate-500 outline-none"
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Espécie</label>
+                  <select
+                    value={formData.specie || ''}
+                    onChange={(e) => setFormData({ ...formData, specie: e.target.value })}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none transition-all"
+                  >
+                    {ESPECIES.map((esp) => (
+                      <option key={esp} value={esp}>{esp}</option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Sexo</label>
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGender('Macho')}
+                      className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all border ${selectedGender === 'Macho'
+                        ? 'bg-blue-600 text-white border-blue-600'
+                        : 'bg-blue-50 border-blue-100 text-blue-700'
+                        }`}
+                    >
+                      Macho
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSelectedGender('Fêmea')}
+                      className={`flex-1 py-2.5 rounded-lg text-xs font-black transition-all border ${selectedGender === 'Fêmea'
+                        ? 'bg-pink-600 text-white border-pink-600'
+                        : 'bg-gray-50 border-gray-200 text-slate-500'
+                        }`}
+                    >
+                      Fêmea
+                    </button>
+                  </div>
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Pelagem / Cor</label>
+                  <input
+                    value={formData.color || ''}
+                    onChange={(e) => setFormData({ ...formData, color: e.target.value })}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none"
+                    placeholder="Ex: Alazã, Tordilho..."
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Processo SEI</label>
+                  <input
+                    value={formData.seiProcess || ''}
+                    onChange={(e) => setFormData({ ...formData, seiProcess: e.target.value })}
+                    className="w-full rounded-lg bg-gray-100 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none font-bold text-blue-800"
+                    placeholder="00000-00000000/0000-00"
+                    type="text"
+                  />
+                </div>
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Foto do Semovente</label>
+                  <input type="file" ref={fileInputRef} onChange={handlePhotoUpload} className="hidden" accept="image/*" />
+                  {photoPreview ? (
+                    <div className="relative w-full h-10 group">
+                      <img src={photoPreview} alt="Preview" className="w-full h-full object-cover rounded-lg border border-primary" />
+                      <button onClick={() => setPhotoPreview(null)} className="absolute -top-2 -right-2 bg-red-500 text-white size-5 rounded-full flex items-center justify-center shadow-lg"><span className="material-symbols-outlined text-[14px]">close</span></button>
+                    </div>
+                  ) : (
+                    <button type="button" onClick={() => fileInputRef.current?.click()} className="w-full rounded-lg border-2 border-dashed border-gray-200 py-2 text-xs text-slate-400 hover:bg-gray-50 hover:border-primary transition-all flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">add_a_photo</span>
+                      Alterar Imagem
+                    </button>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Secção 2: Status da Restituição */}
+            <div className="pt-8 border-t border-gray-100">
+              <h3 className="text-xs font-black uppercase tracking-widest text-[#059669] mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">rebase_edit</span>
+                Status e Fluxo de Restituição
+              </h3>
+
+              <div className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 mb-6 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className={`w-10 h-10 rounded-full flex items-center justify-center ${(formData as any).contato_realizado ? 'bg-emerald-100 text-emerald-600' : 'bg-gray-200 text-gray-400'}`}>
+                    <span className="material-symbols-outlined">{(formData as any).contato_realizado ? 'notifications_active' : 'notifications_off'}</span>
+                  </div>
+                  <div className="text-left">
+                    <p className="text-sm font-black text-emerald-900 uppercase tracking-tight">Contato Realizado pelo Proprietário?</p>
+                    <p className="text-xs text-emerald-600 font-medium italic">Marque se o dono já entrou em contato para reaver o animal.</p>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setFormData({ ...formData, contato_realizado: !(formData as any).contato_realizado } as any)}
+                  className={`relative inline-flex h-7 w-14 items-center rounded-full transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 ${(formData as any).contato_realizado ? 'bg-emerald-600' : 'bg-gray-300'}`}
+                >
+                  <span
+                    className={`inline-block h-5 w-5 transform rounded-full bg-white transition-transform ${(formData as any).contato_realizado ? 'translate-x-8' : 'translate-x-1'}`}
+                  />
+                </button>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Status Atual (Worklist)</label>
+                  <select
+                    value={(formData as any).worklistStatus || ''}
+                    onChange={(e) => setFormData({ ...formData, worklistStatus: e.target.value } as any)}
+                    className="w-full rounded-lg bg-gray-50 border border-gray-200 px-4 py-2.5 text-sm focus:border-gdf-blue outline-none transition-all"
+                  >
+                    {ENTRY_STATUS_OPTIONS.map((opt) => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+
+                <div className="flex flex-col gap-1.5">
+                  <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Observações da Restituição</label>
+                  <textarea
+                    rows={3}
+                    value={(formData as any).worklistObservations || ''}
+                    onChange={(e) => setFormData({ ...formData, worklistObservations: e.target.value } as any)}
+                    className="w-full rounded-xl bg-gray-50 border border-gray-200 px-4 py-3 text-sm focus:border-gdf-blue outline-none transition-all"
+                    placeholder="Informações sobre o proprietário, prazos, etc..."
+                  ></textarea>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="bg-gray-50 px-8 py-5 border-t border-gray-100 flex justify-between items-center">
+            <button onClick={() => setIsFormOpen(false)} className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:text-slate-800 transition-colors">Cancelar</button>
+            <button
+              onClick={handleSaveEdit}
+              disabled={isSaving}
+              className={`px-10 py-2.5 ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-gdf-blue hover:bg-gdf-blue-dark'} text-white text-sm font-black rounded-lg transition-all shadow-lg flex items-center gap-2`}
+            >
+              <span className="material-symbols-outlined text-[18px]">{isSaving ? 'sync' : 'save'}</span>
+              {isSaving ? 'Salvando...' : 'Salvar Alterações'}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-6 animate-fade-in pb-12">
+
+      {/* Toasts */}
+      {notification && (
+        <div className={`fixed top-24 right-8 z-[100] p-4 rounded-xl shadow-2xl border flex items-center gap-3 animate-fade-in-up print:hidden ${notification.type === 'success' ? 'bg-green-50 border-green-200 text-green-800' : notification.type === 'error' ? 'bg-red-50 border-red-200 text-red-800' : 'bg-blue-50 border-blue-200 text-blue-800'}`}>
+          <span className="material-symbols-outlined">{notification.type === 'success' ? 'check_circle' : notification.type === 'error' ? 'error' : 'info'}</span>
+          <p className="text-sm font-bold">{notification.message}</p>
+        </div>
+      )}
+
+      {/* Header + KPI */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4 mb-2 print:hidden">
+        <div className="flex flex-col text-left">
+          <h2 className="text-[#111814] text-3xl font-black leading-tight tracking-[-0.033em]">Animais para Restituir</h2>
+          <p className="text-gray-500 text-sm font-normal">Busque o animal, adicione à lista e registre a saída.</p>
+        </div>
+
+        {/* KPI Card */}
+        <div className="bg-white px-6 py-3 rounded-lg border border-gray-200 shadow-sm flex items-center gap-3">
+          <div className="bg-blue-50 p-2 rounded-full text-blue-600">
+            <span className="material-symbols-outlined text-xl">list_alt</span>
+          </div>
+          <div>
+            <p className="text-[10px] uppercase font-bold text-gray-400 tracking-wider">Disponíveis para Restituir</p>
+            <p className="text-2xl font-black text-gray-800 leading-none">{animals.length}</p>
+          </div>
+        </div>
+      </div>
+
+      {/* Step 1: Search & Add */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm print:hidden">
+        <h3 className="text-sm font-bold text-gray-700 uppercase tracking-wide mb-4 flex items-center gap-2">
+          <span className="material-symbols-outlined text-gdf-blue">add_circle</span>
+          1. Identificar Animal
+        </h3>
+        <div className="flex flex-col md:flex-row gap-4 items-end">
+          <div className="flex-1 w-full relative">
+            <label className="text-xs font-bold text-gray-500 mb-1 block">Buscar por CHIP</label>
+            <input
+              value={newChip}
+              onChange={(e) => setNewChip(e.target.value)}
+              onKeyDown={(e) => e.key === 'Enter' && handleSearchEntry()}
+              className={`w-full border ${foundEntry ? 'border-green-500 bg-green-50' : 'border-gray-300'} rounded-lg px-4 py-2.5 outline-none focus:ring-2 focus:ring-gdf-blue transition-all`}
+              placeholder="Ex: 982..."
+            />
+            <button onClick={handleSearchEntry} className="absolute right-2 top-7 p-1.5 text-gray-400 hover:text-gdf-blue">
+              <span className="material-symbols-outlined">search</span>
+            </button>
+            {foundEntry && <span className="absolute top-full left-0 mt-1 text-[10px] text-green-600 font-bold whitespace-nowrap">Selecionado: {foundEntry['Espécie']} - {foundEntry['Data de Entrada']}</span>}
+          </div>
+
+          <div className="w-full md:w-48">
+            <label className="text-xs font-bold text-gray-500 mb-1 block">Status</label>
+            <select
+              value={newStatus}
+              onChange={(e) => setNewStatus(e.target.value)}
+              className="w-full border border-gray-300 rounded-lg px-3 py-2.5 text-sm outline-none focus:ring-2 focus:ring-gdf-blue"
+            >
+              {ENTRY_STATUS_OPTIONS.map(opt => <option key={opt} value={opt}>{opt}</option>)}
+            </select>
+          </div>
+
+          <button
+            onClick={handleAddToStaging}
+            className="w-full md:w-auto px-6 py-2.5 bg-gdf-blue hover:bg-gdf-blue-dark text-white font-bold rounded-lg transition-all flex items-center justify-center gap-2 shadow-lg shadow-blue-900/20"
+          >
+            <span className="material-symbols-outlined">playlist_add</span>
+            Inserir na Lista
+          </button>
+        </div>
+      </div>
+
+      {/* NEW: Filter Grid Section */}
+      <div className="bg-white p-4 rounded-xl border border-gray-200 shadow-sm print:hidden">
+        <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-6 gap-4">
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Filtro CHIP</label>
+            <div className="relative">
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 material-symbols-outlined text-[18px]">memory</span>
+              <input
+                value={filterChip}
+                onChange={(e) => setFilterChip(e.target.value)}
+                className="w-full rounded-lg bg-gray-50 border border-gray-200 pl-9 pr-4 py-2 text-xs focus:border-gdf-blue focus:ring-2 focus:ring-gdf-blue/10 outline-none transition-all"
+                placeholder="Digitar chip..."
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Ano</label>
+            <select
+              value={filterYear}
+              onChange={(e) => setFilterYear(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todos</option>
+              <option value="2024">2024</option>
+              <option value="2025">2025</option>
+              <option value="2026">2026</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Espécie</label>
+            <select
+              value={filterSpecies}
+              onChange={(e) => setFilterSpecies(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todas</option>
+              {ESPECIES.map(esp => <option key={esp} value={esp}>{esp}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Sexo</label>
+            <select
+              value={filterGender}
+              onChange={(e) => setFilterGender(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Ambos</option>
+              <option value="Macho">Macho</option>
+              <option value="Fêmea">Fêmea</option>
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Origem (RA)</label>
+            <select
+              value={filterOrigin}
+              onChange={(e) => setFilterOrigin(e.target.value)}
+              className="w-full rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+            >
+              <option value="">Todas</option>
+              {[...RA_LIST].sort().map(ra => <option key={ra} value={ra}>{ra}</option>)}
+            </select>
+          </div>
+
+          <div className="flex flex-col gap-1.5">
+            <label className="text-[10px] font-black uppercase text-slate-500 ml-1">Contato/Histórico</label>
+            <div className="flex gap-1 items-center">
+              <select
+                value={filterHistory}
+                onChange={(e) => setFilterHistory(e.target.value)}
+                className="flex-1 rounded-lg bg-gray-50 border border-gray-200 px-3 py-2 text-xs focus:border-gdf-blue outline-none"
+              >
+                <option value="">Todos</option>
+                <option value="Pendente">Pendente</option>
+                <option value="Realizado">Realizado</option>
+              </select>
+              <button
+                onClick={clearFilters}
+                className="p-2 text-gray-400 hover:text-red-500 transition-colors"
+                title="Limpar Filtros"
+              >
+                <span className="material-symbols-outlined text-[18px]">filter_alt_off</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Action Bar (Export/Print) */}
+      <div className="flex justify-end gap-3 print:hidden">
+        <button
+          onClick={handleExportCSV}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">download</span>
+          Exportar CSV
+        </button>
+        <button
+          onClick={handlePrint}
+          className="flex items-center gap-2 px-4 py-2 bg-white border border-gray-200 rounded-lg text-slate-600 font-bold text-xs hover:bg-gray-50 transition-all shadow-sm"
+        >
+          <span className="material-symbols-outlined text-[18px]">print</span>
+          Imprimir
+        </button>
+      </div>
+
+      {/* Step 2: List (Table) */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden flex flex-col print:hidden">
+        <div className="p-6 border-b border-gray-100 flex justify-between items-center">
+          <h3 className="text-[#111814] text-lg font-bold">2. Lista de Saída (Preparação)</h3>
+          {/* Internal table counter if needed, but redundant with top KPI now, maybe keep as simple badge */}
+          {/* <span className="bg-blue-100 text-blue-800 text-xs font-bold px-2 py-1 rounded-full">{animals.length} itens</span> */}
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-gray-50 border-b border-gray-200">
+              <tr>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Identificação</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Animal (Espécie)</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Status</th>
+                <th className="px-4 py-3 text-left text-xs font-bold text-gray-500 uppercase tracking-wider">Histórico</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Data Entrada</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Permanência</th>
+                <th className="px-6 py-4 font-bold text-gray-500 uppercase text-xs">Origem</th>
+                <th className="px-4 py-3 text-right text-xs font-bold text-gray-500 uppercase tracking-wider print:hidden">Ações</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-gray-100">
+              {currentAnimals.map(row => {
+                const animalData = row.animal || {};
+
+                return (
+                  <tr key={row.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-4 font-mono font-bold text-slate-700">{animalData.chip}</td>
+                    <td className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-cover" style={{ backgroundImage: `url(${animalData.image_url || getImageUrl(0)})` }}></div>
+                        <div>
+                          <p className="font-bold text-slate-800">{animalData.specie}</p>
+                          <p className="text-[10px] text-slate-500">{animalData.gender} / {animalData.color}</p>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        const colors: { [key: string]: { bg: string, text: string } } = {
+                          'Disponível': { bg: '#d4edbd', text: '#111814' },
+                          'Em tratamento': { bg: '#ffcfc9', text: '#111814' },
+                          'HVET': { bg: '#593287', text: '#ffffff' },
+                          'Restituído': { bg: '#0f734c', text: '#ffffff' },
+                          'Prazo Vencido': { bg: '#b10709', text: '#ffffff' },
+                          'Sem Exame': { bg: '#ffc8a8', text: '#111814' },
+                          'Experimento': { bg: '#f00aae', text: '#ffffff' },
+                        };
+                        const style = colors[row.status] || { bg: '#f3f4f6', text: '#4b5563' };
+                        return (
+                          <span
+                            className="px-2.5 py-1 rounded-md text-[10px] font-black uppercase tracking-wider border border-black/5 shadow-sm"
+                            style={{ backgroundColor: style.bg, color: style.text }}
+                          >
+                            {row.status}
+                          </span>
+                        );
+                      })()}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      {row.contato_realizado ? (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 border border-green-200 text-[10px] font-black uppercase tracking-tight">
+                          <span className="material-symbols-outlined text-[14px]">phone_in_talk</span>
+                          Contato Realizado
+                        </span>
+                      ) : (
+                        <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-gray-100 text-gray-400 border border-gray-200 text-[10px] font-bold uppercase tracking-tight">
+                          Pendente
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{formatDate(animalData.date_in)}</td>
+                    <td className="px-6 py-4">
+                      {(() => {
+                        /* Logic for Today - DateIn */
+                        try {
+                          const today = new Date();
+                          const parts = animalData.date_in ? formatDate(animalData.date_in).split('/') : [];
+                          if (parts.length === 3) {
+                            const entryDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                            if (isNaN(entryDate.getTime())) return <span>-</span>;
+                            const diffTime = Math.abs(today.getTime() - entryDate.getTime());
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            const isAlert = diffDays > 30;
+                            return <span className={`font-bold ${isAlert ? 'text-red-500' : 'text-slate-600'}`}>{diffDays} dias</span>;
+                          }
+                          return <span>-</span>;
+                        } catch { return <span>-</span>; }
+                      })()}
+                    </td>
+                    <td className="px-6 py-4 text-slate-600">{animalData.origin || animalData.organ || 'Não informado'}</td>
+                    <td className="px-6 py-4 text-right print:hidden">
+                      <div className="flex items-center justify-end gap-1">
+                        <button onClick={() => setViewingAnimal(row)} className="text-gray-400 hover:text-blue-600 p-1.5 rounded-full hover:bg-blue-50 transition-colors" title="Visualizar">
+                          <span className="material-symbols-outlined text-[20px]">visibility</span>
+                        </button>
+                        <button onClick={() => handleEdit(row)} className="text-gray-400 hover:text-orange-600 p-1.5 rounded-full hover:bg-orange-50 transition-colors" title="Editar">
+                          <span className="material-symbols-outlined text-[20px]">edit</span>
+                        </button>
+                        <button onClick={() => handleRemove(row.id)} className="text-gray-400 hover:text-red-600 p-1.5 rounded-full hover:bg-red-50 transition-colors" title="Remover">
+                          <span className="material-symbols-outlined text-[20px]">delete</span>
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                );
+              })}
+              {animals.length === 0 && (
+                <tr><td colSpan={7} className="p-8 text-center text-gray-400 italic">Nenhum animal adicionado à lista ainda.</td></tr>
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        {/* Pagination Footer */}
+        {animals.length > 0 && (
+          <div className="bg-gray-50 border-t border-gray-200 p-4 flex flex-col md:flex-row justify-between items-center gap-4">
+            <p className="text-xs text-slate-500 font-medium">
+              Mostrando <span className="font-bold text-slate-800">{indexOfFirstItem + 1}</span> a <span className="font-bold text-slate-800">{Math.min(indexOfLastItem, animals.length)}</span> de <span className="font-bold text-slate-800">{animals.length}</span> registros
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-600 hover:bg-white hover:text-gdf-blue disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Anterior
+              </button>
+              <div className="flex items-center gap-1">
+                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                  <button
+                    key={page}
+                    onClick={() => handlePageChange(page)}
+                    className={`w-8 h-8 rounded-lg text-xs font-bold flex items-center justify-center transition-all ${currentPage === page ? 'bg-gdf-blue text-white shadow-md' : 'text-gray-500 hover:bg-gray-200'}`}
+                  >
+                    {page}
+                  </button>
+                ))}
+              </div>
+              <button
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+                className="px-3 py-1.5 rounded-lg border border-gray-300 text-xs font-bold text-gray-600 hover:bg-white hover:text-gdf-blue disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+              >
+                Próximo
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Step 3: Registration Exit Search Bar */}
+      <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-lg mb-20 print:hidden">
+        <div className="flex flex-col md:flex-row justify-between items-center gap-6">
+          <div className="flex items-center gap-4">
+            <div className="bg-gdf-blue p-3 rounded-full text-white shadow-md">
+              <span className="material-symbols-outlined">output</span>
+            </div>
+            <div className="text-left">
+              <h4 className="font-black text-slate-800 text-lg">3. Registrar Saída (Baixa)</h4>
+              <p className="text-xs text-slate-500 font-medium">Busque pelo chip para processar a baixa individualmente.</p>
+            </div>
+          </div>
+
+          <div className="flex-1 flex gap-2 w-full max-w-md">
+            <div className="relative flex-1">
+              <input
+                type="text"
+                placeholder="Digitar CHIP para Baixa..."
+                value={searchChipBaixa}
+                onChange={(e) => setSearchChipBaixa(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && handleSearchChipBaixa()}
+                className="w-full pl-10 pr-4 py-3 rounded-xl border border-gray-200 bg-gray-50 focus:ring-2 focus:ring-gdf-blue outline-none transition-all font-mono"
+              />
+              <span className="material-symbols-outlined absolute left-3 top-3 text-gray-400">search</span>
+            </div>
+            <button
+              onClick={handleSearchChipBaixa}
+              className="bg-gdf-blue hover:bg-gdf-blue-dark text-white p-3 rounded-xl shadow-lg transition-all"
+            >
+              <span className="material-symbols-outlined font-black">arrow_forward</span>
+            </button>
+          </div>
+        </div>
+
+        {/* Selected Animal Summary Card */}
+        {selectedForBaixa && (
+          <div className="mt-6 animate-fade-in">
+            <div className="flex flex-col md:flex-row items-center gap-6 p-6 bg-slate-50 border border-slate-200 rounded-2xl relative overflow-hidden">
+              <div className="absolute top-0 right-0 p-2">
+                <button
+                  onClick={() => setSelectedForBaixa(null)}
+                  className="p-1 rounded-full hover:bg-slate-200 text-slate-400 transition-colors"
+                >
+                  <span className="material-symbols-outlined text-[18px]">close</span>
+                </button>
+              </div>
+
+              <div className="w-24 h-24 rounded-2xl bg-cover bg-center border-4 border-white shadow-sm"
+                style={{ backgroundImage: `url(${selectedForBaixa.animal?.image_url || getImageUrl(0)})` }}
+              ></div>
+
+              <div className="flex-1 text-left grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Chip</span>
+                  <span className="font-mono text-sm font-bold text-slate-700">{selectedForBaixa.animal?.chip}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Espécie</span>
+                  <span className="text-sm font-bold text-slate-800">{selectedForBaixa.animal?.specie}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Data Entrada</span>
+                  <span className="text-sm font-medium text-slate-600">{formatDate(selectedForBaixa.animal?.date_in)}</span>
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Status Atual</span>
+                  <span className="text-sm font-bold text-blue-600 uppercase italic">{selectedForBaixa.status}</span>
+                </div>
+              </div>
+
+              <button
+                onClick={() => setIsBaixaModalOpen(true)}
+                className="w-full md:w-auto px-8 py-3 bg-green-600 hover:bg-green-700 text-white font-black rounded-xl shadow-xl shadow-green-900/20 transition-all flex items-center justify-center gap-2"
+              >
+                <span className="material-symbols-outlined">exit_to_app</span>
+                Iniciar Baixa
+              </button>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* NEW: Modal de Baixa */}
+      {isBaixaModalOpen && selectedForBaixa && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+          <div className="bg-white rounded-3xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto overflow-x-hidden flex flex-col relative">
+            {/* Header */}
+            <div className="p-8 border-b border-gray-100 bg-gray-50 flex justify-between items-center sticky top-0 z-10">
+              <div className="flex items-center gap-4 text-left">
+                <div className="bg-green-500 p-3 rounded-2xl text-white shadow-lg">
+                  <span className="material-symbols-outlined">task_alt</span>
+                </div>
+                <div>
+                  <h3 className="text-2xl font-black text-slate-800 tracking-tight">Registro de Restituição</h3>
+                  <p className="text-sm text-slate-500 font-medium">Finalizando processo para o CHIP: <span className="font-mono font-bold text-primary">{selectedForBaixa.animal?.chip}</span></p>
+                </div>
+              </div>
+              <button
+                onClick={() => setIsBaixaModalOpen(false)}
+                className="p-2 rounded-full hover:bg-gray-200 text-slate-400 transition-colors"
+              >
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+
+            {/* Form */}
+            <div className="p-8 space-y-6 text-left">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                {/* Basic Info */}
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Data de Saída *</label>
+                  <input
+                    type="date"
+                    required
+                    value={baixaFormData.exitDate}
+                    onChange={(e) => setBaixaFormData({ ...baixaFormData, exitDate: e.target.value })}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Processo SEI</label>
+                  <input
+                    type="text"
+                    value={baixaFormData.seiProcess}
+                    onChange={(e) => setBaixaFormData({ ...baixaFormData, seiProcess: e.target.value })}
+                    placeholder="00000-00000000/0000-00"
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm font-bold text-blue-800 focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                  />
+                </div>
+                <div className="flex flex-col gap-2">
+                  <label className="text-xs font-black text-slate-500 uppercase tracking-wider ml-1">Status Final</label>
+                  <select
+                    value={baixaFormData.status}
+                    onChange={(e) => setBaixaFormData({ ...baixaFormData, status: e.target.value })}
+                    className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all font-bold"
+                  >
+                    {DESTINATION_OPTIONS.map(opt => (
+                      <option key={opt} value={opt}>{opt}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              {/* Reciever Info */}
+              <div className="pt-6 border-t border-gray-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Dados do Proprietário / Recebedor</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">Nome Completo</label>
+                    <input
+                      type="text"
+                      value={baixaFormData.receiverName}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, receiverName: e.target.value })}
+                      placeholder="Nome do Proprietário"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">CPF</label>
+                    <input
+                      type="text"
+                      maxLength={14}
+                      value={baixaFormData.receiverCpf}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, receiverCpf: formatCPF(e.target.value) })}
+                      placeholder="000.000.000-00"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Docs Info */}
+              <div className="pt-6 border-t border-gray-100">
+                <h4 className="text-xs font-black text-slate-400 uppercase tracking-[0.2em] mb-4">Documentação de Baixa</h4>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">Auto de Infração nº</label>
+                    <input
+                      type="text"
+                      value={baixaFormData.autoInfracao}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, autoInfracao: e.target.value })}
+                      placeholder="Nº do Auto"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <label className="text-xs font-bold text-slate-600 ml-1">Auto de Apreensão nº</label>
+                    <input
+                      type="text"
+                      value={baixaFormData.autoApreensao}
+                      onChange={(e) => setBaixaFormData({ ...baixaFormData, autoApreensao: e.target.value })}
+                      placeholder="Nº do Auto"
+                      className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-bold text-slate-600 ml-1 uppercase">Observações Complementares</label>
+                <textarea
+                  rows={2}
+                  value={baixaFormData.observations}
+                  onChange={(e) => setBaixaFormData({ ...baixaFormData, observations: e.target.value })}
+                  className="w-full rounded-xl border border-gray-200 bg-gray-50 px-4 py-3 text-sm focus:ring-2 focus:ring-green-500 outline-none transition-all resize-none"
+                  placeholder="Informações adicionais sobre o ato de restituição..."
+                ></textarea>
+              </div>
+            </div>
+
+            {/* Footer */}
+            <div className="p-8 border-t border-gray-100 bg-gray-50 flex justify-end items-center sticky bottom-0 z-10">
+              <div className="flex gap-4">
+                <button
+                  type="button"
+                  onClick={() => setIsBaixaModalOpen(false)}
+                  className="px-8 py-3 text-slate-500 font-bold hover:text-slate-800 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={handleCompleteBaixa}
+                  disabled={isSaving}
+                  className={`px-10 py-3 ${isSaving ? 'bg-gray-400 cursor-not-allowed' : 'bg-green-600 hover:bg-green-700'} text-white font-black rounded-xl shadow-xl shadow-green-900/20 transition-all flex items-center gap-2`}
+                >
+                  {isSaving ? (
+                    <>
+                      <span className="material-symbols-outlined animate-spin text-[18px]">sync</span>
+                      Processando...
+                    </>
+                  ) : (
+                    <>
+                      <span className="material-symbols-outlined text-[18px]">check_circle</span>
+                      Concluir Baixa
+                    </>
+                  )}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Modal Multi Entries */}
+      {showEntrySelectionModal && (
+        <div className="fixed inset-0 z-[70] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-lg w-full overflow-hidden flex flex-col relative text-left">
+            <div className="p-6 border-b border-gray-100 flex justify-between items-center bg-gray-50">
+              <div>
+                <h3 className="text-lg font-black text-slate-800">Selecione a Entrada</h3>
+                <p className="text-xs text-slate-500 uppercase font-bold mt-1">Múltiplos registros com este CHIP</p>
+              </div>
+              <button onClick={() => setShowEntrySelectionModal(false)} className="text-slate-400 hover:text-slate-600 transition-colors">
+                <span className="material-symbols-outlined">close</span>
+              </button>
+            </div>
+            <div className="p-2 max-h-[400px] overflow-y-auto">
+              {multipleEntries.map((entry, idx) => (
+                <button
+                  key={idx}
+                  onClick={() => handleSelectEntry(entry)}
+                  className="w-full text-left p-4 hover:bg-blue-50 border-b border-gray-100 last:border-0 transition-colors group flex items-start gap-3"
+                >
+                  <div className="h-10 w-10 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center shrink-0 group-hover:bg-blue-200 transition-colors">
+                    <span className="material-symbols-outlined">calendar_month</span>
+                  </div>
+                  <div>
+                    <p className="text-sm font-bold text-slate-800">Entrada em: {formatDate(entry.dateIn || entry.date_in || entry['Data de Entrada'])}</p>
+                    <p className="text-xs text-slate-500 mt-0.5">Origem: {entry.origin || entry.organ || entry['Região Administrativa']} | OS: {entry.osNumber || entry.os_number || entry['Ordem de Serviço (OS)'] || 'N/A'}</p>
+                    <p className="text-[10px] text-gdf-blue font-black uppercase mt-1">PROCESSO SEI: {entry.seiProcess || entry.sei_process || '-'}</p>
+                    <p className="text-[10px] text-slate-400 mt-1 uppercase font-bold tracking-wider">{entry.specie || entry['Espécie']} - {entry.color || entry['Pelagem']}</p>
+                  </div>
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* --- TABELA EXCLUSIVA PARA IMPRESSÃO (MODO RELATÓRIO COMPLETO) --- */}
+      <div className="hidden print:block print:absolute print:top-0 print:left-0 print:w-full print:z-[9999] print:bg-white p-8">
+        <div className="mb-8 border-b-2 border-slate-800 pb-4">
+          <h1 className="text-2xl font-black text-slate-800">Relatório de Animais para Restituição</h1>
+          <p className="text-sm text-slate-500 font-bold uppercase tracking-wider mt-1">
+            Data de Geração: {new Date().toLocaleDateString('pt-BR')} | Total: {filteredData.length} registros
+          </p>
+        </div>
+
+        <table className="w-full text-left border-collapse border border-gray-300">
+          <thead>
+            <tr className="bg-gray-100 border-b-2 border-gray-300 text-[10px] uppercase font-black text-slate-700">
+              <th className="p-2 border border-gray-300">Identificação (CHIP)</th>
+              <th className="p-2 border border-gray-300">Animal (Espécie/Gênero)</th>
+              <th className="p-2 border border-gray-300">Status</th>
+              <th className="p-2 border border-gray-300">Data Entrada</th>
+              <th className="p-2 border border-gray-300">Estadia</th>
+              <th className="p-2 border border-gray-300">Origem</th>
+            </tr>
+          </thead>
+          <tbody>
+            {filteredData.map((row: any) => {
+              const animalData = row.animal || {};
+              const dateInFormatted = formatDate(animalData.date_in);
+
+              const calculateDays = (dateStr: string) => {
+                try {
+                  const today = new Date();
+                  const parts = dateStr.split('/');
+                  if (parts.length === 3) {
+                    const entryDate = new Date(Number(parts[2]), Number(parts[1]) - 1, Number(parts[0]));
+                    const diffTime = Math.abs(today.getTime() - entryDate.getTime());
+                    return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                  }
+                } catch { return '-'; }
+                return '-';
+              };
+
+              return (
+                <tr key={row.id} className="border-b border-gray-200 text-[10px]">
+                  <td className="p-2 border border-gray-300 font-mono font-bold">{animalData.chip}</td>
+                  <td className="p-2 border border-gray-300">
+                    <div className="flex flex-col">
+                      <span className="font-bold">{animalData.specie}</span>
+                      <span className="text-gray-500">{animalData.gender} / {animalData.color}</span>
+                    </div>
+                  </td>
+                  <td className="p-2 border border-gray-300 uppercase font-black">{row.status}</td>
+                  <td className="p-2 border border-gray-300">{dateInFormatted}</td>
+                  <td className="p-2 border border-gray-300 font-bold">{calculateDays(dateInFormatted)} dias</td>
+                  <td className="p-2 border border-gray-300">{animalData.origin || animalData.organ || '-'}</td>
+                </tr>
+              );
+            })}
+          </tbody>
+        </table>
+
+        <div className="mt-8 text-right text-[10px] text-gray-400 font-bold">
+          SGA - Sistema de Gestão Animal | Gerado em {new Date().toLocaleString('pt-BR')}
+        </div>
+      </div>
+
+      {/* Detail View Modal */}
+      {viewingAnimal && (
+        <div className="fixed inset-0 z-[60] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in print:hidden">
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full p-8 relative">
+            <button onClick={() => setViewingAnimal(null)} className="absolute top-4 right-4 text-gray-400 hover:text-gray-600"><span className="material-symbols-outlined">close</span></button>
+            <h3 className="text-2xl font-black text-slate-900 mb-6 text-left">Detalhes da Restituição</h3>
+
+            <div className="grid grid-cols-2 gap-x-8 gap-y-6 text-left">
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Animal</p>
+                <div className="flex items-center gap-3 mt-1">
+                  <div className="w-12 h-12 rounded-lg bg-slate-100 overflow-hidden shadow-sm flex-shrink-0">
+                    <img src={viewingAnimal.animal?.image_url || getImageUrl(0)} className="w-full h-full object-cover" alt="Foto" />
+                  </div>
+                  <div className="flex flex-col">
+                    <p className="font-black text-slate-800 text-lg leading-tight">{viewingAnimal.animal?.specie}</p>
+                    <p className="text-xs text-slate-500">{viewingAnimal.animal?.gender} / {viewingAnimal.animal?.color}</p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-1 justify-center">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Identificação (CHIP)</p>
+                <p className="font-mono font-bold text-slate-700 text-lg">{viewingAnimal.animal?.chip}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Data de Entrada</p>
+                <p className="font-bold text-slate-700">{formatDate(viewingAnimal.animal?.date_in)}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Ordem de Serviço (OS)</p>
+                <p className="font-bold text-slate-700">{viewingAnimal.animal?.os_number || viewingAnimal.animal?.osNumber || "S/N"}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Órgão Origem</p>
+                <p className="font-bold text-slate-800">{viewingAnimal.animal?.organ || viewingAnimal.animal?.origin}</p>
+              </div>
+
+              <div className="flex flex-col gap-1">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Processo SEI</p>
+                <p className="font-bold text-blue-800">{viewingAnimal.animal?.sei_process || viewingAnimal.animal?.seiProcess || "Não informado"}</p>
+              </div>
+
+              <div className="flex flex-col gap-1 col-span-2 mt-2">
+                <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Status Atual</p>
+                <div className="flex items-center gap-2">
+                  <p className="font-bold text-blue-600 bg-blue-50 px-3 py-1.5 rounded-lg inline-block w-max">{viewingAnimal.status}</p>
+                  {viewingAnimal.contato_realizado && (
+                    <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-green-100 text-green-700 border border-green-200 text-[10px] font-black uppercase tracking-tight">
+                      <span className="material-symbols-outlined text-[14px]">phone_in_talk</span>
+                      Contato Realizado
+                    </span>
+                  )}
+                </div>
+              </div>
+
+              {viewingAnimal.observations && (
+                <div className="flex flex-col gap-1 col-span-2">
+                  <p className="text-[10px] text-gray-400 uppercase font-black tracking-widest">Observações da Restituição</p>
+                  <p className="text-sm text-slate-600 bg-gray-50 p-3 rounded-lg flex-1">"{viewingAnimal.observations}"</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+    </div>
+  );
+};
+
+export default Restituicao;
