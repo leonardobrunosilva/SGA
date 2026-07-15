@@ -361,7 +361,7 @@ const Prontuario: React.FC = () => {
           <p><strong>Chip/Brinco:</strong> {animal.chip}</p>
           <p><strong>Sexo:</strong> {animal.gender}</p>
           <p><strong>Pelagem/Cor:</strong> {animal.color}</p>
-          <p><strong>Idade Estimada:</strong> {animal.age || 'Não informada'}</p>
+          <p><strong>Data de Entrada:</strong> {animal.dateIn && animal.dateIn !== '---' ? animal.dateIn : 'Não informada'}</p>
           <p><strong>Status Atual:</strong> {animal.status}</p>
         </div>
       </div>
