@@ -5,20 +5,9 @@ import { prontuarioService, ProntuarioRecord } from '../services/prontuarioServi
 import { Animal } from '../types';
 import { formatDate } from '../utils';
 import { supabase } from '../supabaseClient';
-import resenhaBg from '../src/assets/resenha-template.png';
 import cabecalhoGdf from '../src/assets/cabecalho-gdf.png';
 
-interface Mark {
-  id: number;
-  type: 'circle' | 'x' | 'line' | 'pencil';
-  x: number;
-  y: number;
-  endX?: number;
-  endY?: number;
-  color?: string;
-  points?: { x: number; y: number }[];
-  strokeWidth?: number;
-}
+
 
 interface TimelineEvent {
   id: string;
@@ -108,24 +97,7 @@ const Prontuario: React.FC = () => {
   const [dataExame, setDataExame] = useState('');
   const [selectedFiles, setSelectedFiles] = useState<FileList | null>(null);
   const [examResults, setExamResults] = useState<{ exam: string, result: string, date?: string }[]>([{ exam: '', result: '', date: '' }]);
-  const [resenhaMarks, setResenhaMarks] = useState<Mark[]>([]);
-  const [selectedTool, setSelectedTool] = useState<'circle' | 'x' | 'line' | 'pencil'>('circle');
-  const [selectedColor, setSelectedColor] = useState('red');
-  const [selectedStrokeWidth, setSelectedStrokeWidth] = useState(1);
-  const [isDrawing, setIsDrawing] = useState(false);
-  const [currentLine, setCurrentLine] = useState<Partial<Mark> | null>(null);
 
-  const handleSaveMarks = async (marks: Mark[]) => {
-    if (!animal.id || animal.id === 'NOVO') return;
-    try {
-      await apreensoesService.updateApreensao(animal.id, {
-        resenha_body_marks: marks
-      });
-      setAnimal(prev => ({ ...prev, resenha_body_marks: marks }));
-    } catch (err) {
-      console.error('Erro ao auto-salvar marcas:', err);
-    }
-  };
 
   // --- ESTADOS DE HISTÓRICO REAL ---
   const [historyList, setHistoryList] = useState<TimelineEvent[]>([]);
@@ -173,12 +145,7 @@ const Prontuario: React.FC = () => {
         setColorForm(found.color);
         setSearchQuery('');
 
-        // Carregamento de marcas da resenha (se existirem)
-        if (found.resenha_body_marks) {
-          setResenhaMarks(found.resenha_body_marks);
-        } else {
-          setResenhaMarks([]);
-        }
+
 
         // Carregamento de histórico real do banco de dados
         try {
@@ -226,7 +193,6 @@ const Prontuario: React.FC = () => {
     setSpecieForm(BLANK_ANIMAL.specie);
     setGenderForm(BLANK_ANIMAL.gender);
     setColorForm(BLANK_ANIMAL.color);
-    setResenhaMarks([]);
     setHistoryList([]);
     setEditingId(null);
     resetForm();
@@ -498,347 +464,127 @@ const Prontuario: React.FC = () => {
         </div>
       </section>
 
-      {/* Header do Semovente (Sujeito do Atendimento) */}
+      {/* Header com Identificação do Semovente e Foto Ampliada */}
       {animal.id !== '' && (
-        <>
-          <header className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm print-card">
-            <div className="flex flex-col md:flex-row gap-6 justify-between items-start md:items-center">
-              <div className="flex gap-5 items-center">
-                <div className="relative">
-                  <div
-                    className="size-20 md:size-24 rounded-full bg-cover bg-center border-4 border-gray-100 shadow-md"
-                    style={{ backgroundImage: `url('${animal.imageUrl}')` }}
-                  ></div>
-                  <div className="absolute -bottom-1 -right-1 bg-primary text-black text-[10px] font-bold px-2 py-0.5 rounded-full shadow-sm border-2 border-white uppercase whitespace-nowrap">
-                    {animal.id === 'NOVO' ? 'NOVO CADASTRO' : animal.status}
+        <header className="bg-white border border-gray-200 rounded-2xl p-6 md:p-8 shadow-sm print-card">
+          <div className="flex flex-col md:flex-row gap-8 items-start md:items-stretch">
+            {/* Foto do Animal em Evidência - Quadrada e de Grande Porte */}
+            <div className="w-full md:w-80 lg:w-[360px] aspect-square rounded-2xl overflow-hidden border-4 border-gray-100 shadow-md relative flex-shrink-0 bg-slate-100">
+              <img
+                src={animal.imageUrl || 'https://images.unsplash.com/photo-1553284965-83fd3e82fa5a?auto=format&fit=crop&q=80&w=400'}
+                alt={animal.specie}
+                className="w-full h-full object-cover transition-transform duration-500 hover:scale-105"
+              />
+              <div className="absolute top-4 right-4 bg-slate-900/80 backdrop-blur-md text-white text-xs font-black px-3 py-1.5 rounded-full shadow-lg border border-white/20 uppercase tracking-wide">
+                {animal.id === 'NOVO' ? 'NOVO CADASTRO' : animal.status}
+              </div>
+            </div>
+
+            {/* Informações de Identificação Detalhadas */}
+            <div className="flex-1 flex flex-col justify-between gap-6 w-full">
+              <div>
+                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                  <div>
+                    <div className="flex items-center gap-3 flex-wrap mb-1">
+                      <h1 className="text-gray-900 text-3xl md:text-4xl font-black leading-tight tracking-tight">
+                        {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie}`}
+                      </h1>
+                      <div className="flex items-center gap-1.5 bg-emerald-50 text-emerald-700 px-3 py-1 rounded-lg text-xs font-black font-mono tracking-wide border border-emerald-200 uppercase">
+                        <span className="material-symbols-outlined text-[18px]">qr_code_2</span>
+                        CHIP #{animal.chip}
+                      </div>
+                    </div>
+                    {animal.breed && animal.breed !== '---' && (
+                      <p className="text-gray-500 text-base font-semibold">Raça / Tipo: {animal.breed}</p>
+                    )}
+                  </div>
+
+                  <div className="flex gap-3 w-full md:w-auto no-print">
+                    <button
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 h-11 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-xl transition-colors border border-gray-200"
+                      onClick={() => setIsPrintModalOpen(true)}
+                    >
+                      <span className="material-symbols-outlined text-[20px]">print</span>
+                      <span>Ficha de Campo</span>
+                    </button>
+                    <button
+                      onClick={handleOpenEdit}
+                      className="flex-1 md:flex-none flex items-center justify-center gap-2 h-11 px-5 bg-primary text-green-900 hover:bg-primary/90 text-sm font-black rounded-xl transition-colors shadow-lg shadow-primary/10"
+                    >
+                      <span className="material-symbols-outlined text-[20px]">edit</span>
+                      <span>Editar Cadastro</span>
+                    </button>
                   </div>
                 </div>
-                <div className="flex flex-col gap-1">
-                  <div className="flex items-center gap-3 flex-wrap">
-                    <h1 className="text-gray-900 text-2xl md:text-3xl font-black leading-tight tracking-tight">
-                      {animal.id === 'NOVO' ? 'Novo Semovente' : `${animal.specie} • ${animal.chip}`}
-                    </h1>
-                    <div className="flex items-center gap-1.5 bg-gray-100 px-2.5 py-1 rounded text-[11px] text-primary font-black font-mono tracking-wide border border-gray-200 uppercase">
-                      <span className="material-symbols-outlined text-[16px]">qr_code_2</span>
-                      CHIP #{animal.chip}
-                    </div>
+
+                {/* Grid de Informações Importantes */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                  <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Sexo</span>
+                    <span className="text-slate-800 font-extrabold text-sm flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-slate-500 text-[18px]">
+                        {animal.gender === 'Macho' ? 'male' : 'female'}
+                      </span>
+                      {animal.gender}
+                    </span>
                   </div>
-                  <p className="text-gray-500 text-sm md:text-base font-medium flex items-center gap-2">
-                    Sexo: {animal.gender}
-                    <span className="size-1 rounded-full bg-gray-300"></span>
-                    Pelagem: {animal.color}
+
+                  <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Pelagem / Cor</span>
+                    <span className="text-slate-800 font-extrabold text-sm flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-slate-500 text-[18px]">palette</span>
+                      {animal.color}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Data de Entrada</span>
+                    <span className="text-slate-800 font-extrabold text-sm flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-slate-500 text-[18px]">calendar_today</span>
+                      {animal.dateIn && animal.dateIn !== '---' ? animal.dateIn : 'Não informada'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Dias no CCT</span>
+                    <span className="text-slate-800 font-extrabold text-sm flex items-center gap-1.5">
+                      <span className="material-symbols-outlined text-slate-500 text-[18px]">timer</span>
+                      {animal.daysIn ? `${animal.daysIn} dias` : '0 dias'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Origem / Procedência</span>
+                    <span className="text-slate-800 font-extrabold text-sm flex items-center gap-1.5 truncate">
+                      <span className="material-symbols-outlined text-slate-500 text-[18px]">location_on</span>
+                      {animal.origin || '---'}
+                    </span>
+                  </div>
+
+                  <div className="bg-slate-50 border border-slate-100 p-3.5 rounded-xl">
+                    <span className="text-[11px] font-bold uppercase tracking-wider text-slate-400 block mb-1">Órgão / OS</span>
+                    <span className="text-slate-800 font-extrabold text-sm flex items-center gap-1.5 truncate">
+                      <span className="material-symbols-outlined text-slate-500 text-[18px]">badge</span>
+                      {animal.organ || '---'} {animal.osNumber && animal.osNumber !== '---' ? `(${animal.osNumber})` : ''}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {animal.observations && animal.observations !== '---' && (
+                <div className="bg-amber-50/60 border border-amber-200/80 rounded-xl p-3.5">
+                  <span className="text-[11px] font-bold uppercase tracking-wider text-amber-800 flex items-center gap-1 mb-1">
+                    <span className="material-symbols-outlined text-[16px]">notes</span>
+                    Observações Gerais:
+                  </span>
+                  <p className="text-xs text-amber-900 font-medium leading-relaxed">
+                    {animal.observations}
                   </p>
                 </div>
-              </div>
-              <div className="flex gap-3 w-full md:w-auto no-print">
-                <button
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-lg transition-colors border border-gray-200"
-                  onClick={() => setIsPrintModalOpen(true)}
-                >
-                  <span className="material-symbols-outlined text-[20px]">print</span>
-                  <span className="truncate">Ficha de Campo</span>
-                </button>
-                <button
-                  onClick={handleOpenEdit}
-                  className="flex-1 md:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-primary text-green-900 hover:bg-primary/90 text-sm font-black rounded-lg transition-colors shadow-lg shadow-primary/10"
-                >
-                  <span className="material-symbols-outlined text-[20px]">edit</span>
-                  <span className="truncate">Editar Cadastro</span>
-                </button>
-              </div>
+              )}
             </div>
-          </header>
-
-          {/* Resenha Gráfica Permanente (Sempre à mostra) */}
-          <section className="bg-white border border-gray-200 rounded-xl p-6 shadow-sm flex flex-col gap-4">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <h3 className="text-gray-900 text-lg font-black tracking-tight uppercase flex items-center gap-2">
-                <span className="material-symbols-outlined text-primary text-[24px]">brush</span>
-                Resenha Gráfica
-              </h3>
-
-              {/* Barra de Ferramentas (Toolbar) */}
-              <div className="flex items-center gap-6 bg-gray-50 p-1.5 rounded-xl border border-gray-200 no-print flex-wrap">
-                {/* Ferramentas */}
-                <div className="flex items-center gap-1">
-                  {[
-                    { id: 'circle', icon: 'radio_button_unchecked', label: 'Círculo' },
-                    { id: 'x', icon: 'close', label: 'X' },
-                    { id: 'line', icon: 'horizontal_rule', label: 'Linha' },
-                    { id: 'pencil', icon: 'edit', label: 'Lápis' }
-                  ].map((tool) => (
-                    <button
-                      key={tool.id}
-                      type="button"
-                      onClick={() => setSelectedTool(tool.id as any)}
-                      className={`size-9 rounded-lg flex items-center justify-center transition-all ${selectedTool === tool.id
-                        ? 'bg-primary text-green-900 shadow-md scale-105'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-white'
-                        }`}
-                      title={tool.label}
-                    >
-                      <span className="material-symbols-outlined text-[20px]">{tool.icon}</span>
-                    </button>
-                  ))}
-                </div>
-
-                <div className="w-px h-6 bg-gray-200 mx-1"></div>
-
-                {/* Cores */}
-                <div className="flex items-center gap-1.5">
-                  {[
-                    { id: 'red', color: 'bg-red-500' },
-                    { id: 'blue', color: 'bg-blue-500' },
-                    { id: 'green', color: 'bg-green-600' }
-                  ].map((color) => (
-                    <button
-                      key={color.id}
-                      type="button"
-                      onClick={() => setSelectedColor(color.id)}
-                      className={`size-6 rounded-full ${color.color} transition-all border-2 ${selectedColor === color.id ? 'border-gray-900 scale-125' : 'border-white'
-                        }`}
-                    />
-                  ))}
-                </div>
-
-                <div className="w-px h-6 bg-gray-200 mx-1"></div>
-
-                {/* Espessuras */}
-                <div className="flex items-center gap-1">
-                  {[
-                    { id: 0.5, label: 'Fino', icon: 'line_weight' },
-                    { id: 1.0, label: 'Médio', icon: 'line_weight' },
-                    { id: 2.5, label: 'Grosso', icon: 'line_weight' }
-                  ].map((stroke) => (
-                    <button
-                      key={stroke.id}
-                      type="button"
-                      onClick={() => setSelectedStrokeWidth(stroke.id)}
-                      className={`size-9 rounded-lg flex flex-col items-center justify-center transition-all ${selectedStrokeWidth === stroke.id
-                        ? 'bg-primary text-green-900 shadow-md scale-105'
-                        : 'text-gray-400 hover:text-gray-600 hover:bg-white'
-                        }`}
-                      title={stroke.label}
-                    >
-                      <div
-                        className="bg-current rounded-full"
-                        style={{
-                          width: stroke.id === 0.5 ? '12px' : stroke.id === 1.0 ? '16px' : '20px',
-                          height: stroke.id === 0.5 ? '1.5px' : stroke.id === 1.0 ? '3px' : '6px'
-                        }}
-                      />
-                    </button>
-                  ))}
-                </div>
-
-                <div className="w-px h-6 bg-gray-200 mx-1"></div>
-
-                {/* Ações */}
-                <div className="flex items-center gap-1">
-                  <button
-                    type="button"
-                    onClick={() => {
-                      const newMarks = resenhaMarks.slice(0, -1);
-                      setResenhaMarks(newMarks);
-                      handleSaveMarks(newMarks);
-                    }}
-                    className="size-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-orange-500 hover:bg-white transition-all"
-                    title="Desfazer (Undo)"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">undo</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => {
-                      setResenhaMarks([]);
-                      handleSaveMarks([]);
-                    }}
-                    className="size-9 rounded-lg flex items-center justify-center text-gray-400 hover:text-red-500 hover:bg-white transition-all"
-                    title="Limpar Tudo"
-                  >
-                    <span className="material-symbols-outlined text-[20px]">delete_sweep</span>
-                  </button>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative w-full rounded-xl overflow-hidden border border-gray-100 bg-white select-none shadow-inner group">
-              <img
-                src={resenhaBg}
-                alt="Esquema Corporal"
-                className="w-full h-auto object-contain pointer-events-none"
-              />
-
-              {/* Overlay SVG para Desenho */}
-              <svg
-                viewBox="0 0 100 100"
-                preserveAspectRatio="none"
-                className="absolute inset-0 w-full h-full cursor-crosshair z-10"
-                onMouseDown={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = ((e.clientX - rect.left) / rect.width) * 100;
-                  const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-                  if (selectedTool === 'line' || selectedTool === 'pencil') {
-                    setIsDrawing(true);
-                    setCurrentLine({
-                      id: Date.now(),
-                      type: selectedTool,
-                      x,
-                      y,
-                      endX: x,
-                      endY: y,
-                      color: selectedColor,
-                      strokeWidth: selectedStrokeWidth,
-                      points: selectedTool === 'pencil' ? [{ x, y }] : undefined
-                    });
-                  } else {
-                    const newMarks: Mark[] = [...resenhaMarks, {
-                      id: Date.now(),
-                      type: selectedTool,
-                      x,
-                      y,
-                      color: selectedColor,
-                      strokeWidth: selectedStrokeWidth
-                    }];
-                    setResenhaMarks(newMarks);
-                    handleSaveMarks(newMarks);
-                  }
-                }}
-                onMouseMove={(e) => {
-                  if (!isDrawing || !currentLine) return;
-                  const rect = e.currentTarget.getBoundingClientRect();
-                  const x = ((e.clientX - rect.left) / rect.width) * 100;
-                  const y = ((e.clientY - rect.top) / rect.height) * 100;
-
-                  if (selectedTool === 'pencil') {
-                    // Otimização básica: só adiciona se moveu mais de 0.5%
-                    const lastPoint = currentLine.points![currentLine.points!.length - 1];
-                    const dist = Math.sqrt(Math.pow(x - lastPoint.x, 2) + Math.pow(y - lastPoint.y, 2));
-                    if (dist > 0.5) {
-                      setCurrentLine(prev => ({
-                        ...prev!,
-                        points: [...prev!.points!, { x, y }]
-                      }));
-                    }
-                  } else {
-                    setCurrentLine(prev => prev ? { ...prev, endX: x, endY: y } : null);
-                  }
-                }}
-                onMouseUp={() => {
-                  if (isDrawing && currentLine) {
-                    const newMarks = [...resenhaMarks, currentLine as Mark];
-                    setResenhaMarks(newMarks);
-                    handleSaveMarks(newMarks);
-                  }
-                  setIsDrawing(false);
-                  setCurrentLine(null);
-                }}
-              >
-                {/* Marcas Salvas */}
-                {resenhaMarks.map((mark) => (
-                  <g key={mark.id} onClick={(e) => {
-                    e.stopPropagation();
-                    const filtered = resenhaMarks.filter(m => m.id !== mark.id);
-                    setResenhaMarks(filtered);
-                    handleSaveMarks(filtered);
-                  }} className="cursor-pointer group/mark">
-                    {(mark.type === 'circle' || !mark.type) && (
-                      <circle
-                        cx={mark.x}
-                        cy={mark.y}
-                        r={mark.strokeWidth ? mark.strokeWidth * 1.2 : 1.2}
-                        fill={!mark.color || mark.color === 'red' ? '#ef4444' : mark.color === 'blue' ? '#3b82f6' : '#16a34a'}
-                        stroke="white"
-                        strokeWidth={mark.strokeWidth ? mark.strokeWidth * 0.4 : 0.5}
-                        className="transition-all group-hover/mark:stroke-yellow-400"
-                      />
-                    )}
-                    {mark.type === 'x' && (
-                      <text
-                        x={mark.x}
-                        y={mark.y}
-                        textAnchor="middle"
-                        dominantBaseline="middle"
-                        fill={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        fontSize={mark.strokeWidth ? 4 + (mark.strokeWidth * 2) : 5}
-                        fontWeight="black"
-                        className="select-none transition-all group-hover/mark:fill-yellow-400"
-                        style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
-                      >
-                        X
-                      </text>
-                    )}
-                    {mark.type === 'line' && (
-                      <line
-                        x1={mark.x}
-                        y1={mark.y}
-                        x2={mark.endX}
-                        y2={mark.endY}
-                        stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth={mark.strokeWidth || 1}
-                        strokeLinecap="round"
-                        className="transition-all group-hover/mark:stroke-yellow-400"
-                        style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
-                      />
-                    )}
-                    {mark.type === 'pencil' && mark.points && (
-                      <polyline
-                        points={mark.points.map(p => `${p.x},${p.y}`).join(' ')}
-                        fill="none"
-                        stroke={mark.color === 'blue' ? '#3b82f6' : mark.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth={mark.strokeWidth || 1}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                        className="transition-all group-hover/mark:stroke-yellow-400"
-                        style={{ filter: 'drop-shadow(0px 0.1px 0.1px rgba(255,255,255,0.8))' }}
-                      />
-                    )}
-                  </g>
-                ))}
-
-                {/* Pré-visualização (Linha ou Lápis) */}
-                {isDrawing && currentLine && (
-                  <>
-                    {selectedTool === 'line' && (
-                      <line
-                        x1={currentLine.x}
-                        y1={currentLine.y}
-                        x2={currentLine.endX}
-                        y2={currentLine.endY}
-                        stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth={currentLine.strokeWidth || 1}
-                        strokeDasharray={currentLine.strokeWidth === 0.5 ? "0.5" : "1"}
-                        strokeLinecap="round"
-                      />
-                    )}
-                    {selectedTool === 'pencil' && currentLine.points && (
-                      <polyline
-                        points={currentLine.points.map(p => `${p.x},${p.y}`).join(' ')}
-                        fill="none"
-                        stroke={currentLine.color === 'blue' ? '#3b82f6' : currentLine.color === 'green' ? '#16a34a' : '#ef4444'}
-                        strokeWidth={currentLine.strokeWidth || 1}
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                      />
-                    )}
-                  </>
-                )}
-              </svg>
-
-              <div className="absolute top-4 left-4 opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-30">
-                <div className="bg-black/60 backdrop-blur-md text-white text-[9px] font-black uppercase tracking-wider px-3 py-1.5 rounded-full border border-white/20 shadow-xl flex items-center gap-2">
-                  <span className="material-symbols-outlined text-[14px] text-primary">touch_app</span>
-                  {selectedTool === 'line' || selectedTool === 'pencil' ? 'Clique e arraste para desenhar' : 'Clique para marcar'} | Clique na marca para remover
-                </div>
-              </div>
-            </div>
-            <p className="text-[10px] text-gray-400 flex items-center gap-1 font-medium italic">
-              <span className="material-symbols-outlined text-[14px]">info</span>
-              Selecione a ferramenta e cor desejada. As marcas são salvas automaticamente no prontuário.
-            </p>
-          </section>
-        </>
+          </div>
+        </header>
       )}
 
       {/* Seção Nova Ocorrência */}
