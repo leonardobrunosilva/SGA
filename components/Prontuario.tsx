@@ -483,7 +483,7 @@ const Prontuario: React.FC = () => {
             {/* Informações de Identificação Detalhadas */}
             <div className="flex-1 flex flex-col justify-between gap-6 w-full">
               <div>
-                <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-6">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-4 mb-6 pb-4 border-b border-slate-100">
                   <div>
                     <div className="flex items-center gap-3 flex-wrap mb-1">
                       <h1 className="text-gray-900 text-3xl md:text-4xl font-black leading-tight tracking-tight">
@@ -495,23 +495,23 @@ const Prontuario: React.FC = () => {
                       </div>
                     </div>
                     {animal.breed && animal.breed !== '---' && (
-                      <p className="text-gray-500 text-base font-semibold">Raça / Tipo: {animal.breed}</p>
+                      <p className="text-gray-500 text-sm font-semibold">Raça / Tipo: <span className="text-slate-700 font-bold">{animal.breed}</span></p>
                     )}
                   </div>
 
-                  <div className="flex gap-3 w-full md:w-auto no-print">
+                  <div className="flex items-center gap-2.5 w-full sm:w-auto shrink-0 no-print">
                     <button
-                      className="flex-1 md:flex-none flex items-center justify-center gap-2 h-11 px-5 bg-gray-100 hover:bg-gray-200 text-gray-700 text-sm font-bold rounded-xl transition-colors border border-gray-200"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-gray-100 hover:bg-gray-200 text-gray-700 text-xs font-bold rounded-xl transition-all border border-gray-200 shadow-sm"
                       onClick={() => setIsPrintModalOpen(true)}
                     >
-                      <span className="material-symbols-outlined text-[20px]">print</span>
+                      <span className="material-symbols-outlined text-[18px]">print</span>
                       <span>Ficha de Campo</span>
                     </button>
                     <button
                       onClick={handleOpenEdit}
-                      className="flex-1 md:flex-none flex items-center justify-center gap-2 h-11 px-5 bg-primary text-green-900 hover:bg-primary/90 text-sm font-black rounded-xl transition-colors shadow-lg shadow-primary/10"
+                      className="flex-1 sm:flex-none flex items-center justify-center gap-2 h-10 px-4 bg-primary text-green-950 hover:bg-primary/90 text-xs font-black rounded-xl transition-all shadow-sm"
                     >
-                      <span className="material-symbols-outlined text-[20px]">edit</span>
+                      <span className="material-symbols-outlined text-[18px]">edit</span>
                       <span>Editar Cadastro</span>
                     </button>
                   </div>
